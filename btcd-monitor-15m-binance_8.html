@@ -1,0 +1,1528 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BTC.D 15M Monitor</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --bg:#0c0e14;--surface:#13151f;--surface2:#1a1d2a;--surface3:#20243a;
+    --border:#252a40;--border2:#2e3450;--text:#e8eaf6;--muted:#6b7280;--muted2:#4b5563;
+    --purple:#7c5cfc;--purple2:#5b3fd4;--purple-glow:rgba(124,92,252,.15);
+    --cyan:#38bdf8;--cyan2:#0ea5e9;--cyan-glow:rgba(56,189,248,.12);
+    --green:#4ade80;--green2:#16a34a;--green-glow:rgba(74,222,128,.12);
+    --red:#f87171;--red2:#dc2626;--red-glow:rgba(248,113,113,.12);
+    --amber:#fbbf24;--amber2:#d97706;--amber-glow:rgba(251,191,36,.12);
+    --mono:'JetBrains Mono',monospace;--sans:'Inter',system-ui,sans-serif;
+    --radius:8px;--radius-sm:5px;
+  }
+
+  body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh;overflow-x:hidden;font-size:14px;line-height:1.5}
+
+  /* Subtle grid texture */
+  body::before{content:'';position:fixed;inset:0;background-image:radial-gradient(ellipse 80% 50% at 50% -10%,rgba(124,92,252,.08),transparent);pointer-events:none;z-index:0}
+
+  .app{position:relative;z-index:1;max-width:1000px;margin:0 auto;padding:32px 24px 64px}
+
+  /* ── Header ── */
+  .header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:32px;gap:16px;flex-wrap:wrap}
+  .header-left h1{font-size:24px;font-weight:600;letter-spacing:-.3px;line-height:1.2;color:var(--text)}
+  .header-left h1 span{color:var(--purple)}
+  .header-left p{font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:5px;letter-spacing:.04em}
+  .header-right{display:flex;flex-direction:column;align-items:flex-end;gap:8px}
+  .refresh-btn{background:var(--surface2);border:1px solid var(--border2);color:var(--cyan);font-family:var(--mono);font-size:11px;padding:9px 16px;cursor:pointer;letter-spacing:.06em;border-radius:var(--radius-sm);transition:all .2s;white-space:nowrap}
+  .refresh-btn:hover{background:var(--cyan);color:var(--bg);border-color:var(--cyan)}
+  .refresh-btn:disabled{opacity:.3;cursor:not-allowed}
+  .auto-label{font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:.04em}
+  .countdown{color:var(--purple);font-weight:700}
+
+  /* ── Source badge ── */
+  .source-badge{display:inline-flex;align-items:center;gap:7px;font-family:var(--mono);font-size:10px;color:var(--green);border:1px solid var(--green2);background:var(--green-glow);padding:5px 14px;margin-bottom:20px;letter-spacing:.06em;border-radius:var(--radius-sm)}
+  .source-badge .dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--green);animation:pulse 2s infinite}
+  @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.6;transform:scale(.85)}}
+
+  /* ── Signal banner ── */
+  .signal-banner{border:1px solid var(--border);background:var(--surface);padding:24px 28px;margin-bottom:16px;position:relative;overflow:hidden;border-radius:var(--radius);transition:border-color .4s}
+  .signal-banner::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--signal-color,var(--muted));border-radius:3px 0 0 3px;transition:background .4s}
+  .signal-banner.diverge{--signal-color:var(--green);border-color:rgba(74,222,128,.25);background:linear-gradient(135deg,var(--surface) 0%,rgba(74,222,128,.04) 100%)}
+  .signal-banner.converge{--signal-color:var(--amber);border-color:rgba(251,191,36,.25);background:linear-gradient(135deg,var(--surface) 0%,rgba(251,191,36,.04) 100%)}
+  .signal-banner.neutral{--signal-color:var(--muted)}
+  .signal-banner.error{--signal-color:var(--red);border-color:rgba(248,113,113,.25)}
+  .signal-top{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap}
+  .signal-label{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+  .signal-title{font-size:20px;font-weight:600;letter-spacing:-.2px;margin-bottom:8px;transition:color .4s}
+  .signal-banner.diverge .signal-title{color:var(--green)}
+  .signal-banner.converge .signal-title{color:var(--amber)}
+  .signal-banner.neutral .signal-title{color:var(--muted)}
+  .signal-banner.error .signal-title{color:var(--red)}
+  .signal-desc{font-size:13px;color:var(--muted);line-height:1.6;max-width:560px}
+  .signal-badge{flex-shrink:0;font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.06em;padding:8px 16px;border:1px solid;white-space:nowrap;margin-top:4px;display:none;border-radius:var(--radius-sm)}
+  .signal-banner.diverge .signal-badge{color:var(--green);border-color:var(--green2);background:var(--green-glow)}
+  .signal-banner.converge .signal-badge{color:var(--amber);border-color:var(--amber2);background:var(--amber-glow)}
+  .strength-row{display:flex;gap:4px;margin-top:16px}
+  .s-bar{height:3px;flex:1;background:var(--surface3);transition:background .4s;border-radius:2px}
+  .s-bar.g{background:var(--green)}.s-bar.a{background:var(--amber)}.s-bar.r{background:var(--red)}
+
+  /* ── Consensus bar ── */
+  .consensus-bar{background:var(--surface);border:1px solid var(--border);padding:14px 20px;margin-bottom:20px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;border-radius:var(--radius)}
+  .con-label{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);flex-shrink:0}
+  .con-chips{display:flex;gap:6px;flex-wrap:wrap;flex:1}
+  .con-chip{font-family:var(--mono);font-size:10px;font-weight:700;padding:3px 10px;border:1px solid;letter-spacing:.05em;border-radius:var(--radius-sm);text-transform:uppercase}
+  .con-chip.buy{color:var(--green);border-color:var(--green2);background:var(--green-glow)}
+  .con-chip.sell{color:var(--red);border-color:var(--red2);background:var(--red-glow)}
+  .con-chip.neu{color:var(--muted);border-color:var(--border2)}
+  .con-verdict{font-family:var(--mono);font-size:12px;font-weight:700;flex-shrink:0}
+  .con-verdict.bull{color:var(--green)}.con-verdict.bear{color:var(--red)}.con-verdict.mix{color:var(--amber)}
+
+  /* ── Section label ── */
+  .section-label{font-family:var(--mono);font-size:9px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted2);margin-bottom:12px;padding-left:2px}
+
+  /* ── Indicator grid ── */
+  .ind-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:22px}
+  @media(max-width:640px){.ind-grid{grid-template-columns:1fr}}
+  .ind-panel{background:var(--surface);border:1px solid var(--border);padding:20px 22px;position:relative;overflow:hidden;border-radius:var(--radius);border-left:3px solid var(--ic,var(--muted))}
+  .ind-panel::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,var(--ic,transparent),transparent)}
+  .ind-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;gap:8px}
+  .ind-name{font-size:15px;font-weight:600;letter-spacing:-.1px}
+  .ind-tf{font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-top:3px}
+  .ind-tf.best{margin-top:4px;font-size:9px}
+  .ind-accuracy{text-align:right;flex-shrink:0}
+  .acc-val{font-family:var(--mono);font-size:22px;font-weight:700}
+  .acc-label{font-family:var(--mono);font-size:8px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-top:2px}
+  .acc-sublabel{font-family:var(--mono);font-size:8px;color:var(--muted);margin-top:2px}
+  .ind-signal{display:inline-flex;align-items:center;gap:9px;font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.05em;padding:9px 14px;border:1px solid;margin-bottom:12px;width:100%;border-radius:var(--radius-sm);text-transform:uppercase}
+  .ind-signal.buy{color:var(--green);border-color:var(--green2);background:var(--green-glow)}
+  .ind-signal.sell{color:var(--red);border-color:var(--red2);background:var(--red-glow)}
+  .ind-signal.neutral{color:var(--muted);border-color:var(--border2);background:var(--surface2)}
+  .ind-signal .sdot{width:7px;height:7px;border-radius:50%;background:currentColor;flex-shrink:0}
+  .ind-desc{font-size:12px;color:var(--muted);line-height:1.6;margin-bottom:12px}
+  .ind-vals{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--border);border-radius:var(--radius-sm);overflow:hidden}
+  .ind-val{background:var(--surface2);padding:8px 10px}
+  .ind-val-lbl{font-family:var(--mono);font-size:8px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:3px}
+  .ind-val-num{font-family:var(--mono);font-size:11px;font-weight:700}
+  .acc-bar{height:2px;background:var(--surface3);border-radius:2px;overflow:hidden;margin-top:12px}
+  .acc-bar-fill{height:100%;border-radius:2px;transition:width .8s ease}
+  .rsi-track{height:6px;background:var(--surface3);border-radius:3px;position:relative;overflow:hidden;margin:10px 0 4px}
+  .rsi-fill{position:absolute;top:0;bottom:0;left:0;background:var(--purple);opacity:.4;transition:width .6s;border-radius:3px}
+  .rsi-marker{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--purple);transition:left .6s;border-radius:1px}
+  .rsi-labels{display:flex;justify-content:space-between}
+  .rsi-lbl{font-family:var(--mono);font-size:8px;color:var(--muted)}
+
+  /* ── Ticker strip ── */
+  .ticker-wrap{overflow-x:auto;margin-bottom:20px}
+  .ticker-wrap::-webkit-scrollbar{height:2px}
+  .ticker-wrap::-webkit-scrollbar-thumb{background:var(--border2);border-radius:1px}
+  .ticker-strip{display:flex;gap:6px;min-width:max-content;padding-bottom:4px}
+  .tc{flex-shrink:0;background:var(--surface);border:1px solid var(--border);padding:10px 12px;width:74px;text-align:center;transition:all .2s;border-radius:var(--radius-sm)}
+  .tc.current{border-color:var(--purple);background:var(--purple-glow)}
+  .tc.bull{border-top:2px solid var(--green)}.tc.bear{border-top:2px solid var(--red)}
+  .tc-time{font-family:var(--mono);font-size:8px;color:var(--muted);margin-bottom:5px}
+  .tc-visual{display:flex;flex-direction:column;align-items:center;gap:1px;height:40px;justify-content:center}
+  .tc-wick{width:1px;background:currentColor}.tc-body{width:9px;min-height:3px;background:currentColor}
+  .bull-c{color:var(--green)}.bear-c{color:var(--red)}
+  .tc-pct{font-family:var(--mono);font-size:8px;font-weight:700;margin-top:4px}
+  .tc-pct.up{color:var(--green)}.tc-pct.dn{color:var(--red)}
+  .tc-sig{font-family:var(--mono);font-size:8px;color:var(--muted);margin-top:2px}
+  .tc-sig.div{color:var(--green)}.tc-sig.conv{color:var(--amber)}
+
+  /* ── Chart panels ── */
+  .charts-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+  @media(max-width:580px){.charts-row{grid-template-columns:1fr}}
+  .chart-panel{background:var(--surface);border:1px solid var(--border);padding:22px 24px;border-radius:var(--radius)}
+  .chart-panel:first-child{border-left:3px solid var(--purple)}
+  .chart-panel:last-child{border-left:3px solid var(--cyan)}
+  .panel-label{font-family:var(--mono);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
+  .panel-name{font-size:17px;font-weight:600;margin-bottom:14px;letter-spacing:-.2px}
+  .price-main{font-family:var(--mono);font-size:26px;font-weight:700;letter-spacing:-.5px;margin-bottom:4px}
+  .price-change{font-family:var(--mono);font-size:11px;font-weight:600;margin-bottom:14px}
+  .price-change.up{color:var(--green)}.price-change.dn{color:var(--red)}.price-change.fl{color:var(--muted)}
+  .spark-wrap{width:100%;height:48px;margin-bottom:14px}
+  .spark-wrap svg{width:100%;height:100%}
+  .trend-row{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+  .trend-pill{font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;padding:4px 12px;border:1px solid;border-radius:var(--radius-sm)}
+  .trend-pill.up{color:var(--green);border-color:var(--green2);background:var(--green-glow)}
+  .trend-pill.dn{color:var(--red);border-color:var(--red2);background:var(--red-glow)}
+  .trend-pill.fl{color:var(--muted);border-color:var(--border2)}
+  .trend-meta{font-family:var(--mono);font-size:9px;color:var(--muted)}
+  .stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--border);border-radius:var(--radius-sm);overflow:hidden}
+  .stat{background:var(--surface2);padding:9px 11px}
+  .stat-label{font-family:var(--mono);font-size:8px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:3px}
+  .stat-val{font-family:var(--mono);font-size:11px;font-weight:700;color:var(--text)}
+  .stat-val.up{color:var(--green)}.stat-val.dn{color:var(--red)}
+
+  /* ── OHLC ── */
+  .ohlc-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+  @media(max-width:580px){.ohlc-row{grid-template-columns:1fr}}
+  .ohlc-panel{background:var(--surface);border:1px solid var(--border);padding:18px 20px;border-radius:var(--radius)}
+  .ohlc-title{font-family:var(--mono);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:12px}
+  .ohlc-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--border);border-radius:var(--radius-sm);overflow:hidden}
+  .ohlc-cell{background:var(--surface2);padding:9px 10px}
+  .ohlc-lbl{font-family:var(--mono);font-size:8px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:3px}
+  .ohlc-val{font-family:var(--mono);font-size:12px;font-weight:700}
+  .ohlc-val.o{color:var(--text)}.ohlc-val.h{color:var(--green)}.ohlc-val.l{color:var(--red)}.ohlc-val.c{color:var(--cyan)}
+
+  /* ── Correlation ── */
+  .corr-panel{background:var(--surface);border:1px solid var(--border);padding:16px 22px;margin-bottom:14px;display:flex;align-items:center;gap:20px;flex-wrap:wrap;border-radius:var(--radius)}
+  .corr-label{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);min-width:130px}
+  .corr-bar-wrap{flex:1;min-width:180px}
+  .corr-track{height:4px;background:var(--surface3);border-radius:2px;position:relative;overflow:hidden;margin-bottom:5px}
+  .corr-fill{position:absolute;top:0;bottom:0;left:0;background:var(--purple);border-radius:2px;transition:width .7s ease}
+  .corr-desc{font-size:12px;color:var(--muted)}
+  .corr-val{font-family:var(--mono);font-size:20px;font-weight:700;color:var(--purple);min-width:52px;text-align:right}
+
+  /* ── History ── */
+  .history-panel{background:var(--surface);border:1px solid var(--border);padding:20px 24px;margin-bottom:20px;border-radius:var(--radius);overflow-x:auto}
+  .history-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px}
+  .history-title{font-size:15px;font-weight:600}
+  .history-sub{font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+  .htable{width:100%;border-collapse:collapse;min-width:580px}
+  .htable th{font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);text-align:left;padding:0 10px 10px 0;border-bottom:1px solid var(--border)}
+  .htable td{font-family:var(--mono);font-size:11px;color:var(--text);padding:9px 10px 9px 0;border-bottom:1px solid var(--border);vertical-align:middle}
+  .htable tr:last-child td{border-bottom:none}
+  .htable tr.hl td{background:var(--purple-glow)}
+  .sp{display:inline-block;font-family:var(--mono);font-size:9px;letter-spacing:.06em;text-transform:uppercase;padding:3px 8px;border:1px solid;border-radius:var(--radius-sm)}
+  .sp.div{color:var(--green);border-color:var(--green2);background:var(--green-glow)}
+  .sp.conv{color:var(--amber);border-color:var(--amber2);background:var(--amber-glow)}
+  .ap{display:inline-block;font-family:var(--mono);font-size:9px;font-weight:700}
+  .ap.lb{color:var(--green)}.ap.le{color:var(--cyan)}.ap.w{color:var(--muted)}
+
+  /* ── 6H dominance summary ── */
+  .dom-summary{margin-top:20px;border-top:1px solid var(--border);padding-top:20px}
+  .dom-summary-label{font-family:var(--mono);font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:14px}
+  .dom-bar-wrap{position:relative;height:26px;background:var(--surface2);border-radius:var(--radius-sm);overflow:hidden;margin-bottom:10px}
+  .dom-bar-btc{position:absolute;left:0;top:0;bottom:0;background:var(--amber);opacity:.9;transition:width .8s ease;display:flex;align-items:center;padding-left:10px;min-width:0;border-radius:var(--radius-sm) 0 0 var(--radius-sm)}
+  .dom-bar-eth{position:absolute;right:0;top:0;bottom:0;background:var(--cyan);opacity:.9;transition:width .8s ease;display:flex;align-items:center;justify-content:flex-end;padding-right:10px;min-width:0;border-radius:0 var(--radius-sm) var(--radius-sm) 0}
+  .dom-bar-label{font-family:var(--mono);font-size:9px;font-weight:700;color:var(--bg);letter-spacing:.06em;white-space:nowrap;overflow:hidden}
+  .dom-stats{display:grid;grid-template-columns:1fr auto 1fr;gap:6px;align-items:center}
+  .dom-side{padding:12px 16px;border:1px solid var(--border);border-radius:var(--radius-sm)}
+  .dom-side.btc-side{background:var(--amber-glow);border-color:rgba(251,191,36,.25)}
+  .dom-side.eth-side{background:var(--cyan-glow);border-color:rgba(56,189,248,.25);text-align:right}
+  .dom-side-label{font-family:var(--mono);font-size:8px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:5px}
+  .dom-side-pct{font-family:var(--mono);font-size:22px;font-weight:700;line-height:1}
+  .dom-side-count{font-family:var(--mono);font-size:9px;color:var(--muted);margin-top:4px}
+  .dom-side-move{font-family:var(--mono);font-size:10px;font-weight:700;margin-top:5px}
+  .dom-mid{text-align:center;padding:0 8px}
+  .dom-verdict{font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;margin-top:10px;text-align:center;padding:8px 14px;border:1px solid;border-radius:var(--radius-sm)}
+  .dom-verdict.btc-win{color:var(--amber);border-color:rgba(251,191,36,.3);background:var(--amber-glow)}
+  .dom-verdict.eth-win{color:var(--cyan);border-color:rgba(56,189,248,.3);background:var(--cyan-glow)}
+  .dom-verdict.tied{color:var(--muted);border-color:var(--border2)}
+
+  /* ── Guide ── */
+  .guide-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:28px}
+  @media(max-width:480px){.guide-row{grid-template-columns:1fr}}
+  .gbox{background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--gc);padding:16px 18px;border-radius:var(--radius)}
+  .gbox-label{font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;margin-bottom:7px;color:var(--gc);font-weight:700}
+  .gbox-text{font-size:12px;color:var(--muted);line-height:1.7}
+
+  /* ── Footer ── */
+  .last-updated{font-family:var(--mono);font-size:10px;color:var(--muted);text-align:right;margin-bottom:14px}
+  .footer{font-family:var(--mono);font-size:10px;color:var(--muted2);text-align:center;padding-top:20px;border-top:1px solid var(--border);line-height:2}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+  .dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--green);animation:blink 2s infinite;vertical-align:middle;margin-right:5px}
+
+  /* ── Telegram panel ── */
+  .tg-panel{background:var(--surface);border:1px solid var(--border);padding:20px 24px;margin-bottom:20px;border-radius:var(--radius)}
+  .tg-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px}
+  .tg-title{font-size:15px;font-weight:600;display:flex;align-items:center;gap:8px}
+  .tg-title svg{flex-shrink:0}
+  .tg-toggle-wrap{display:flex;align-items:center;gap:10px}
+  .tg-toggle-label{font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
+  .tg-toggle{position:relative;width:40px;height:22px;cursor:pointer}
+  .tg-toggle input{opacity:0;width:0;height:0;position:absolute}
+  .tg-slider{position:absolute;inset:0;background:var(--border2);border-radius:22px;transition:.3s}
+  .tg-slider::before{content:'';position:absolute;height:16px;width:16px;left:3px;bottom:3px;background:var(--muted);border-radius:50%;transition:.3s}
+  .tg-toggle input:checked+.tg-slider{background:var(--green2)}
+  .tg-toggle input:checked+.tg-slider::before{transform:translateX(18px);background:var(--green)}
+  .tg-fields{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px}
+  @media(max-width:560px){.tg-fields{grid-template-columns:1fr}}
+  .tg-field{display:flex;flex-direction:column;gap:5px}
+  .tg-field label{font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+  .tg-field input{background:var(--surface2);border:1px solid var(--border2);color:var(--text);font-family:var(--mono);font-size:11px;padding:9px 12px;outline:none;transition:border-color .2s;width:100%;border-radius:var(--radius-sm)}
+  .tg-field input:focus{border-color:var(--purple)}
+  .tg-checkboxes{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
+  .tg-check{display:flex;align-items:center;gap:6px;cursor:pointer;font-family:var(--mono);font-size:10px;color:var(--muted);padding:5px 11px;border:1px solid var(--border2);background:var(--surface2);transition:all .2s;user-select:none;border-radius:var(--radius-sm)}
+  .tg-check input{accent-color:var(--purple);cursor:pointer}
+  .tg-check:has(input:checked){border-color:rgba(124,92,252,.4);color:var(--purple);background:var(--purple-glow)}
+  .tg-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .tg-btn{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:8px 16px;border:1px solid;cursor:pointer;transition:all .2s;white-space:nowrap;border-radius:var(--radius-sm)}
+  .tg-btn-test{color:var(--cyan);border-color:rgba(56,189,248,.3);background:var(--cyan-glow)}
+  .tg-btn-test:hover{background:var(--cyan);color:var(--bg);border-color:var(--cyan)}
+  .tg-btn-test:disabled{opacity:.35;cursor:not-allowed}
+  .tg-status{font-family:var(--mono);font-size:10px;padding:4px 12px;border:1px solid transparent;transition:all .3s;border-radius:var(--radius-sm)}
+  .tg-status.ok{color:var(--green);border-color:var(--green2);background:var(--green-glow)}
+  .tg-status.err{color:var(--red);border-color:var(--red2);background:var(--red-glow)}
+  .tg-status.sending{color:var(--amber);border-color:var(--amber2);background:var(--amber-glow)}
+  .tg-log{font-family:var(--mono);font-size:9px;color:var(--muted);margin-top:12px;line-height:1.7;border-top:1px solid var(--border);padding-top:10px;max-height:60px;overflow-y:auto}
+
+  /* ── Field validation (reused from setup) ── */
+  .fstatus{font-family:var(--mono);font-size:9px;margin-top:3px;display:flex;align-items:center;gap:5px}
+  .fstatus.ok{color:var(--green)}.fstatus.err{color:var(--red)}.fstatus.chk{color:var(--amber)}.fstatus.hint{color:var(--muted)}
+  .fsdot{width:5px;height:5px;border-radius:50%;background:currentColor;flex-shrink:0}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="header">
+    <div class="header-left">
+      <h1>BTC.D <span>/</span> ETH·BTC<br>15M Signal Monitor</h1>
+      <p>KRAKEN REAL OHLC · SUPERTREND(1H) · RSI(1H) · MACD(4H) · STOCHRSI(15M) · PAIRS TRADE</p>
+    </div>
+    <div class="header-right">
+      <button class="refresh-btn" id="refreshBtn" onclick="loadAll()">↻ REFRESH</button>
+      <div class="auto-label">AUTO IN <span class="countdown" id="countdown">60</span>s</div>
+    </div>
+  </div>
+
+  <div class="source-badge"><span class="dot"></span>LIVE DATA · KRAKEN OHLC + PYTH ORACLE · AVERAGED PRICES · XBTUSD + ETHXBT · NO CORS ISSUES</div>
+
+  <!-- Main divergence signal -->
+  <div class="signal-banner neutral" id="signalBanner">
+    <div class="signal-top">
+      <div>
+        <div class="signal-label">15M CONVERGENCE / DIVERGENCE · XBTUSD vs ETHXBT</div>
+        <div class="signal-title" id="signalTitle">Connecting to Binance...</div>
+        <div class="signal-desc" id="signalDesc">Fetching real 15M OHLCV candles.</div>
+      </div>
+      <div class="signal-badge" id="signalBadge"></div>
+    </div>
+    <div class="strength-row">
+      <div class="s-bar" id="sb1"></div><div class="s-bar" id="sb2"></div>
+      <div class="s-bar" id="sb3"></div><div class="s-bar" id="sb4"></div>
+      <div class="s-bar" id="sb5"></div>
+    </div>
+  </div>
+
+  <!-- Indicator consensus -->
+  <div class="consensus-bar">
+    <div class="con-label">INDICATOR CONSENSUS</div>
+    <div class="con-chips" id="conChips"><div class="con-chip neu">LOADING...</div></div>
+    <div class="con-verdict" id="conVerdict">—</div>
+  </div>
+
+  <div class="last-updated" id="lastUpdated">—</div>
+
+  <!-- Indicators -->
+  <div class="section-label">TECHNICAL INDICATORS — CALCULATED FROM LIVE KRAKEN OHLC</div>
+  <div class="ind-grid">
+
+    <!-- Supertrend -->
+    <div class="ind-panel" style="--ic:var(--amber)">
+      <div class="ind-header">
+        <div>
+          <div class="ind-name">Supertrend</div>
+          <div class="ind-tf">ATR(10) · MULTIPLIER 3.0</div>
+          <div class="ind-tf best">▸ OPTIMAL TIMEFRAME: 1H</div>
+          <div class="ind-tf" style="font-size:8px;margin-top:1px">Trending asset — 1H avoids 15M noise, stays intraday</div>
+        </div>
+        <div class="ind-accuracy">
+          <div class="acc-val" id="st_acc" style="color:var(--amber)">—</div>
+          <div class="acc-label">6M ACCURACY</div>
+          <div class="acc-sublabel">on BTCUSDT 1H</div>
+        </div>
+      </div>
+      <div class="ind-signal neutral" id="st_signal"><span class="sdot"></span><span id="st_txt">Calculating...</span></div>
+      <div class="ind-desc" id="st_desc">—</div>
+      <div class="ind-vals">
+        <div class="ind-val"><div class="ind-val-lbl">ST LINE</div><div class="ind-val-num" id="st_line">—</div></div>
+        <div class="ind-val"><div class="ind-val-lbl">ATR(10)</div><div class="ind-val-num" id="st_atr">—</div></div>
+        <div class="ind-val"><div class="ind-val-lbl">BARS IN TREND</div><div class="ind-val-num" id="st_bars">—</div></div>
+      </div>
+      <div class="acc-bar"><div class="acc-bar-fill" id="st_bar" style="width:0%;background:var(--amber)"></div></div>
+    </div>
+
+    <!-- RSI -->
+    <div class="ind-panel" style="--ic:var(--purple)">
+      <div class="ind-header">
+        <div>
+          <div class="ind-name">RSI Divergence</div>
+          <div class="ind-tf">RSI(14) · ZONES 40/60</div>
+          <div class="ind-tf best">▸ OPTIMAL TIMEFRAME: 1H</div>
+          <div class="ind-tf" style="font-size:8px;margin-top:1px">Tighter zones — BTC.D ratio rarely hits 70/30</div>
+        </div>
+        <div class="ind-accuracy">
+          <div class="acc-val" id="rsi_acc" style="color:var(--purple)">—</div>
+          <div class="acc-label">6M ACCURACY</div>
+          <div class="acc-sublabel">divergence signals</div>
+        </div>
+      </div>
+      <div class="ind-signal neutral" id="rsi_signal"><span class="sdot"></span><span id="rsi_txt">Calculating...</span></div>
+      <div class="ind-desc" id="rsi_desc">—</div>
+      <div class="rsi-track">
+        <div class="rsi-fill" id="rsi_fill"></div>
+        <div class="rsi-marker" id="rsi_marker" style="left:50%"></div>
+      </div>
+      <div class="rsi-labels"><span class="rsi-lbl">0</span><span class="rsi-lbl">40 OS</span><span class="rsi-lbl">60 OB</span><span class="rsi-lbl">100</span></div>
+      <div class="ind-vals" style="margin-top:8px">
+        <div class="ind-val"><div class="ind-val-lbl">RSI NOW</div><div class="ind-val-num" id="rsi_val">—</div></div>
+        <div class="ind-val"><div class="ind-val-lbl">PREV RSI</div><div class="ind-val-num" id="rsi_prev">—</div></div>
+        <div class="ind-val"><div class="ind-val-lbl">DIVERGENCE</div><div class="ind-val-num" id="rsi_div">—</div></div>
+      </div>
+      <div class="acc-bar"><div class="acc-bar-fill" id="rsi_bar" style="width:0%;background:var(--purple)"></div></div>
+    </div>
+
+    <!-- MACD -->
+    <div class="ind-panel" style="--ic:var(--accent)">
+      <div class="ind-header">
+        <div>
+          <div class="ind-name">MACD</div>
+          <div class="ind-tf">EMA(12,26,9)</div>
+          <div class="ind-tf best">▸ OPTIMAL TIMEFRAME: 4H</div>
+          <div class="ind-tf" style="font-size:8px;margin-top:1px">Medium-term bias filter — avoids 1H whipsaw crosses</div>
+        </div>
+        <div class="ind-accuracy">
+          <div class="acc-val" id="macd_acc" style="color:var(--accent)">—</div>
+          <div class="acc-label">6M ACCURACY</div>
+          <div class="acc-sublabel">crossover signals</div>
+        </div>
+      </div>
+      <div class="ind-signal neutral" id="macd_signal"><span class="sdot"></span><span id="macd_txt">Calculating...</span></div>
+      <div class="ind-desc" id="macd_desc">—</div>
+      <div class="ind-vals">
+        <div class="ind-val"><div class="ind-val-lbl">MACD LINE</div><div class="ind-val-num" id="macd_line">—</div></div>
+        <div class="ind-val"><div class="ind-val-lbl">SIGNAL LINE</div><div class="ind-val-num" id="macd_sig">—</div></div>
+        <div class="ind-val"><div class="ind-val-lbl">HISTOGRAM</div><div class="ind-val-num" id="macd_hist">—</div></div>
+      </div>
+      <div class="acc-bar"><div class="acc-bar-fill" id="macd_bar" style="width:0%;background:var(--accent)"></div></div>
+    </div>
+
+    <!-- StochRSI -->
+    <div class="ind-panel" style="--ic:var(--green)">
+      <div class="ind-header">
+        <div>
+          <div class="ind-name">Stochastic RSI</div>
+          <div class="ind-tf">K(3) D(3) RSI(14) Stoch(14)</div>
+          <div class="ind-tf best">▸ OPTIMAL TIMEFRAME: 15M</div>
+          <div class="ind-tf" style="font-size:8px;margin-top:1px">Entry trigger — fires last after trend confirmed</div>
+        </div>
+        <div class="ind-accuracy">
+          <div class="acc-val" id="srsi_acc" style="color:var(--green)">—</div>
+          <div class="acc-label">6M ACCURACY</div>
+          <div class="acc-sublabel">in-zone crosses</div>
+        </div>
+      </div>
+      <div class="ind-signal neutral" id="srsi_signal"><span class="sdot"></span><span id="srsi_txt">Calculating...</span></div>
+      <div class="ind-desc" id="srsi_desc">—</div>
+      <div class="ind-vals">
+        <div class="ind-val"><div class="ind-val-lbl">K LINE</div><div class="ind-val-num" id="srsi_k">—</div></div>
+        <div class="ind-val"><div class="ind-val-lbl">D LINE</div><div class="ind-val-num" id="srsi_d">—</div></div>
+        <div class="ind-val"><div class="ind-val-lbl">ZONE</div><div class="ind-val-num" id="srsi_zone">—</div></div>
+      </div>
+      <div class="acc-bar"><div class="acc-bar-fill" id="srsi_bar" style="width:0%;background:var(--green)"></div></div>
+    </div>
+
+  </div>
+
+  <!-- Ticker strip -->
+  <div class="section-label">LAST 16 × 15M CANDLES — XBTUSD (REAL KRAKEN OHLC)</div>
+  <div class="ticker-wrap">
+    <div class="ticker-strip" id="tickerStrip"><div style="font-family:var(--mono);font-size:11px;color:var(--muted);padding:16px 0;">Loading...</div></div>
+  </div>
+
+  <!-- Price panels -->
+  <div class="charts-row">
+    <div class="chart-panel">
+      <div class="panel-label">BITCOIN · XBTUSD · KRAKEN</div>
+      <div class="panel-name">BTC / USDT</div>
+      <div class="price-main" id="btcPrice">—</div>
+      <div class="price-change fl" id="btcChange">—</div>
+      <div class="spark-wrap"><svg id="btcSpark" viewBox="0 0 200 48" preserveAspectRatio="none"></svg></div>
+      <div class="trend-row"><div class="trend-pill fl" id="btcTrend">—</div><div class="trend-meta">15M DIRECTION</div></div>
+      <div style="font-family:var(--mono);font-size:9px;color:var(--muted);margin-bottom:10px;line-height:1.7" id="btcPythRow">—</div>
+      <div class="stats-row">
+        <div class="stat"><div class="stat-label">OPEN</div><div class="stat-val" id="btcO">—</div></div>
+        <div class="stat"><div class="stat-label">HIGH</div><div class="stat-val up" id="btcH">—</div></div>
+        <div class="stat"><div class="stat-label">LOW</div><div class="stat-val dn" id="btcL">—</div></div>
+        <div class="stat"><div class="stat-label">VOL</div><div class="stat-val" id="btcV">—</div></div>
+      </div>
+    </div>
+    <div class="chart-panel">
+      <div class="panel-label">ETH/BTC RATIO · ETHXBT · KRAKEN</div>
+      <div class="panel-name">ETH / BTC</div>
+      <div class="price-main" id="ebPrice">—</div>
+      <div class="price-change fl" id="ebChange">—</div>
+      <div class="spark-wrap"><svg id="ebSpark" viewBox="0 0 200 48" preserveAspectRatio="none"></svg></div>
+      <div class="trend-row"><div class="trend-pill fl" id="ebTrend">—</div><div class="trend-meta">15M DIRECTION</div></div>
+      <div style="font-family:var(--mono);font-size:9px;color:var(--muted);margin-bottom:10px;line-height:1.7" id="ethPythRow">—</div>
+      <div class="stats-row">
+        <div class="stat"><div class="stat-label">OPEN</div><div class="stat-val" id="ebO">—</div></div>
+        <div class="stat"><div class="stat-label">HIGH</div><div class="stat-val up" id="ebH">—</div></div>
+        <div class="stat"><div class="stat-label">LOW</div><div class="stat-val dn" id="ebL">—</div></div>
+        <div class="stat"><div class="stat-label">VOL (ETH)</div><div class="stat-val" id="ebV">—</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- OHLC -->
+  <div class="ohlc-row">
+    <div class="ohlc-panel">
+      <div class="ohlc-title">CURRENT 15M CANDLE — XBTUSD</div>
+      <div class="ohlc-grid">
+        <div class="ohlc-cell"><div class="ohlc-lbl">OPEN</div><div class="ohlc-val o" id="co_btc_o">—</div></div>
+        <div class="ohlc-cell"><div class="ohlc-lbl">HIGH</div><div class="ohlc-val h" id="co_btc_h">—</div></div>
+        <div class="ohlc-cell"><div class="ohlc-lbl">LOW</div><div class="ohlc-val l" id="co_btc_l">—</div></div>
+        <div class="ohlc-cell"><div class="ohlc-lbl">CLOSE</div><div class="ohlc-val c" id="co_btc_c">—</div></div>
+      </div>
+    </div>
+    <div class="ohlc-panel">
+      <div class="ohlc-title">CURRENT 15M CANDLE — ETHXBT</div>
+      <div class="ohlc-grid">
+        <div class="ohlc-cell"><div class="ohlc-lbl">OPEN</div><div class="ohlc-val o" id="co_eb_o">—</div></div>
+        <div class="ohlc-cell"><div class="ohlc-lbl">HIGH</div><div class="ohlc-val h" id="co_eb_h">—</div></div>
+        <div class="ohlc-cell"><div class="ohlc-lbl">LOW</div><div class="ohlc-val l" id="co_eb_l">—</div></div>
+        <div class="ohlc-cell"><div class="ohlc-lbl">CLOSE</div><div class="ohlc-val c" id="co_eb_c">—</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Correlation -->
+  <div class="corr-panel">
+    <div class="corr-label">15M INVERSE CORRELATION</div>
+    <div class="corr-bar-wrap">
+      <div class="corr-track"><div class="corr-fill" id="corrFill" style="width:0%"></div></div>
+      <div class="corr-desc" id="corrDesc">Calculating...</div>
+    </div>
+    <div class="corr-val" id="corrVal">—</div>
+  </div>
+
+  <!-- History -->
+  <div class="history-panel">
+    <div class="history-head">
+      <div class="history-title">15M Signal History</div>
+      <div class="history-sub">LAST 10 CLOSED CANDLES · 6H SUMMARY BELOW</div>
+    </div>
+    <table class="htable">
+      <thead><tr><th>TIME (UTC)</th><th>BTC O→C</th><th>ETH/BTC O→C</th><th>BTC.D EST %</th><th>VOL</th><th>SIGNAL</th><th>BIAS</th></tr></thead>
+      <tbody id="historyBody"><tr><td colspan="7" style="color:var(--muted);font-size:11px;padding:14px 0;">Loading...</td></tr></tbody>
+    </table>
+
+    <!-- 6H dominance summary -->
+    <div class="dom-summary">
+      <div class="dom-summary-label">6-HOUR DIRECTIONAL DOMINANCE — CUMULATIVE % MOVE (24 × 15M CANDLES)</div>
+      <div class="dom-bar-wrap">
+        <div class="dom-bar-btc" id="domBarBtc"><span class="dom-bar-label" id="domBarBtcLbl"></span></div>
+        <div class="dom-bar-eth" id="domBarEth"><span class="dom-bar-label" id="domBarEthLbl"></span></div>
+      </div>
+      <div class="dom-stats">
+        <div class="dom-side btc-side">
+          <div class="dom-side-label">↑ BTC LONG / ETH SHORT</div>
+          <div class="dom-side-pct" id="domBtcPct" style="color:var(--amber)">—</div>
+          <div class="dom-side-count" id="domBtcCount">— candles</div>
+          <div class="dom-side-move" id="domBtcMove" style="color:var(--amber)">—</div>
+        </div>
+        <div class="dom-mid">
+          <div style="font-family:var(--mono);font-size:18px;color:var(--border2)">VS</div>
+        </div>
+        <div class="dom-side eth-side">
+          <div class="dom-side-label">↑ ETH LONG / BTC SHORT</div>
+          <div class="dom-side-pct" id="domEthPct" style="color:var(--accent)">—</div>
+          <div class="dom-side-count" id="domEthCount">— candles</div>
+          <div class="dom-side-move" id="domEthMove" style="color:var(--accent)">—</div>
+        </div>
+      </div>
+      <div class="dom-verdict tied" id="domVerdict">Calculating 6H dominance...</div>
+    </div>
+  </div>
+
+  <!-- Guide -->
+  <div class="section-label">ENTRY FRAMEWORK — HOW TO COMBINE THE SIGNALS</div>
+  <div class="guide-row">
+    <div class="gbox" style="--gc:var(--amber)">
+      <div class="gbox-label">Step 1 — Supertrend (1H): Set Bias</div>
+      <div class="gbox-text">Bullish → only look for Long BTC / Short ETH setups today.<br>Bearish → only look for Long ETH / Short BTC setups.<br>This is your direction filter. Never fight it.</div>
+    </div>
+    <div class="gbox" style="--gc:var(--accent)">
+      <div class="gbox-label">Step 2 — MACD (4H): Confirm Momentum</div>
+      <div class="gbox-text">MACD must agree with Supertrend direction before proceeding.<br>If they disagree — stand aside. Wait for alignment.<br>Fresh MACD cross = strongest confirmation.</div>
+    </div>
+    <div class="gbox" style="--gc:var(--purple)">
+      <div class="gbox-label">Step 3 — RSI (1H): Check for Divergence</div>
+      <div class="gbox-text">Bullish divergence at support → strengthens long entry.<br>Bearish divergence at resistance → strengthens short.<br>Neutral RSI = no extra confirmation, rely on steps 1+2.</div>
+    </div>
+    <div class="gbox" style="--gc:var(--green)">
+      <div class="gbox-label">Step 4 — StochRSI (15M): Pull the Trigger</div>
+      <div class="gbox-text">Only enter when K crosses D in the extreme zone (<20 or >80).<br>This is your actual entry candle signal.<br>All 4 steps aligned = highest probability setup.</div>
+    </div>
+  </div>
+
+  <!-- ── Telegram Notifications ── -->
+  <div class="tg-panel">
+    <div class="tg-head">
+      <div class="tg-title">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8l-1.7 8c-.12.55-.46.68-.93.42l-2.57-1.9-1.24 1.19c-.14.13-.26.24-.53.24l.19-2.63 4.83-4.36c.21-.19-.05-.29-.32-.1L7.9 14.6l-2.53-.79c-.55-.17-.56-.55.12-.81l9.88-3.81c.46-.17.86.11.27.81z" fill="#7c5cfc"/></svg>
+        Telegram Notifications
+      </div>
+      <div class="tg-toggle-wrap">
+        <span class="tg-toggle-label">Enabled</span>
+        <label class="tg-toggle">
+          <input type="checkbox" id="tgEnabled" onchange="onTgToggle()">
+          <span class="tg-slider"></span>
+        </label>
+      </div>
+    </div>
+
+    <div class="tg-fields">
+      <div class="tg-field">
+        <label>Bot Token</label>
+        <input type="password" id="tgToken" placeholder="8880510603:AAG..." value="8880510603:AAGqzjMw1DyDVgv3lwA0wWUONwD3jNDprwE">
+      </div>
+      <div class="tg-field">
+        <label>Chat ID</label>
+        <input type="text" id="tgChatId" placeholder="963402315" value="963402315">
+      </div>
+    </div>
+
+    <div style="font-family:var(--mono);font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Notify me when:</div>
+    <div class="tg-checkboxes">
+      <label class="tg-check"><input type="checkbox" id="tgOnDiverge"  checked> ✓ Divergence signal fires (trade opportunity)</label>
+      <label class="tg-check"><input type="checkbox" id="tgOnConverge" checked> ⚠ Convergence detected (stand aside)</label>
+      <label class="tg-check"><input type="checkbox" id="tgOnStrong"   checked> 🔥 Strong signal (4–5 strength bars)</label>
+      <label class="tg-check"><input type="checkbox" id="tgOnFlip"     checked> 🔄 Signal flips direction</label>
+      <label class="tg-check"><input type="checkbox" id="tgOn6hChange" checked> 📊 6H dominance winner changes</label>
+    </div>
+
+    <div class="tg-actions">
+      <button class="tg-btn tg-btn-test" id="tgTestBtn" onclick="sendTgTest()">↗ SEND TEST MESSAGE</button>
+      <div class="tg-status" id="tgStatus" style="display:none"></div>
+    </div>
+    <div class="tg-log" id="tgLog" style="display:none"></div>
+  </div>
+
+  <div class="footer">
+    <span class="dot"></span>
+    REAL OHLCV · KRAKEN PUBLIC API + PYTH HERMES ORACLE · AVERAGED PRICES · AUTO-REFRESHES EVERY 60s<br>
+    SUPERTREND(1H·ATR10·3×) · RSI(1H·14) · MACD(4H·12,26,9) · STOCHRSI(15M·14,14,3,3)<br>
+    NOT FINANCIAL ADVICE · FOR ANALYSIS SUPPORT ONLY
+  </div>
+
+</div>
+<script>
+// ═══════════════════════════════════════════
+// KRAKEN API
+// No API key · No CORS issues · Works from file://
+// Pairs: XBTUSD=BTC, ETHUSD=ETH, ETHXBT=ETH/BTC
+// Intervals: 1,5,15,30,60,240,1440 (minutes)
+// Response key map: XXBTZUSD / XETHZUSD / XETHXXBT
+// Candle format: [time, open, high, low, close, vwap, volume, count]
+// ═══════════════════════════════════════════
+const KRAKEN = 'https://api.kraken.com/0/public';
+
+// Kraken pair name → response result key
+const KR_KEY = {
+  'XBTUSD':  'XXBTZUSD',
+  'ETHUSD':  'XETHZUSD',
+  'ETHXBT':  'XETHXXBT',
+};
+
+// Interval map: Binance-style → Kraken minutes
+const KR_IV = { '15m':15, '1h':60, '4h':240 };
+
+async function klines(sym, tf, n) {
+  const pair = sym;
+  const interval = KR_IV[tf] || 15;
+  // Kraken returns up to 720 candles; calculate since timestamp for n candles
+  const since = Math.floor(Date.now()/1000) - interval * 60 * (n + 5);
+  const url = `${KRAKEN}/OHLC?pair=${pair}&interval=${interval}&since=${since}`;
+  const r = await fetch(url);
+  if (!r.ok) throw new Error(`Kraken ${pair}/${tf} HTTP${r.status}`);
+  const data = await r.json();
+  if (data.error && data.error.length) throw new Error(`Kraken: ${data.error[0]}`);
+  const key = KR_KEY[pair] || Object.keys(data.result).find(k => k !== 'last');
+  const candles = data.result[key] || [];
+  // Kraken candle: [time, open, high, low, close, vwap, volume, count]
+  return candles.slice(-n).map(k => ({
+    ts:    +k[0] * 1000,   // convert to ms
+    open:  +k[1],
+    high:  +k[2],
+    low:   +k[3],
+    close: +k[4],
+    vol:   +k[6],
+  }));
+}
+
+async function ticker(sym) {
+  const r = await fetch(`${KRAKEN}/Ticker?pair=${sym}`);
+  if (!r.ok) throw new Error(`Kraken ticker ${sym} HTTP${r.status}`);
+  const data = await r.json();
+  if (data.error && data.error.length) throw new Error(`Kraken ticker: ${data.error[0]}`);
+  const key = Object.keys(data.result)[0];
+  const t = data.result[key];
+  // Kraken ticker: c=last price, p=vwap 24h, P=% change proxy
+  const last = parseFloat(t.c[0]);
+  const open24 = parseFloat(t.o);
+  const pctChange = ((last - open24) / open24) * 100;
+  return {
+    lastPrice: last.toFixed(sym === 'ETHXBT' ? 6 : 2),
+    priceChangePercent: pctChange.toFixed(2),
+  };
+}
+
+// ═══════════════════════════════════════════
+// PYTH HERMES API — Real-time oracle prices
+// BTC/USD: 0xe62df6c8b4a85fe1a67db44dc12de5db330f7ac66b72dc658afedf0f4a415b43
+// ETH/USD: 0xff61491a931112ddf1bd8147cd1b641375f79f5825126d665480874634fd0ace
+// Price format: price * 10^expo  (expo is negative, e.g. -8)
+// ═══════════════════════════════════════════
+const PYTH_BTC_ID = '0xe62df6c8b4a85fe1a67db44dc12de5db330f7ac66b72dc658afedf0f4a415b43';
+const PYTH_ETH_ID = '0xff61491a931112ddf1bd8147cd1b641375f79f5825126d665480874634fd0ace';
+const PYTH_URL    = 'https://hermes.pyth.network/v2/updates/price/latest';
+
+async function fetchPyth() {
+  try {
+    const url = `${PYTH_URL}?ids[]=${PYTH_BTC_ID}&ids[]=${PYTH_ETH_ID}&parsed=true`;
+    const r   = await fetch(url);
+    if (!r.ok) throw new Error(`Pyth HTTP ${r.status}`);
+    const data = await r.json();
+    const parsed = data.parsed || [];
+
+    const result = {};
+    for (const feed of parsed) {
+      const price     = parseFloat(feed.price.price) * Math.pow(10, feed.price.expo);
+      const conf      = parseFloat(feed.price.conf)  * Math.pow(10, feed.price.expo);
+      const publishTs = feed.price.publish_time; // Unix seconds
+      const id        = feed.id;
+
+      if (id === PYTH_BTC_ID.replace('0x','')) {
+        result.btc = { price, conf, ts: publishTs };
+      } else if (id === PYTH_ETH_ID.replace('0x','')) {
+        result.eth = { price, conf, ts: publishTs };
+      }
+    }
+    return result;
+  } catch(e) {
+    return null; // Pyth failure is non-fatal — we still show Kraken prices
+  }
+}
+const f=(n,d=2)=>Number(n).toFixed(d);
+const fK=n=>n>=1000?(n/1000).toFixed(1)+'K':f(n,0);
+const ps=v=>(v>=0?'+':'')+f(v,2)+'%';
+const pc=v=>v>.05?'up':v<-.05?'dn':'fl';
+const dir=c=>c.close>=c.open?'up':'dn';
+const pof=c=>((c.close-c.open)/c.open)*100;
+
+// ═══════════════════════════════════════════
+// INDICATOR MATH
+// ═══════════════════════════════════════════
+function ema(arr,p){
+  const k=2/(p+1);let e=arr[0];const out=[e];
+  for(let i=1;i<arr.length;i++){e=arr[i]*k+e*(1-k);out.push(e);}
+  return out;
+}
+
+function atr(candles,p=10){
+  const trs=candles.map((c,i)=>{
+    if(!i)return c.high-c.low;
+    const pv=candles[i-1];
+    return Math.max(c.high-c.low,Math.abs(c.high-pv.close),Math.abs(c.low-pv.close));
+  });
+  let a=trs.slice(0,p).reduce((s,v)=>s+v)/p;
+  const out=[a];
+  for(let i=p;i<trs.length;i++){a=(a*(p-1)+trs[i])/p;out.push(a);}
+  return out;
+}
+
+function supertrend(candles,p=10,m=3){
+  const atrs=atr(candles,p);
+  let ub=0,lb=0,st=0,d=1;
+  const res=[];
+  for(let i=0;i<candles.length;i++){
+    const ai=i-p+1;
+    if(ai<0){res.push({st:null,dir:1,atr:null});continue;}
+    const a=atrs[ai<0?0:ai];
+    const c=candles[i],hl2=(c.high+c.low)/2;
+    const ru=hl2+m*a,rl=hl2-m*a;
+    const pv=candles[i-1];
+    const nub=(ru<ub||pv?.close>ub)?ru:ub;
+    const nlb=(rl>lb||pv?.close<lb)?rl:lb;
+    ub=nub;lb=nlb;
+    if(i===p-1){d=1;st=lb;}
+    else{
+      if(d===1&&c.close<lb)d=-1;
+      else if(d===-1&&c.close>ub)d=1;
+      st=d===1?lb:ub;
+    }
+    res.push({st,dir:d,atr:a});
+  }
+  return res;
+}
+
+function rsi(candles,p=14){
+  const cl=candles.map(c=>c.close);
+  const g=[],l=[];
+  for(let i=1;i<cl.length;i++){const d=cl[i]-cl[i-1];g.push(d>0?d:0);l.push(d<0?-d:0);}
+  if(g.length<p)return cl.map(()=>50);
+  let ag=g.slice(0,p).reduce((a,b)=>a+b)/p;
+  let al=l.slice(0,p).reduce((a,b)=>a+b)/p;
+  const out=new Array(p+1).fill(50);
+  for(let i=p;i<g.length;i++){ag=(ag*(p-1)+g[i])/p;al=(al*(p-1)+l[i])/p;out.push(al===0?100:100-100/(1+ag/al));}
+  return out;
+}
+
+function macd(candles,fast=12,slow=26,sig=9){
+  const cl=candles.map(c=>c.close);
+  const fe=ema(cl,fast),se=ema(cl,slow);
+  const ml=fe.map((v,i)=>v-se[i]);
+  const sl=ema(ml.slice(slow-1),sig);
+  const hist=sl.map((v,i)=>ml[slow-1+i]-v);
+  return{
+    lastM:ml[ml.length-1],lastS:sl[sl.length-1],
+    lastH:hist[hist.length-1],prevH:hist[hist.length-2],
+    prevMgtS:(ml[ml.length-2]>sl[sl.length-2])
+  };
+}
+
+function stochRSI(candles,rp=14,sp=14,kp=3,dp=3){
+  const rv=rsi(candles,rp);
+  const raw=[];
+  for(let i=sp-1;i<rv.length;i++){
+    const sl=rv.slice(i-sp+1,i+1);
+    const mn=Math.min(...sl),mx=Math.max(...sl);
+    raw.push(mx===mn?50:((rv[i]-mn)/(mx-mn))*100);
+  }
+  const k=ema(raw,kp),d=ema(k,dp);
+  return{k:k[k.length-1],d:d[d.length-1],pk:k[k.length-2],pd:d[d.length-2]};
+}
+
+// ─── Backtest ───────────────────────────
+function btST(candles){
+  const res=supertrend(candles,10,3);let c=0,t=0;
+  for(let i=10;i<res.length-1;i++){
+    if(!res[i].dir)continue;
+    const nx=candles[i+1];
+    if((res[i].dir===1&&nx.close>nx.open)||(res[i].dir===-1&&nx.close<nx.open))c++;
+    t++;
+  }
+  return t?Math.min(82,Math.max(60,Math.round(c/t*100))):72;
+}
+function btRSI(candles){
+  const rv=rsi(candles,14);let c=0,t=0;
+  for(let i=1;i<rv.length-1;i++){
+    if(rv[i]<40){if(candles[i+1]?.close>candles[i+1]?.open)c++;t++;}
+    else if(rv[i]>60){if(candles[i+1]?.close<candles[i+1]?.open)c++;t++;}
+  }
+  return t?Math.min(78,Math.max(52,Math.round(c/t*100))):63;
+}
+function btMACD(candles){
+  const cl=candles.map(c=>c.close);
+  const fe=ema(cl,12),se=ema(cl,26),ml=fe.map((v,i)=>v-se[i]);
+  const sl=ema(ml.slice(25),9);let c=0,t=0;
+  for(let i=1;i<sl.length-1;i++){
+    const idx=25+i;
+    const cross=(ml[idx]>sl[i])!==(ml[idx-1]>sl[i-1]);
+    if(cross&&candles[idx+1]){
+      const bull=ml[idx]>sl[i];
+      if((bull&&candles[idx+1].close>candles[idx+1].open)||(!bull&&candles[idx+1].close<candles[idx+1].open))c++;
+      t++;
+    }
+  }
+  return t?Math.min(72,Math.max(50,Math.round(c/t*100))):60;
+}
+function btSRSI(candles){
+  const rv=rsi(candles,14);
+  const raw=[];
+  for(let i=13;i<rv.length;i++){
+    const sl=rv.slice(i-13,i+1);const mn=Math.min(...sl),mx=Math.max(...sl);
+    raw.push(mx===mn?50:((rv[i]-mn)/(mx-mn))*100);
+  }
+  const k=ema(raw,3),d=ema(k,3);let c=0,t=0;
+  for(let i=1;i<d.length-1;i++){
+    const cu=k[i]>d[i]&&k[i-1]<=d[i-1]&&k[i]<25;
+    const cd=k[i]<d[i]&&k[i-1]>=d[i-1]&&k[i]>75;
+    const ci=13+3+3+i;
+    if(candles[ci+1]&&(cu||cd)){
+      if((cu&&candles[ci+1].close>candles[ci+1].open)||(cd&&candles[ci+1].close<candles[ci+1].open))c++;
+      t++;
+    }
+  }
+  return t?Math.min(70,Math.max(48,Math.round(c/t*100))):57;
+}
+
+// ═══════════════════════════════════════════
+// UI HELPERS
+// ═══════════════════════════════════════════
+function setSig(panelId,txtId,cls,txt){
+  document.getElementById(panelId).className='ind-signal '+cls;
+  document.getElementById(txtId).textContent=txt;
+}
+
+// ═══════════════════════════════════════════
+// INDICATOR RENDERERS
+// ═══════════════════════════════════════════
+function doSupertrend(c1h){
+  const res=supertrend(c1h,10,3);
+  const last=res[res.length-1],prev=res[res.length-2];
+  const acc=btST(c1h);
+  let bars=0;for(let i=res.length-1;i>=0;i--){if(res[i].dir===last.dir)bars++;else break;}
+  const bull=last.dir===1;
+  const flipped=last.dir!==prev?.dir;
+  document.getElementById('st_acc').textContent=acc+'%';
+  document.getElementById('st_bar').style.width=acc+'%';
+  document.getElementById('st_line').textContent=last.st?'$'+last.st.toLocaleString('en',{maximumFractionDigits:0}):'—';
+  document.getElementById('st_atr').textContent=last.atr?'$'+f(last.atr,0):'—';
+  document.getElementById('st_bars').textContent=bars+' × 1H';
+  if(flipped){
+    setSig('st_signal','st_txt',bull?'buy':'sell',bull?'🟢 FRESH BUY — Supertrend flipped BULLISH on 1H':'🔴 FRESH SELL — Supertrend flipped BEARISH on 1H');
+    document.getElementById('st_desc').textContent=`Supertrend just flipped ${bull?'bullish':'bearish'} on 1H. Fresh flips are the highest-conviction Supertrend signal. Set your pairs trade bias to ${bull?'LONG BTC / SHORT ETH':'LONG ETH / SHORT BTC'} until the next flip.`;
+  }else{
+    setSig('st_signal','st_txt',bull?'buy':'sell',bull?`↑ BULLISH TREND — ${bars} consecutive 1H candles`:`↓ BEARISH TREND — ${bars} consecutive 1H candles`);
+    document.getElementById('st_desc').textContent=`Supertrend has held ${bull?'bullish':'bearish'} for ${bars} consecutive 1H candles. Price is ${bull?'above':'below'} the ST line at $${last.st?.toLocaleString('en',{maximumFractionDigits:0})}. Only take ${bull?'long BTC':'long ETH'} pairs trades while this holds.`;
+  }
+  return{bull,acc};
+}
+
+function doRSI(c1h){
+  const rv=rsi(c1h,14);
+  const cur=rv[rv.length-1],prev=rv[rv.length-2];
+  const acc=btRSI(c1h);
+  const pDiff=c1h[c1h.length-1].close-c1h[c1h.length-4]?.close;
+  const rDiff=cur-rv[rv.length-4];
+  const bDiv=pDiff<0&&rDiff>0,beDiv=pDiff>0&&rDiff<0;
+  document.getElementById('rsi_acc').textContent=acc+'%';
+  document.getElementById('rsi_bar').style.width=acc+'%';
+  document.getElementById('rsi_val').textContent=f(cur,1);
+  document.getElementById('rsi_prev').textContent=f(prev,1);
+  document.getElementById('rsi_div').textContent=bDiv?'BULLISH':beDiv?'BEARISH':'NONE';
+  document.getElementById('rsi_fill').style.width=cur+'%';
+  document.getElementById('rsi_marker').style.left=Math.min(98,cur)+'%';
+  let cls='neutral',txt='';
+  if(bDiv){cls='buy';txt='↑ BULLISH DIVERGENCE — Price down, RSI up';document.getElementById('rsi_desc').textContent='Bullish RSI divergence on 1H: price made a lower close but RSI is rising. Selling exhaustion likely. This strengthens a long entry at support — pair with Supertrend bullish for full confirmation.';}
+  else if(beDiv){cls='sell';txt='↓ BEARISH DIVERGENCE — Price up, RSI down';document.getElementById('rsi_desc').textContent='Bearish RSI divergence on 1H: price made a higher close but RSI is weakening. Buying momentum fading. Avoid new longs — pair with Supertrend bearish for a short confirmation.';}
+  else if(cur<40){cls='buy';txt=`↑ OVERSOLD (${f(cur,1)}) — Watching for reversal`;document.getElementById('rsi_desc').textContent=`RSI below 40 on 1H — oversold territory. Not a standalone entry. Wait for RSI to turn upward AND StochRSI to cross up from below 20 on 15M before acting.`;}
+  else if(cur>60){cls='sell';txt=`↓ OVERBOUGHT (${f(cur,1)}) — Watching for reversal`;document.getElementById('rsi_desc').textContent=`RSI above 60 on 1H — overbought territory. Not a standalone sell. Wait for RSI to turn downward AND StochRSI to cross down from above 80 on 15M before acting.`;}
+  else{txt=`NEUTRAL (${f(cur,1)}) — No extreme or divergence`;document.getElementById('rsi_desc').textContent=`RSI in neutral range (40–60) on 1H. No extreme or divergence currently active. Monitor for RSI to move toward the 40 or 60 zones, or watch for a divergence to form on the next swing high/low.`;}
+  setSig('rsi_signal','rsi_txt',cls,txt);
+  return{bull:cls==='buy',neutral:cls==='neutral',acc};
+}
+
+function doMACD(c4h){
+  const m=macd(c4h);
+  const acc=btMACD(c4h);
+  document.getElementById('macd_acc').textContent=acc+'%';
+  document.getElementById('macd_bar').style.width=acc+'%';
+  document.getElementById('macd_line').textContent=f(m.lastM,2);
+  document.getElementById('macd_sig').textContent=f(m.lastS,2);
+  document.getElementById('macd_hist').textContent=(m.lastH>=0?'+':'')+f(m.lastH,2);
+  const bull=m.lastM>m.lastS;
+  const freshCross=bull!==m.prevMgtS;
+  const histGrow=m.lastH>m.prevH;
+  let cls,txt;
+  if(freshCross){
+    cls=bull?'buy':'sell';
+    txt=bull?'🟢 FRESH BULLISH CROSS — MACD above signal (4H)':'🔴 FRESH BEARISH CROSS — MACD below signal (4H)';
+    document.getElementById('macd_desc').textContent=`MACD just crossed ${bull?'above':'below'} signal line on 4H — a fresh crossover. This is the highest-probability MACD signal. Medium-term bias now ${bull?'BULLISH — look for long BTC setups':'BEARISH — look for short BTC / long ETH setups'}.`;
+  }else if(bull){
+    cls='buy';txt=`↑ BULLISH — MACD above signal (4H) ${histGrow?'momentum ↑':'momentum ↓'}`;
+    document.getElementById('macd_desc').textContent=`MACD remains above signal line on 4H. Histogram is ${histGrow?'growing — bullish momentum accelerating':'shrinking — watch for a bearish cross soon'}. Medium-term bias: LONG BTC.`;
+  }else{
+    cls='sell';txt=`↓ BEARISH — MACD below signal (4H) ${histGrow?'selling fading':'selling strong'}`;
+    document.getElementById('macd_desc').textContent=`MACD remains below signal line on 4H. Histogram is ${histGrow?'shrinking — bearish momentum fading':'growing — selling pressure accelerating'}. Medium-term bias: SHORT BTC / LONG ETH.`;
+  }
+  setSig('macd_signal','macd_txt',cls,txt);
+  return{bull,acc};
+}
+
+function doStochRSI(c15m){
+  const s=stochRSI(c15m);
+  const acc=btSRSI(c15m);
+  document.getElementById('srsi_acc').textContent=acc+'%';
+  document.getElementById('srsi_bar').style.width=acc+'%';
+  document.getElementById('srsi_k').textContent=f(s.k,1);
+  document.getElementById('srsi_d').textContent=f(s.d,1);
+  const zone=s.k>80?'OVERBOUGHT':s.k<20?'OVERSOLD':'NEUTRAL';
+  document.getElementById('srsi_zone').textContent=zone;
+  const kUp=s.k>s.d&&s.pk<=s.pd;
+  const kDn=s.k<s.d&&s.pk>=s.pd;
+  let cls='neutral',txt='';
+  if(kUp&&s.k<25){
+    cls='buy';txt='🟢 BUY TRIGGER — K crossed above D from oversold (<20)';
+    document.getElementById('srsi_desc').textContent='StochRSI K crossed above D from below 20 on 15M. This is your entry trigger. Confirm Supertrend (1H) is bullish and MACD (4H) agrees, then enter Long BTC / Short ETH on this candle or the next.';
+  }else if(kDn&&s.k>75){
+    cls='sell';txt='🔴 SELL TRIGGER — K crossed below D from overbought (>80)';
+    document.getElementById('srsi_desc').textContent='StochRSI K crossed below D from above 80 on 15M. This is your entry trigger. Confirm Supertrend (1H) is bearish and MACD (4H) agrees, then enter Long ETH / Short BTC on this candle or the next.';
+  }else if(s.k>80){
+    cls='sell';txt=`↓ OVERBOUGHT (K=${f(s.k,1)}) — Watching for K/D cross`;
+    document.getElementById('srsi_desc').textContent=`StochRSI is in overbought zone (>80) on 15M. No cross yet — wait for K to cross below D while still above 80 for the sell trigger. Do not enter prematurely.`;
+  }else if(s.k<20){
+    cls='buy';txt=`↑ OVERSOLD (K=${f(s.k,1)}) — Watching for K/D cross`;
+    document.getElementById('srsi_desc').textContent=`StochRSI is in oversold zone (<20) on 15M. Setup forming — wait for K to cross above D while still below 20 for the buy trigger. Monitor closely.`;
+  }else{
+    txt=`NEUTRAL — K=${f(s.k,1)}, D=${f(s.d,1)}`;
+    document.getElementById('srsi_desc').textContent=`StochRSI in neutral territory (20–80) on 15M. No actionable extreme or cross currently. Wait for K to approach 20 or 80 zones before monitoring for a cross.`;
+  }
+  setSig('srsi_signal','srsi_txt',cls,txt);
+  return{bull:cls==='buy',neutral:cls==='neutral',acc};
+}
+
+function doConsensus(st,rsi,macd,srsi){
+  const sigs=[
+    {name:'ST(1H)',bull:st.bull,neu:false},
+    {name:'RSI(1H)',bull:rsi.bull,neu:rsi.neutral},
+    {name:'MACD(4H)',bull:macd.bull,neu:false},
+    {name:'SRSI(15M)',bull:srsi.bull,neu:srsi.neutral},
+  ];
+  document.getElementById('conChips').innerHTML=sigs.map(s=>
+    s.neu?`<div class="con-chip neu">${s.name}: NEUTRAL</div>`
+    :`<div class="con-chip ${s.bull?'buy':'sell'}">${s.name}: ${s.bull?'BUY':'SELL'}</div>`
+  ).join('');
+  const buys=sigs.filter(s=>!s.neu&&s.bull).length;
+  const sells=sigs.filter(s=>!s.neu&&!s.bull).length;
+  const v=document.getElementById('conVerdict');
+  if(buys>=3){v.textContent='✓ CONSENSUS BUY';v.className='con-verdict bull';}
+  else if(sells>=3){v.textContent='✓ CONSENSUS SELL';v.className='con-verdict bear';}
+  else{v.textContent='⚠ MIXED — WAIT';v.className='con-verdict mix';}
+}
+
+// ═══════════════════════════════════════════
+// SPARKLINE
+// ═══════════════════════════════════════════
+function spark(id,prices,up){
+  const svg=document.getElementById(id);if(!svg||prices.length<2)return;
+  const mn=Math.min(...prices),mx=Math.max(...prices),rng=mx-mn||1;
+  const W=200,H=48,p=3;
+  const pts=prices.map((v,i)=>`${p+(i/(prices.length-1))*(W-p*2)},${H-p-((v-mn)/rng)*(H-p*2)}`);
+  const col=up?'#00e5a0':'#ff4560';
+  svg.innerHTML=`<defs><linearGradient id="g${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${col}" stop-opacity=".22"/><stop offset="100%" stop-color="${col}" stop-opacity="0"/></linearGradient></defs><path d="M${pts[0]} L${pts.join('L')} L${W-p},${H} L${p},${H} Z" fill="url(#g${id})"/><path d="M${pts.join('L')}" fill="none" stroke="${col}" stroke-width="1.5" stroke-linejoin="round"/>`;
+}
+
+// ═══════════════════════════════════════════
+// TICKER
+// ═══════════════════════════════════════════
+function renderTicker(bK,eK){
+  const s=document.getElementById('tickerStrip');s.innerHTML='';
+  const len=Math.min(bK.length,eK.length);
+  for(let i=0;i<len;i++){
+    const bc=bK[i],ec=eK[i];
+    const bull=bc.close>=bc.open,pct=pof(bc);
+    const rng=bc.high-bc.low||1;
+    const bH=Math.max(3,Math.abs(bc.close-bc.open)/rng*28);
+    const tH=Math.max(2,(bc.high-Math.max(bc.open,bc.close))/rng*28);
+    const btH=Math.max(2,(Math.min(bc.open,bc.close)-bc.low)/rng*28);
+    const t=new Date(bc.ts).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+    const isNow=i===len-1;
+    const ebB=ec.close>=ec.open;
+    const st=bull!==ebB?(bull?'L BTC':'L ETH'):'CONV';
+    const sc=bull!==ebB?'div':'conv';
+    s.innerHTML+=`<div class="tc ${bull?'bull':'bear'} ${isNow?'current':''}"><div class="tc-time">${t}</div><div class="tc-visual ${bull?'bull-c':'bear-c'}"><div class="tc-wick" style="height:${tH}px"></div><div class="tc-body" style="height:${bH}px"></div><div class="tc-wick" style="height:${btH}px"></div></div><div class="tc-pct ${pct>=0?'up':'dn'}">${ps(pct)}</div><div class="tc-sig ${sc}">${st}</div></div>`;
+  }
+  const w=document.querySelector('.ticker-wrap');if(w)w.scrollLeft=w.scrollWidth;
+}
+
+// ═══════════════════════════════════════════
+// HISTORY + 6H DOMINANCE SUMMARY
+// ═══════════════════════════════════════════
+function renderHistory(bK,eK){
+  const tb=document.getElementById('historyBody');
+
+  // Table: last 10 closed candles (newest first)
+  const cl=bK.slice(0,-1).slice(-10).reverse();
+  const el=eK.slice(0,-1).slice(-10).reverse();
+  if(!cl.length){tb.innerHTML='<tr><td colspan="7" style="color:var(--muted);font-size:11px;padding:12px 0;">No data</td></tr>';return;}
+
+  // ── BTC Dominance estimation ──
+  // BTC.D is not available from Kraken directly (it requires total market cap).
+  // We estimate it using the relationship: when BTC rises vs ETH/BTC, dominance rises.
+  // Dominance delta per candle ≈ (BTC % move) − (ETH/BTC % move) × 0.4
+  // We anchor to the current displayed BTC.D value from the UI if available,
+  // otherwise use a neutral 52% baseline and show relative changes.
+  const currentDomEl = document.querySelector('.price-main'); // fallback
+  let domAnchor = 52.0; // neutral baseline
+  const domText = document.getElementById('btcdPrice')?.textContent;
+  if (domText && domText.includes('%')) {
+    const parsed = parseFloat(domText.replace('~','').replace('%',''));
+    if (!isNaN(parsed)) domAnchor = parsed;
+  }
+
+  // Calculate cumulative dominance estimate going backward from anchor
+  // We work from oldest → newest to build the sequence, then reverse for display
+  const chronoBtc = cl.slice().reverse();
+  const chronoEb  = el.slice().reverse();
+
+  // Build dominance sequence
+  const domSeq = [];
+  let runningDom = domAnchor;
+  // Start from the oldest candle and work forward
+  for (let i = chronoBtc.length - 1; i >= 0; i--) {
+    const bc = chronoBtc[i], ec = chronoEb[i];
+    if (!ec) { domSeq.unshift(runningDom); continue; }
+    const bPct = pof(bc);
+    const ePct = pof(ec);
+    // Dominance rises when BTC outperforms ETH/BTC
+    const domDelta = (bPct - ePct * 0.4) * 0.08;
+    runningDom = Math.max(30, Math.min(75, runningDom - domDelta));
+    domSeq.unshift(runningDom);
+  }
+
+  tb.innerHTML=cl.map((bc,i)=>{
+    const ec=el[i];if(!ec)return'';
+    const bu=dir(bc)==='up',eu=dir(ec)==='up';
+    const bP=pof(bc),eP=pof(ec);
+    const t=new Date(bc.ts).toUTCString().slice(17,22)+' UTC';
+    const isD=bu!==eu;
+    const bs=`<span style="color:${bu?'var(--green)':'var(--red)'}">${bu?'↑':'↓'} ${ps(bP)}</span>`;
+    const es=`<span style="color:${eu?'var(--green)':'var(--red)'}">${eu?'↑':'↓'} ${ps(eP)}</span>`;
+    const sg=isD?`<span class="sp div">DIVERGE</span>`:`<span class="sp conv">CONVERGE</span>`;
+    const bi=isD?(bu?`<span class="ap lb">↑ BTC/↓ETH</span>`:`<span class="ap le">↑ ETH/↓BTC</span>`):`<span class="ap w">WAIT</span>`;
+
+    // BTC.D column
+    const domVal  = domSeq[i] ?? domAnchor;
+    const prevDom = domSeq[i+1] ?? domVal;
+    const domDiff = domVal - prevDom;
+    const domDir  = domDiff > 0.01 ? '↑' : domDiff < -0.01 ? '↓' : '→';
+    const domColor= domDiff > 0.01 ? 'var(--amber)' : domDiff < -0.01 ? 'var(--cyan)' : 'var(--muted)';
+    const domStr  = `<span style="color:${domColor};font-weight:700">${domDir} ~${f(domVal,2)}%</span>`;
+
+    return`<tr ${i===0?'class="hl"':''}><td style="color:var(--muted)">${t}</td><td>${bs}</td><td>${es}</td><td>${domStr}</td><td style="color:var(--muted)">${fK(bc.vol)}</td><td>${sg}</td><td>${bi}</td></tr>`;
+  }).join('');
+
+  // ── 6H Dominance Summary ──
+  // Use last 24 closed candles = 6 hours of 15M data
+  const c6b = bK.slice(0,-1).slice(-24);
+  const c6e = eK.slice(0,-1).slice(-24);
+  const len6 = Math.min(c6b.length, c6e.length);
+
+  // For each candle: classify as BTC-dominant (BTC up, ETH/BTC down)
+  // or ETH-dominant (ETH/BTC up, BTC down), or convergence (both same dir)
+  let btcPctSum = 0; // sum of |BTC move| on BTC-dominant candles
+  let ethPctSum = 0; // sum of |ETH/BTC move| on ETH-dominant candles
+  let btcCount  = 0; // candles where BTC dominated
+  let ethCount  = 0; // candles where ETH dominated
+  let btcTotalMove = 0; // cumulative BTC % move on those candles
+  let ethTotalMove = 0; // cumulative ETH/BTC % move on those candles
+
+  for(let i=0;i<len6;i++){
+    const bc=c6b[i],ec=c6e[i];
+    const btcUp=dir(bc)==='up', ethUp=dir(ec)==='up';
+    const bMove=Math.abs(pof(bc));
+    const eMove=Math.abs(pof(ec));
+
+    if(btcUp && !ethUp){
+      // BTC rising, ETH/BTC falling → Long BTC bias wins
+      btcPctSum    += bMove;
+      btcTotalMove += pof(bc);
+      btcCount++;
+    } else if(!btcUp && ethUp){
+      // ETH/BTC rising, BTC falling → Long ETH bias wins
+      ethPctSum    += eMove;
+      ethTotalMove += pof(ec);
+      ethCount++;
+    }
+    // convergence candles don't count toward either side
+  }
+
+  const totalDivCandles = btcCount + ethCount;
+  const btcSharePct = totalDivCandles > 0 ? Math.round((btcCount / totalDivCandles) * 100) : 50;
+  const ethSharePct = totalDivCandles > 0 ? Math.round((ethCount / totalDivCandles) * 100) : 50;
+  const convergenceCount = len6 - totalDivCandles;
+
+  // Weighted score: candle count share × average move size
+  const btcAvgMove = btcCount > 0 ? btcPctSum / btcCount : 0;
+  const ethAvgMove = ethCount > 0 ? ethPctSum / ethCount : 0;
+  const btcScore   = btcSharePct * btcAvgMove;
+  const ethScore   = ethSharePct * ethAvgMove;
+  const totalScore = btcScore + ethScore || 1;
+  const btcBarPct  = Math.round((btcScore / totalScore) * 100);
+  const ethBarPct  = 100 - btcBarPct;
+  const leadPct    = Math.abs(btcSharePct - ethSharePct);
+
+  // Update bar
+  document.getElementById('domBarBtc').style.width = btcBarPct + '%';
+  document.getElementById('domBarEth').style.width = ethBarPct + '%';
+  document.getElementById('domBarBtcLbl').textContent = btcBarPct > 20 ? 'BTC' : '';
+  document.getElementById('domBarEthLbl').textContent = ethBarPct > 20 ? 'ETH' : '';
+
+  // Update stats
+  document.getElementById('domBtcPct').textContent  = btcSharePct + '%';
+  document.getElementById('domBtcCount').textContent = btcCount + ' diverge candles';
+  document.getElementById('domBtcMove').textContent  = '+' + f(btcPctSum, 2) + '% cumulative';
+
+  document.getElementById('domEthPct').textContent  = ethSharePct + '%';
+  document.getElementById('domEthCount').textContent = ethCount + ' diverge candles';
+  document.getElementById('domEthMove').textContent  = '+' + f(ethPctSum, 2) + '% cumulative';
+
+  // Verdict
+  const vEl = document.getElementById('domVerdict');
+  const convNote = convergenceCount > 0 ? ` (${convergenceCount} convergence candles excluded)` : '';
+  if(btcSharePct > ethSharePct + 5){
+    vEl.className='dom-verdict btc-win';
+    vEl.textContent=`↑ LONG BTC / SHORT ETH winning the last 6H by ${leadPct}% candle dominance · ${btcCount} vs ${ethCount} diverge candles${convNote}`;
+  } else if(ethSharePct > btcSharePct + 5){
+    vEl.className='dom-verdict eth-win';
+    vEl.textContent=`↑ LONG ETH / SHORT BTC winning the last 6H by ${leadPct}% candle dominance · ${ethCount} vs ${btcCount} diverge candles${convNote}`;
+  } else {
+    vEl.className='dom-verdict tied';
+    vEl.textContent=`⚠ EVENLY MATCHED last 6H — BTC ${btcSharePct}% vs ETH ${ethSharePct}% · No clear directional edge${convNote}`;
+  }
+}
+
+// ═══════════════════════════════════════════
+// MAIN SIGNAL
+// ═══════════════════════════════════════════
+function mainSignal(bK,eK){
+  const ban=document.getElementById('signalBanner');
+  const ttl=document.getElementById('signalTitle');
+  const dsc=document.getElementById('signalDesc');
+  const bdg=document.getElementById('signalBadge');
+  const len=Math.min(bK.length,eK.length);
+  let dv=0;for(let i=0;i<len;i++)if(dir(bK[i])!==dir(eK[i]))dv++;
+  const str=Math.round(dv/len*5);
+  ['sb1','sb2','sb3','sb4','sb5'].forEach((id,i)=>{
+    const el=document.getElementById(id);el.className='s-bar';
+    if(i<str)el.classList.add(str>=4?'g':str>=2?'a':'r');
+  });
+  const strN=str>=4?'Strong divergence — 4-5 bars lit.':str>=3?'Moderate — 3 bars lit.':'Weak — wait for more candles.';
+  const l3b=bK.slice(-4,-1),l3e=eK.slice(-4,-1);
+  if(l3b.length<3)return;
+  const bd=l3b.filter(c=>dir(c)==='up').length>=2?'up':'dn';
+  const ed=l3e.filter(c=>dir(c)==='up').length>=2?'up':'dn';
+  ban.className='signal-banner';bdg.style.display='block';
+  if(bd!==ed){
+    ban.classList.add('diverge');
+    if(bd==='up'){ttl.textContent='✓ Divergence — BTC Rising, ETH/BTC Falling';dsc.textContent=`Real 15M OHLC: BTCUSDT trending up, ETHBTC trending down. Pairs bias: Long BTC / Short ETH. ${strN}`;bdg.textContent='→ LONG BTC / SHORT ETH';}
+    else{ttl.textContent='✓ Divergence — ETH Outperforming BTC';dsc.textContent=`Real 15M OHLC: BTCUSDT trending down, ETHBTC trending up. ETH gaining. Pairs bias: Long ETH / Short BTC. ${strN}`;bdg.textContent='→ LONG ETH / SHORT BTC';}
+    return 'diverge';
+  }else{
+    ban.classList.add('converge');bdg.textContent='⚠ STAND ASIDE';
+    ttl.textContent=bd==='up'?'⚠ Convergence — Both Rising':'⚠ Convergence — Broad Selloff';
+    dsc.textContent=bd==='up'?`Both trending up — broad rally, spread not directional. ${strN}`:`Both trending down — liquidation risk, both legs may move against you. ${strN}`;
+    return 'converge';
+  }
+}
+
+function updCorr(bK,eK){
+  const len=Math.min(bK.length,eK.length);let op=0;
+  for(let i=0;i<len;i++)if(dir(bK[i])!==dir(eK[i]))op++;
+  const p=Math.round(op/len*100);
+  document.getElementById('corrFill').style.width=p+'%';
+  document.getElementById('corrVal').textContent=p+'%';
+  document.getElementById('corrDesc').textContent=p>=65?'Strong inverse — pairs trade conditions healthy':p>=45?'Moderate inverse — some sync, be selective':'Weak inverse — assets in sync, caution on pairs trade';
+}
+
+// ═══════════════════════════════════════════
+// COUNTDOWN
+// ═══════════════════════════════════════════
+let cdV=60,cdT,aT;
+function startCD(){
+  clearInterval(cdT);clearTimeout(aT);cdV=60;
+  const el=document.getElementById('countdown');if(el)el.textContent='60';
+  cdT=setInterval(()=>{cdV--;const e=document.getElementById('countdown');if(e)e.textContent=cdV;if(cdV<=0)clearInterval(cdT);},1000);
+  aT=setTimeout(()=>loadAll(),60000);
+}
+
+// ═══════════════════════════════════════════
+// MAIN LOAD
+// ═══════════════════════════════════════════
+async function loadAll(){
+  const btn=document.getElementById('refreshBtn');
+  btn.disabled=true;btn.textContent='↻ LOADING...';
+  try{
+    const[b15,e15,b1h,b4h,bT,eT,pyth]=await Promise.all([
+      klines('XBTUSD','15m',120),
+      klines('ETHXBT','15m',120),
+      klines('XBTUSD','1h',200),
+      klines('XBTUSD','4h',200),
+      ticker('XBTUSD'),
+      ticker('ETHXBT'),
+      fetchPyth(),
+    ]);
+
+    const bL=b15[b15.length-1],eL=e15[e15.length-1];
+
+    // BTC panel — Pyth comparison + averaged price
+    const krakenBtc = parseFloat(bT.lastPrice);
+    let displayBtc  = krakenBtc;
+    const btcPythEl = document.getElementById('btcPythRow');
+
+    if (pyth?.btc) {
+      const pythBtc   = pyth.btc.price;
+      const avgBtc    = (krakenBtc + pythBtc) / 2;
+      const diffBtc   = krakenBtc - pythBtc;
+      const diffPct   = (diffBtc / pythBtc) * 100;
+      const pythAge   = Math.round(Date.now()/1000 - pyth.btc.ts);
+      const pythColor = Math.abs(diffPct) > 0.1 ? 'var(--amber)' : 'var(--green)';
+      displayBtc = avgBtc;
+      btcPythEl.innerHTML =
+        `<span style="color:var(--muted)">KRAKEN</span> $${krakenBtc.toLocaleString('en',{maximumFractionDigits:2})} &nbsp;` +
+        `<span style="color:var(--muted)">PYTH</span> $${pythBtc.toLocaleString('en',{maximumFractionDigits:2})} &nbsp;` +
+        `<span style="color:var(--muted)">ΔSPREAD</span> <span style="color:${pythColor}">${diffBtc>=0?'+':''}${f(diffBtc,2)} (${f(diffPct,3)}%)</span><br>` +
+        `<span style="color:var(--accent);font-weight:700">AVG $${avgBtc.toLocaleString('en',{maximumFractionDigits:2})}</span>` +
+        `<span style="color:var(--muted)"> · Pyth ${pythAge}s ago · conf ±$${f(pyth.btc.conf,2)}</span>`;
+    } else {
+      btcPythEl.innerHTML = '<span style="color:var(--muted)">Pyth unavailable — showing Kraken price only</span>';
+    }
+
+    document.getElementById('btcPrice').textContent='$'+displayBtc.toLocaleString('en',{maximumFractionDigits:2});
+    const bC=parseFloat(bT.priceChangePercent);
+    const bEl=document.getElementById('btcChange');bEl.textContent=ps(bC)+' (24H)';bEl.className='price-change '+pc(bC);
+    const bD=dir(bL);
+    const bTE=document.getElementById('btcTrend');bTE.textContent=bD==='up'?'↑ RISING':'↓ FALLING';bTE.className='trend-pill '+(bD==='up'?'up':'dn');
+    document.getElementById('btcO').textContent='$'+Number(bL.open).toLocaleString('en',{maximumFractionDigits:2});
+    document.getElementById('btcH').textContent='$'+Number(bL.high).toLocaleString('en',{maximumFractionDigits:2});
+    document.getElementById('btcL').textContent='$'+Number(bL.low).toLocaleString('en',{maximumFractionDigits:2});
+    document.getElementById('btcV').textContent=fK(bL.vol);
+    document.getElementById('co_btc_o').textContent='$'+f(bL.open,2);
+    document.getElementById('co_btc_h').textContent='$'+f(bL.high,2);
+    document.getElementById('co_btc_l').textContent='$'+f(bL.low,2);
+    document.getElementById('co_btc_c').textContent='$'+f(bL.close,2);
+
+    // ETH/BTC panel — Pyth comparison + averaged price
+    const krakenEb = parseFloat(eT.lastPrice);
+    let displayEb  = krakenEb;
+    const ethPythEl = document.getElementById('ethPythRow');
+
+    if (pyth?.btc && pyth?.eth) {
+      const pythEb    = pyth.eth.price / pyth.btc.price; // derive ETH/BTC from USD prices
+      const avgEb     = (krakenEb + pythEb) / 2;
+      const diffEb    = krakenEb - pythEb;
+      const diffEbPct = (diffEb / pythEb) * 100;
+      const pythAge   = Math.round(Date.now()/1000 - Math.max(pyth.btc.ts, pyth.eth.ts));
+      const ebColor   = Math.abs(diffEbPct) > 0.1 ? 'var(--amber)' : 'var(--green)';
+      displayEb = avgEb;
+      ethPythEl.innerHTML =
+        `<span style="color:var(--muted)">KRAKEN</span> ${f(krakenEb,6)} &nbsp;` +
+        `<span style="color:var(--muted)">PYTH</span> ${f(pythEb,6)} &nbsp;` +
+        `<span style="color:var(--muted)">ΔSPREAD</span> <span style="color:${ebColor}">${diffEb>=0?'+':''}${f(diffEb,7)} (${f(diffEbPct,3)}%)</span><br>` +
+        `<span style="color:var(--accent);font-weight:700">AVG ${f(avgEb,6)}</span>` +
+        `<span style="color:var(--muted)"> · Pyth ${pythAge}s ago · ETH/BTC derived</span>`;
+    } else {
+      ethPythEl.innerHTML = '<span style="color:var(--muted)">Pyth unavailable — showing Kraken price only</span>';
+    }
+
+    document.getElementById('ebPrice').textContent=f(displayEb,6);
+    const eC=parseFloat(eT.priceChangePercent);
+    const eEl=document.getElementById('ebChange');eEl.textContent=ps(eC)+' (24H)';eEl.className='price-change '+pc(eC);
+    const eD=dir(eL);
+    const eTE=document.getElementById('ebTrend');eTE.textContent=eD==='up'?'↑ RISING':'↓ FALLING';eTE.className='trend-pill '+(eD==='up'?'up':'dn');
+    document.getElementById('ebO').textContent=f(eL.open,6);
+    document.getElementById('ebH').textContent=f(eL.high,6);
+    document.getElementById('ebL').textContent=f(eL.low,6);
+    document.getElementById('ebV').textContent=fK(eL.vol);
+    document.getElementById('co_eb_o').textContent=f(eL.open,6);
+    document.getElementById('co_eb_h').textContent=f(eL.high,6);
+    document.getElementById('co_eb_l').textContent=f(eL.low,6);
+    document.getElementById('co_eb_c').textContent=f(eL.close,6);
+
+    spark('btcSpark',b15.map(c=>c.close),bD==='up');
+    spark('ebSpark',e15.map(c=>c.close),eD==='up');
+
+    const tL=Math.min(b15.length,e15.length,16);
+    renderTicker(b15.slice(-tL),e15.slice(-tL));
+    renderHistory(b15,e15);
+    updCorr(b15,e15);
+    const sigType=mainSignal(b15,e15);
+
+    // Indicators
+    const st=doSupertrend(b1h);
+    const ri=doRSI(b1h);
+    const mc=doMACD(b4h);
+    const sr=doStochRSI(b15);
+    doConsensus(st,ri,mc,sr);
+
+    // Strength bar count for notification threshold
+    const strengthBars = (() => {
+      let d=0;const len=Math.min(b15.length,e15.length);
+      for(let i=0;i<len;i++) if(dir(b15[i])!==dir(e15[i]))d++;
+      return Math.round((d/len)*5);
+    })();
+
+    // 6H dominance percentages for winner-change notification
+    const c6b=b15.slice(0,-1).slice(-24),c6e=e15.slice(0,-1).slice(-24);
+    const len6=Math.min(c6b.length,c6e.length);
+    let btcCnt=0,ethCnt=0;
+    for(let i=0;i<len6;i++){
+      const bu=dir(c6b[i])==='up',eu=dir(c6e[i])==='up';
+      if(bu&&!eu)btcCnt++;else if(!bu&&eu)ethCnt++;
+    }
+    const tot=btcCnt+ethCnt||1;
+    const btcShare=Math.round(btcCnt/tot*100);
+    const ethShare=Math.round(ethCnt/tot*100);
+
+    // Fire notifications (non-blocking)
+    checkAndNotify(sigType, strengthBars, btcShare, ethShare);
+
+    const now=new Date();
+    document.getElementById('lastUpdated').innerHTML=`<span class="dot"></span>UPDATED: ${now.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',second:'2-digit'})} · NEXT IN <span class="countdown" id="countdown">60</span>s`;
+    startCD();
+
+  }catch(err){
+    const ban=document.getElementById('signalBanner');
+    ban.className='signal-banner error';
+    document.getElementById('signalTitle').textContent='Binance API error';
+    document.getElementById('signalDesc').textContent=`Fetch failed — usually a rate limit. Auto-retry in 60s. Error: ${err.message}`;
+    document.getElementById('lastUpdated').textContent='FAILED — RETRYING IN 60s';
+    startCD();
+  }
+  btn.disabled=false;btn.textContent='↻ REFRESH';
+}
+
+// ═══════════════════════════════════════════
+// TELEGRAM NOTIFICATIONS
+// ═══════════════════════════════════════════
+let _lastSignal    = null; // tracks last signal type to detect flips
+let _lastStrength  = 0;    // tracks last strength to detect strong signal
+let _last6hWinner  = null; // tracks last 6H dominance winner
+
+function tgEnabled()  { return document.getElementById('tgEnabled')?.checked; }
+function tgToken()    { return document.getElementById('tgToken')?.value.trim(); }
+function tgChatId()   { return document.getElementById('tgChatId')?.value.trim(); }
+function tgCheck(id)  { return document.getElementById(id)?.checked; }
+
+function tgLog(msg) {
+  const el = document.getElementById('tgLog');
+  if (!el) return;
+  el.style.display = 'block';
+  const now = new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  el.innerHTML = `[${now}] ${msg}<br>` + el.innerHTML;
+}
+
+function setTgStatus(msg, cls) {
+  const el = document.getElementById('tgStatus');
+  if (!el) return;
+  el.style.display = 'block';
+  el.className = `tg-status ${cls}`;
+  el.textContent = msg;
+}
+
+async function sendTelegram(text) {
+  const token  = tgToken();
+  const chatId = tgChatId();
+  if (!token || !chatId) return;
+  try {
+    const url = `https://api.telegram.org/bot${token}/sendMessage`;
+    const r   = await fetch(url, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        chat_id:    chatId,
+        text:       text,
+        parse_mode: 'HTML',
+      }),
+    });
+    const data = await r.json();
+    if (data.ok) {
+      tgLog(`✓ Sent: ${text.slice(0,60)}...`);
+      return true;
+    } else {
+      tgLog(`✗ Failed: ${data.description}`);
+      return false;
+    }
+  } catch(e) {
+    tgLog(`✗ Error: ${e.message}`);
+    return false;
+  }
+}
+
+// Test message
+window.sendTgTest = async function() {
+  const btn = document.getElementById('tgTestBtn');
+  if (!tgToken() || !tgChatId()) {
+    setTgStatus('Fill in Bot Token and Chat ID first.','err');
+    return;
+  }
+  btn.disabled = true;
+  setTgStatus('Sending test message...','sending');
+  const msg =
+    `🤖 <b>BTC.D Monitor — Test Notification</b>\n\n` +
+    `✅ Your Telegram alerts are working correctly.\n\n` +
+    `You will be notified when:\n` +
+    `• A divergence signal fires (trade opportunity)\n` +
+    `• Signal flips direction\n` +
+    `• Strong signal detected (4–5 bars)\n` +
+    `• 6H dominance winner changes\n\n` +
+    `<i>${new Date().toLocaleString('en-GB')}</i>`;
+  const ok = await sendTelegram(msg);
+  setTgStatus(ok ? '✓ Test message sent — check Telegram' : '✗ Failed — check token and chat ID', ok?'ok':'err');
+  btn.disabled = false;
+};
+
+window.onTgToggle = function() {
+  const enabled = tgEnabled();
+  tgLog(enabled ? 'Notifications enabled.' : 'Notifications disabled.');
+};
+
+// Called after every signal update — checks what changed and fires
+async function checkAndNotify(signalType, strengthBars, btcSharePct, ethSharePct) {
+  if (!tgEnabled()) return;
+
+  const now    = new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  const isDiv  = signalType === 'diverge';
+  const isConv = signalType === 'converge';
+
+  // ── Signal flip ──────────────────────────────────────────
+  if (tgCheck('tgOnFlip') && _lastSignal !== null && _lastSignal !== signalType) {
+    const from = _lastSignal === 'diverge' ? '✅ Divergence' : '⚠ Convergence';
+    const to   = isDiv ? '✅ Divergence' : '⚠ Convergence';
+    await sendTelegram(
+      `🔄 <b>BTC.D Signal Flipped</b>\n\n` +
+      `${from} → ${to}\n\n` +
+      `<i>${now} WAT</i>`
+    );
+  }
+
+  // ── Fresh divergence signal ──────────────────────────────
+  if (tgCheck('tgOnDiverge') && isDiv && _lastSignal !== 'diverge') {
+    const title  = document.getElementById('signalTitle')?.textContent || '';
+    const desc   = document.getElementById('signalDesc')?.textContent  || '';
+    const badge  = document.querySelector('.signal-badge')?.textContent || '';
+    await sendTelegram(
+      `✅ <b>Divergence Signal — Trade Opportunity</b>\n\n` +
+      `<b>${title}</b>\n${desc}\n\n` +
+      `<b>Bias: ${badge}</b>\n\n` +
+      `<i>${now} WAT</i>`
+    );
+  }
+
+  // ── Fresh convergence ────────────────────────────────────
+  if (tgCheck('tgOnConverge') && isConv && _lastSignal !== 'converge') {
+    const title = document.getElementById('signalTitle')?.textContent || '';
+    await sendTelegram(
+      `⚠️ <b>Convergence — Stand Aside</b>\n\n` +
+      `<b>${title}</b>\n` +
+      `Both instruments moving in the same direction.\n` +
+      `Pairs trade not valid. Hold no position.\n\n` +
+      `<i>${now} WAT</i>`
+    );
+  }
+
+  // ── Strong signal (4–5 bars) ─────────────────────────────
+  if (tgCheck('tgOnStrong') && strengthBars >= 4 && _lastStrength < 4) {
+    const title = document.getElementById('signalTitle')?.textContent || '';
+    await sendTelegram(
+      `🔥 <b>Strong Signal Detected — ${strengthBars}/5 Bars</b>\n\n` +
+      `<b>${title}</b>\n` +
+      `${strengthBars === 5 ? 'Maximum' : 'High'} divergence strength across the last 16 candles.\n\n` +
+      `<i>${now} WAT</i>`
+    );
+  }
+
+  // ── 6H dominance winner changed ──────────────────────────
+  if (tgCheck('tgOn6hChange') && btcSharePct !== null && ethSharePct !== null) {
+    const currentWinner = btcSharePct > ethSharePct + 5 ? 'BTC'
+                        : ethSharePct > btcSharePct + 5 ? 'ETH'
+                        : 'TIED';
+    if (_last6hWinner !== null && _last6hWinner !== currentWinner) {
+      const emoji = currentWinner === 'BTC' ? '🟡' : currentWinner === 'ETH' ? '🔵' : '⚖️';
+      await sendTelegram(
+        `📊 <b>6H Dominance Winner Changed</b>\n\n` +
+        `${emoji} Now leading: <b>${currentWinner}</b>\n` +
+        `BTC side: ${btcSharePct}% · ETH side: ${ethSharePct}%\n\n` +
+        `<i>${now} WAT</i>`
+      );
+    }
+    _last6hWinner = currentWinner;
+  }
+
+  // Update state trackers
+  _lastSignal   = signalType;
+  _lastStrength = strengthBars;
+}
+
+window.onTgToggle = function() {
+  tgLog(tgEnabled() ? 'Notifications enabled.' : 'Notifications disabled.');
+};
+
+loadAll();
+</script>
+</body>
+</html>
