@@ -100,38 +100,79 @@ def signal(btc15, eb15):
 
 # ── Decibel CLI execution ────────────────────────────────────────────
 def install_cli():
-    print("  Installing @decibeltrade/cli and @decibeltrade/sdk...")
+    """Pre-cache the CLI package so npx doesn't need to download during trade."""
+    print("  Caching @decibeltrade/cli via npx...")
     r = subprocess.run(
-        ["npm", "install", "--ignore-scripts",
-         "@decibeltrade/cli", "@decibeltrade/sdk"],
-        capture_output=True, text=True, timeout=120
+        ["npx", "-y", "--package", "@decibeltrade/cli", "decibel-mcp", "--version"],
+        capture_output=True, text=True, timeout=120, env=cli_env()
     )
-    print("  Done." if r.returncode==0 else f"  Warning: {r.stderr[:200]}")
+    print(f"  Cache result: {(r.stdout+r.stderr).strip()[:80]}")
 
-    # Patch: the CLI bundles its own nested @decibeltrade/sdk that has
-    # admin.js as ESM but missing its own sub-imports. Fix by replacing
-    # the CLI's nested SDK dist with the top-level SDK dist which works.
-    import shutil
-    src = "node_modules/@decibeltrade/sdk/dist"
-    dst = "node_modules/@decibeltrade/cli/node_modules/@decibeltrade/sdk/dist"
-    if os.path.exists(src) and os.path.exists(dst):
-        print(f"  Patching CLI nested SDK dist...")
-        for fname in os.listdir(src):
-            src_f = os.path.join(src, fname)
-            dst_f = os.path.join(dst, fname)
-            if os.path.isfile(src_f):
-                shutil.copy2(src_f, dst_f)
-        print("  Patch applied.")
-    else:
-        print(f"  Patch skipped — src={os.path.exists(src)} dst={os.path.exists(dst)}")
+def run_cli(action, params):
+    """
+    Calls Decibel by running the MCP server as a subprocess and
+    sending JSON-RPC tool calls via stdin. This is exactly how
+    Claude Desktop communicates with it.
+    """
+    # Map our action names to MCP tool names
+    tool_map = {
+        "place_market_order": "place_market_order",
+        "close_position":     "close_position",
+        "set_leverage":       "set_leverage",
+        "get_balances":       "get_balances",
+    }
+    tool_name = tool_map.get(action, action)
 
-    # Confirm CLI is findable
+    # JSON-RPC 2.0 call
+    rpc_call = json.dumps({
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "tools/call",
+        "params": {
+            "name": tool_name,
+            "arguments": params,
+        }
+    }) + "\n"
+
+    env = cli_env()
+
     result = subprocess.run(
-        ["node", "-e",
-         "try{const m=require.resolve('@decibeltrade/cli');console.log('FOUND:'+m);}catch(e){console.log('NOT_FOUND:'+e.message);}"],
-        capture_output=True, text=True, timeout=10
+        ["npx", "-y", "--package", "@decibeltrade/cli", "decibel-mcp"],
+        input=rpc_call,
+        capture_output=True, text=True,
+        timeout=60, env=env,
     )
-    print(f"  CLI: {result.stdout.strip()[:100]}")
+
+    if result.returncode not in (0, None):
+        # MCP server exits non-zero after responding — check stdout first
+        pass
+
+    stdout = result.stdout.strip()
+    if not stdout:
+        raise RuntimeError(f"MCP no output. stderr: {result.stderr[:200]}")
+
+    # Parse JSON-RPC responses — may have multiple lines (notifications etc)
+    for line in stdout.split("\n"):
+        line = line.strip()
+        if not line: continue
+        try:
+            msg = json.loads(line)
+            if msg.get("id") == 1:
+                if "error" in msg:
+                    raise RuntimeError(f"MCP error: {msg['error']}")
+                result_data = msg.get("result", {})
+                # Extract text content from MCP response
+                content = result_data.get("content", [])
+                for item in content:
+                    if item.get("type") == "text":
+                        text = item["text"]
+                        try: return json.loads(text)
+                        except: return {"result": text}
+                return result_data
+        except json.JSONDecodeError:
+            continue
+
+    raise RuntimeError(f"No valid JSON-RPC response found in: {stdout[:200]}")
 
 def cli_env():
     e = os.environ.copy()
@@ -141,45 +182,6 @@ def cli_env():
     e["DECIBEL_NODE_API_KEY"]       = DEC_NODE_KEY
     if DEC_GAS_KEY: e["DECIBEL_GAS_STATION_API_KEY"] = DEC_GAS_KEY
     return e
-
-def run_cli(action, params):
-    """Run a Decibel action via the official CLI using ESM imports."""
-    # CLI is installed at repo root — use absolute path directly
-    cli_path = "/home/runner/work/BTC.d-Monitor/BTC.d-Monitor/node_modules/@decibeltrade/cli/dist/index.js"
-
-    script = f"""
-const {{ DecibelClient }} = await import('{cli_path}');
-
-const client = new DecibelClient({{
-  network: process.env.DECIBEL_NETWORK,
-  privateKey: process.env.DECIBEL_PRIVATE_KEY,
-  subaccountAddress: process.env.DECIBEL_SUBACCOUNT_ADDRESS,
-  nodeApiKey: process.env.DECIBEL_NODE_API_KEY,
-  gasStationApiKey: process.env.DECIBEL_GAS_STATION_API_KEY,
-}});
-await client.connect();
-const p = {json.dumps(params)};
-let r;
-if      ('{action}'==='place_market_order') r = await client.exchange.placeMarketOrder(p);
-else if ('{action}'==='close_position')     r = await client.exchange.closePosition(p);
-else if ('{action}'==='set_leverage')       r = await client.exchange.setLeverage(p);
-else if ('{action}'==='get_balances')       r = await client.info.getBalances(p);
-console.log(JSON.stringify(r));
-"""
-    script_path = "/tmp/decibel_run.mjs"
-    with open(script_path, "w") as f:
-        f.write(script)
-
-    result = subprocess.run(
-        ["node", script_path],
-        env=cli_env(),
-        capture_output=True, text=True, timeout=60,
-    )
-    if result.returncode != 0:
-        raise RuntimeError(f"CLI: {result.stderr[:300]}")
-    out = result.stdout.strip()
-    if not out: raise RuntimeError("CLI empty response")
-    return json.loads(out)
 
 def get_balances():
     try:
