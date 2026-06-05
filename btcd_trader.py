@@ -205,7 +205,11 @@ def dec_post(path: str, body: dict) -> dict:
         json=body,
         timeout=15,
     )
-    data = r.json()
+    # Handle empty response body gracefully
+    try:
+        data = r.json()
+    except Exception:
+        data = {"raw": r.text[:200]}
     if not r.ok:
         raise RuntimeError(f"Decibel POST {path} → {r.status_code}: {json.dumps(data)[:150]}")
     return data
@@ -213,7 +217,11 @@ def dec_post(path: str, body: dict) -> dict:
 def set_leverage(symbol: str, lev: int):
     eff = min(lev, MAX_LEV.get(symbol, 10))
     try:
-        dec_post("/api/v1/leverage", {"symbol": symbol, "leverage": eff})
+        # Try both field name formats
+        try:
+            dec_post("/api/v1/leverage", {"symbol": symbol, "leverage": eff})
+        except Exception:
+            dec_post("/api/v1/leverage", {"market": symbol, "leverage": eff})
         print(f"  Leverage set: {symbol} = {eff}×")
     except Exception as e:
         print(f"  Leverage warning ({symbol}): {e}")
@@ -223,17 +231,37 @@ def place_order(symbol: str, side: str, size: float) -> dict:
     body = {
         "symbol":      symbol,
         "side":        side,
+        "sz":          size,
         "size":        size,
         "slippage":    SLIPPAGE,
         "reduce_only": False,
+        "reduceOnly":  False,
     }
     print(f"  Placing {side.upper()} {symbol} size={size}")
-    result = dec_post("/api/v1/orders/market", body)
+    print(f"  Request body: {json.dumps(body)}")
+    # Also log raw response for debugging
+    r = requests.post(
+        f"{DEC_BASE}/api/v1/orders/market",
+        headers=dec_headers(),
+        json=body,
+        timeout=15,
+    )
+    print(f"  HTTP status: {r.status_code}")
+    print(f"  Raw response: {r.text[:200]}")
+    try:
+        result = r.json()
+    except Exception:
+        result = {"raw": r.text[:200]}
+    if not r.ok:
+        raise RuntimeError(f"Order failed {r.status_code}: {r.text[:150]}")
     print(f"  Order result: {json.dumps(result)[:100]}")
     return result
 
 def close_position(symbol: str) -> dict:
-    body = {"symbol": symbol, "slippage": SLIPPAGE}
+    body = {
+        "symbol":   symbol,
+        "slippage": SLIPPAGE,
+    }
     print(f"  Closing {symbol}...")
     result = dec_post("/api/v1/orders/close", body)
     print(f"  Close result: {json.dumps(result)[:100]}")
