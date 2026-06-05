@@ -131,20 +131,11 @@ def cli_env():
 
 def run_cli(action, params):
     """Run a Decibel action via the official CLI using ESM imports."""
-    # The CLI uses ES modules — write a .mjs file for Node to execute
+    # CLI is installed at repo root — use absolute path directly
+    cli_path = "/home/runner/work/BTC.d-Monitor/BTC.d-Monitor/node_modules/@decibeltrade/cli/dist/index.js"
+
     script = f"""
-import {{ createRequire }} from 'module';
-import {{ fileURLToPath }} from 'url';
-import path from 'path';
-
-// Dynamically find the CLI package
-const require2 = createRequire(import.meta.url);
-const cliPkg = require2.resolve('@decibeltrade/cli/package.json');
-const cliDir = path.dirname(cliPkg);
-const cliMain = require2(cliPkg).main || 'dist/index.js';
-const cliPath = path.join(cliDir, cliMain);
-
-const {{ DecibelClient }} = await import(cliPath);
+const {{ DecibelClient }} = await import('{cli_path}');
 
 const client = new DecibelClient({{
   network: process.env.DECIBEL_NETWORK,
