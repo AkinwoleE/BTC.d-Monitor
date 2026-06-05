@@ -1,532 +1,299 @@
 """
-╔══════════════════════════════════════════════════════════════════════╗
-║   BTC.D PAIRS TRADER — GitHub Actions Autonomous Bot                ║
-║   Runs every 15 minutes via GitHub Actions cron                     ║
-║   Signal: 15M BTC/USD vs ETH/BTC divergence                        ║
-║   Execution: Direct Decibel REST API                                ║
-╚══════════════════════════════════════════════════════════════════════╝
+BTC.D PAIRS TRADER — GitHub Actions Autonomous Bot
+Runs every 15 minutes. Uses Decibel CLI for order execution.
 
 GitHub Secrets required:
-  TELEGRAM_BOT_TOKEN      — from @BotFather
-  TELEGRAM_CHAT_ID        — your chat ID
-  DECIBEL_BEARER_TOKEN    — from geomi.dev (Aptos Mainnet)
-  DECIBEL_ACCOUNT         — your Decibel main account address (0x...)
-  DECIBEL_SUBACCOUNT      — your Decibel subaccount address (0x...)
+  TELEGRAM_BOT_TOKEN          — from @BotFather
+  TELEGRAM_CHAT_ID            — your chat ID
+  DECIBEL_PRIVATE_KEY         — API wallet key (ed25519-priv-0x...)
+  DECIBEL_SUBACCOUNT          — subaccount address (0x...)
+  DECIBEL_NODE_API_KEY        — Geomi Aptos Mainnet key
+  DECIBEL_GAS_STATION_API_KEY — Geomi Gas Station key
 
-Optional secrets (have defaults):
-  POSITION_SIZE_USD       — per leg in USD (default: 100)
-  LEVERAGE                — leverage multiplier (default: 3)
-  SLIPPAGE                — slippage % (default: 1)
+Optional:
+  POSITION_SIZE_USD  (default 100)
+  LEVERAGE           (default 3)
+  SLIPPAGE           (default 1)
 """
 
-import os
-import sys
-import json
-import time
-import requests
+import os, sys, json, time, subprocess, requests
 from datetime import datetime, timezone
 
+# ── Credentials ─────────────────────────────────────────────────────
+BOT_TOKEN       = os.environ.get("TELEGRAM_BOT_TOKEN", "")
+CHAT_ID         = os.environ.get("TELEGRAM_CHAT_ID", "")
+DEC_PRIVATE_KEY = os.environ.get("DECIBEL_PRIVATE_KEY", "")
+DEC_SUB         = os.environ.get("DECIBEL_SUBACCOUNT", "")
+DEC_NODE_KEY    = os.environ.get("DECIBEL_NODE_API_KEY", "")
+DEC_GAS_KEY     = os.environ.get("DECIBEL_GAS_STATION_API_KEY", "")
 
-# ════════════════════════════════════════════════════════════════════
-# CREDENTIALS — all from GitHub Secrets
-# ════════════════════════════════════════════════════════════════════
-BOT_TOKEN   = os.environ.get("TELEGRAM_BOT_TOKEN", "")
-CHAT_ID     = os.environ.get("TELEGRAM_CHAT_ID", "")
-DEC_BEARER  = os.environ.get("DECIBEL_BEARER_TOKEN", "")
-DEC_ACCOUNT = os.environ.get("DECIBEL_ACCOUNT", "")
-DEC_SUB     = os.environ.get("DECIBEL_SUBACCOUNT", "")
-
-# ════════════════════════════════════════════════════════════════════
-# STRATEGY PARAMETERS — override via GitHub Secrets if needed
-# ════════════════════════════════════════════════════════════════════
+# ── Parameters ───────────────────────────────────────────────────────
 POSITION_SIZE = float(os.environ.get("POSITION_SIZE_USD", "100"))
 LEVERAGE      = int(os.environ.get("LEVERAGE", "3"))
 SLIPPAGE      = float(os.environ.get("SLIPPAGE", "1"))
+MAX_LEV       = {"BTC/USD": 40, "ETH/USD": 20}
 
-# Max leverage per market on Decibel
-MAX_LEV = {"BTC/USD": 40, "ETH/USD": 20}
+# ── Data sources ─────────────────────────────────────────────────────
+KRAKEN   = "https://api.kraken.com/0/public"
+COINLORE = "https://api.coinlore.net/api/global/"
+KR_KEY   = {"XBTUSD": "XXBTZUSD", "ETHXBT": "XETHXXBT"}
+KR_IV    = {"15m": 15, "1h": 60}
 
-# ════════════════════════════════════════════════════════════════════
-# API ENDPOINTS
-# ════════════════════════════════════════════════════════════════════
-KRAKEN      = "https://api.kraken.com/0/public"
-COINLORE    = "https://api.coinlore.net/api/global/"
-DEC_BASE    = "https://api.mainnet.aptoslabs.com/decibel"
-DEC_ORIGIN  = "https://app.decibel.trade"
-KR_KEY      = {"XBTUSD": "XXBTZUSD", "ETHXBT": "XETHXXBT"}
-KR_IV       = {"15m": 15, "1h": 60}
+# ── State ────────────────────────────────────────────────────────────
+STATE_FILE = "trader_state.json"
 
-# ════════════════════════════════════════════════════════════════════
-# STATE — persisted via GitHub Actions cache between runs
-# ════════════════════════════════════════════════════════════════════
-STATE_FILE = "trader_state.json"   # in repo root, committed by workflow
-
-def load_state() -> dict:
+def load_state():
     try:
-        with open(STATE_FILE) as f:
-            return json.load(f)
-    except Exception:
-        return {
-            "current_signal":   "NEUTRAL",   # LONG_BTC | LONG_ETH | NEUTRAL
-            "position_open":    False,
-            "entry_btc_size":   0.0,
-            "entry_eth_size":   0.0,
-            "entry_ts":         0,
-            "last_signal_ts":   0,
-            "trade_count":      0,
-        }
+        with open(STATE_FILE) as f: return json.load(f)
+    except: return {"current_signal":"NEUTRAL","position_open":False,
+                    "entry_btc_size":0.0,"entry_eth_size":0.0,"trade_count":0}
 
-def save_state(state: dict):
-    with open(STATE_FILE, "w") as f:
-        json.dump(state, f, indent=2)
-    print(f"  State saved: signal={state['current_signal']} position={state['position_open']}")
+def save_state(s):
+    with open(STATE_FILE,"w") as f: json.dump(s,f,indent=2)
+    print(f"  State: signal={s['current_signal']} open={s['position_open']}")
 
+# ── Helpers ──────────────────────────────────────────────────────────
+fmt   = lambda n,d=3: f"{n:.{d}f}"
+pct   = lambda c: ((c["close"]-c["open"])/c["open"]*100) if c["open"] else 0
+cdir  = lambda c: "up" if c["close"]>=c["open"] else "dn"
+ts_s  = lambda: datetime.now(timezone.utc).strftime("%H:%M UTC")
 
-# ════════════════════════════════════════════════════════════════════
-# HELPERS
-# ════════════════════════════════════════════════════════════════════
-def fmt(n, d=3):
-    return f"{n:.{d}f}"
-
-def pct_move(c: dict) -> float:
-    if c["open"] == 0: return 0.0
-    return ((c["close"] - c["open"]) / c["open"]) * 100
-
-def candle_dir(c: dict) -> str:
-    return "up" if c["close"] >= c["open"] else "dn"
-
-def ts_str():
-    return datetime.now(timezone.utc).strftime("%H:%M UTC")
-
-
-# ════════════════════════════════════════════════════════════════════
-# DATA FETCHING
-# ════════════════════════════════════════════════════════════════════
-def fetch_klines(pair: str, tf: str, n: int) -> list:
-    interval = KR_IV.get(tf, 15)
-    since    = int(time.time()) - interval * 60 * (n + 5)
-    r = requests.get(f"{KRAKEN}/OHLC?pair={pair}&interval={interval}&since={since}", timeout=10)
+# ── Data fetching ────────────────────────────────────────────────────
+def klines(pair, tf, n):
+    iv    = KR_IV.get(tf,15)
+    since = int(time.time())-iv*60*(n+5)
+    r     = requests.get(f"{KRAKEN}/OHLC?pair={pair}&interval={iv}&since={since}",timeout=10)
     r.raise_for_status()
-    data = r.json()
-    if data.get("error"): raise ValueError(f"Kraken: {data['error']}")
-    key = KR_KEY.get(pair) or next(k for k in data["result"] if k != "last")
-    return [
-        {"ts": int(c[0])*1000, "open": float(c[1]), "high": float(c[2]),
-         "low": float(c[3]), "close": float(c[4]), "vol": float(c[6])}
-        for c in data["result"][key][-n:]
-    ]
+    d = r.json()
+    if d.get("error"): raise ValueError(f"Kraken: {d['error']}")
+    key = KR_KEY.get(pair) or next(k for k in d["result"] if k!="last")
+    return [{"ts":int(c[0])*1000,"open":float(c[1]),"high":float(c[2]),
+             "low":float(c[3]),"close":float(c[4]),"vol":float(c[6])}
+            for c in d["result"][key][-n:]]
 
-def fetch_ticker(pair: str) -> dict:
-    r = requests.get(f"{KRAKEN}/Ticker?pair={pair}", timeout=10)
-    r.raise_for_status()
-    data = r.json()
-    key  = list(data["result"].keys())[0]
-    t    = data["result"][key]
-    last = float(t["c"][0])
-    op   = float(t["o"])
-    return {"last": last, "pct": ((last - op) / op) * 100}
+def ticker(pair):
+    r = requests.get(f"{KRAKEN}/Ticker?pair={pair}",timeout=10); r.raise_for_status()
+    d = r.json(); k = list(d["result"].keys())[0]; t = d["result"][k]
+    last=float(t["c"][0]); op=float(t["o"])
+    return {"last":last,"pct":((last-op)/op*100)}
 
-def fetch_btc_dominance() -> dict | None:
+def btcdom():
     try:
-        r    = requests.get(COINLORE, timeout=10)
-        r.raise_for_status()
-        data = r.json()
-        d    = data[0] if isinstance(data, list) else data
-        return {"btc_d": float(d["btc_d"]), "eth_d": float(d["eth_d"])}
+        r=requests.get(COINLORE,timeout=10); r.raise_for_status()
+        d=r.json(); v=d[0] if isinstance(d,list) else d
+        return {"btc_d":float(v["btc_d"]),"eth_d":float(v["eth_d"])}
     except Exception as e:
-        print(f"  CoinLore failed: {e}")
-        return None
+        print(f"  CoinLore failed: {e}"); return None
 
+# ── Signal engine ────────────────────────────────────────────────────
+def signal(btc15, eb15):
+    l3b=btc15[-4:-1]; l3e=eb15[-4:-1]
+    if len(l3b)<3:
+        return {"signal":"NEUTRAL","strength":0,"btc_dir":"dn","eb_dir":"dn","btc_pct":0,"eb_pct":0}
+    bd = "up" if sum(1 for c in l3b if cdir(c)=="up")>=2 else "dn"
+    ed = "up" if sum(1 for c in l3e if cdir(c)=="up")>=2 else "dn"
+    n  = min(len(btc15),len(eb15),16)
+    dv = sum(1 for i in range(n) if cdir(btc15[-n+i])!=cdir(eb15[-n+i]))
+    st = round(dv/n*5)
+    sg = "LONG_BTC" if bd=="up" and ed=="dn" else "LONG_ETH" if bd=="dn" and ed=="up" else "NEUTRAL"
+    return {"signal":sg,"strength":st,"btc_dir":bd,"eb_dir":ed,"btc_pct":pct(btc15[-2]),"eb_pct":pct(eb15[-2])}
 
-# ════════════════════════════════════════════════════════════════════
-# SIGNAL ENGINE — pure 15M BTC.D / ETH·BTC divergence
-# Exactly matches the HTML bot logic
-# ════════════════════════════════════════════════════════════════════
-def compute_signal(btc15: list, eb15: list) -> dict:
-    # Use last 3 CLOSED candles (exclude index -1 which is still forming)
-    l3b = btc15[-4:-1]
-    l3e = eb15[-4:-1]
+# ── Decibel CLI execution ────────────────────────────────────────────
+def install_cli():
+    print("  Installing @decibeltrade/cli...")
+    r = subprocess.run(["npm","install","-g","@decibeltrade/cli"],
+                       capture_output=True,text=True,timeout=120)
+    print("  Done." if r.returncode==0 else f"  Warning: {r.stderr[:100]}")
 
-    if len(l3b) < 3:
-        return {"signal": "NEUTRAL", "strength": 0, "btc_dir": "dn", "eb_dir": "dn"}
+def cli_env():
+    e = os.environ.copy()
+    e["DECIBEL_NETWORK"]            = "mainnet"
+    e["DECIBEL_PRIVATE_KEY"]        = DEC_PRIVATE_KEY
+    e["DECIBEL_SUBACCOUNT_ADDRESS"] = DEC_SUB
+    e["DECIBEL_NODE_API_KEY"]       = DEC_NODE_KEY
+    if DEC_GAS_KEY: e["DECIBEL_GAS_STATION_API_KEY"] = DEC_GAS_KEY
+    return e
 
-    btc_up_count = sum(1 for c in l3b if candle_dir(c) == "up")
-    eb_up_count  = sum(1 for c in l3e if candle_dir(c) == "up")
+def run_cli(action, params):
+    """Run a Decibel action via the official CLI."""
+    script = f"""
+const cli = require('@decibeltrade/cli');
+async function main() {{
+  const client = new (cli.DecibelClient || cli.default || cli)({{
+    network: process.env.DECIBEL_NETWORK,
+    privateKey: process.env.DECIBEL_PRIVATE_KEY,
+    subaccountAddress: process.env.DECIBEL_SUBACCOUNT_ADDRESS,
+    nodeApiKey: process.env.DECIBEL_NODE_API_KEY,
+    gasStationApiKey: process.env.DECIBEL_GAS_STATION_API_KEY,
+  }});
+  await client.connect();
+  const p = {json.dumps(params)};
+  let r;
+  if      ('{action}'==='place_market_order') r = await client.exchange.placeMarketOrder(p);
+  else if ('{action}'==='close_position')     r = await client.exchange.closePosition(p);
+  else if ('{action}'==='set_leverage')       r = await client.exchange.setLeverage(p);
+  else if ('{action}'==='get_balances')       r = await client.info.getBalances(p);
+  console.log(JSON.stringify(r));
+}}
+main().catch(e=>{{console.error('CLI_ERROR:'+e.message);process.exit(1);}});
+"""
+    result = subprocess.run(["node","-e",script], env=cli_env(),
+                            capture_output=True, text=True, timeout=45, cwd="/tmp")
+    if result.returncode != 0:
+        raise RuntimeError(f"CLI: {result.stderr[:250]}")
+    out = result.stdout.strip()
+    if not out: raise RuntimeError("CLI empty response")
+    return json.loads(out)
 
-    btc_dir = "up" if btc_up_count >= 2 else "dn"
-    eb_dir  = "up" if eb_up_count  >= 2 else "dn"
-
-    # Divergence strength — % of last 16 candles that diverged
-    n   = min(len(btc15), len(eb15), 16)
-    div = sum(
-        1 for i in range(n)
-        if candle_dir(btc15[-n + i]) != candle_dir(eb15[-n + i])
-    )
-    strength = round((div / n) * 5)
-
-    if btc_dir == "up" and eb_dir == "dn":
-        signal = "LONG_BTC"
-    elif btc_dir == "dn" and eb_dir == "up":
-        signal = "LONG_ETH"
-    else:
-        signal = "NEUTRAL"
-
-    return {
-        "signal":   signal,
-        "strength": strength,
-        "btc_dir":  btc_dir,
-        "eb_dir":   eb_dir,
-        "btc_pct":  pct_move(btc15[-2]),   # last closed candle
-        "eb_pct":   pct_move(eb15[-2]),
-    }
-
-
-# ════════════════════════════════════════════════════════════════════
-# DECIBEL REST API
-# ════════════════════════════════════════════════════════════════════
-def dec_headers() -> dict:
-    return {
-        "Authorization": f"Bearer {DEC_BEARER}",
-        "Origin":        DEC_ORIGIN,
-        "Content-Type":  "application/json",
-    }
-
-def dec_get(path: str, params: str = "") -> dict:
-    url = f"{DEC_BASE}{path}" + (f"?{params}" if params else "")
-    r   = requests.get(url, headers=dec_headers(), timeout=15)
-    if not r.ok:
-        raise RuntimeError(f"Decibel GET {path} → {r.status_code}: {r.text[:120]}")
-    return r.json()
-
-def dec_post(path: str, body: dict) -> dict:
-    r = requests.post(
-        f"{DEC_BASE}{path}",
-        headers=dec_headers(),
-        json=body,
-        timeout=15,
-    )
-    # Handle empty response body gracefully
+def get_balances():
     try:
-        data = r.json()
-    except Exception:
-        data = {"raw": r.text[:200]}
-    if not r.ok:
-        raise RuntimeError(f"Decibel POST {path} → {r.status_code}: {json.dumps(data)[:150]}")
-    return data
+        r = run_cli("get_balances", {"subaccountAddress": DEC_SUB})
+        return {"equity":float(r.get("perpEquityBalance",0)),
+                "avail": float(r.get("crossWithdrawable",0)),
+                "pnl":   float(r.get("unrealizedPnl",0))}
+    except Exception as e:
+        print(f"  Balances failed: {e}"); return None
 
-def set_leverage(symbol: str, lev: int):
-    eff = min(lev, MAX_LEV.get(symbol, 10))
+def set_lev(symbol, lev):
+    eff = min(lev, MAX_LEV.get(symbol,10))
     try:
-        # Try both field name formats
-        try:
-            dec_post("/api/v1/leverage", {"symbol": symbol, "leverage": eff})
-        except Exception:
-            dec_post("/api/v1/leverage", {"market": symbol, "leverage": eff})
-        print(f"  Leverage set: {symbol} = {eff}×")
+        run_cli("set_leverage", {"symbol":symbol,"leverage":eff})
+        print(f"  Leverage: {symbol} = {eff}×")
     except Exception as e:
         print(f"  Leverage warning ({symbol}): {e}")
 
-def place_order(symbol: str, side: str, size: float) -> dict:
-    """side: 'long' or 'short'"""
-    body = {
-        "symbol":      symbol,
-        "side":        side,
-        "sz":          size,
-        "size":        size,
-        "slippage":    SLIPPAGE,
-        "reduce_only": False,
-        "reduceOnly":  False,
-    }
-    print(f"  Placing {side.upper()} {symbol} size={size}")
-    print(f"  Request body: {json.dumps(body)}")
-    # Also log raw response for debugging
-    r = requests.post(
-        f"{DEC_BASE}/api/v1/orders/market",
-        headers=dec_headers(),
-        json=body,
-        timeout=15,
-    )
-    print(f"  HTTP status: {r.status_code}")
-    print(f"  Raw response: {r.text[:200]}")
-    try:
-        result = r.json()
-    except Exception:
-        result = {"raw": r.text[:200]}
-    if not r.ok:
-        raise RuntimeError(f"Order failed {r.status_code}: {r.text[:150]}")
-    print(f"  Order result: {json.dumps(result)[:100]}")
-    return result
+def place_order(symbol, side, size):
+    print(f"  Placing {side.upper()} {symbol} sz={size}")
+    r = run_cli("place_market_order",
+                {"symbol":symbol,"side":side,"size":size,
+                 "slippage":SLIPPAGE,"reduceOnly":False})
+    print(f"  Result: {json.dumps(r)[:100]}")
+    return r
 
-def close_position(symbol: str) -> dict:
-    body = {
-        "symbol":   symbol,
-        "slippage": SLIPPAGE,
-    }
+def close_pos(symbol):
     print(f"  Closing {symbol}...")
-    result = dec_post("/api/v1/orders/close", body)
-    print(f"  Close result: {json.dumps(result)[:100]}")
-    return result
+    r = run_cli("close_position", {"symbol":symbol,"slippage":SLIPPAGE})
+    print(f"  Closed: {json.dumps(r)[:100]}")
+    return r
 
-def get_account_overview() -> dict | None:
-    try:
-        data = dec_get("/api/v1/account_overviews", f"account={DEC_ACCOUNT}")
-        ov   = data[0] if isinstance(data, list) else data
-        return {
-            "equity":   float(ov.get("equity") or ov.get("account_value") or 0),
-            "avail":    float(ov.get("available_margin") or ov.get("withdrawable") or 0),
-            "pnl":      float(ov.get("unrealized_pnl") or 0),
-        }
-    except Exception as e:
-        print(f"  Account overview failed: {e}")
-        return None
-
-def get_open_positions() -> list:
-    try:
-        data = dec_get("/api/v1/account_positions", f"account={DEC_ACCOUNT}")
-        all_pos = data if isinstance(data, list) else data.get("positions", [])
-        return [p for p in all_pos if abs(float(p.get("size") or p.get("sz") or 0)) > 0]
-    except Exception as e:
-        print(f"  Positions fetch failed: {e}")
-        return []
-
-
-# ════════════════════════════════════════════════════════════════════
-# TRADE EXECUTION
-# ════════════════════════════════════════════════════════════════════
-def execute_trade(signal: str, btc_price: float, eth_price_usd: float) -> dict:
-    """Places both legs of the pairs trade."""
-    eff_btc_lev = min(LEVERAGE, MAX_LEV["BTC/USD"])
-    eff_eth_lev = min(LEVERAGE, MAX_LEV["ETH/USD"])
-
-    btc_size = round(POSITION_SIZE / btc_price, 5)
-    eth_size = round(POSITION_SIZE / eth_price_usd, 4)
-
-    print(f"  Executing {signal}: ${POSITION_SIZE}/leg · {LEVERAGE}×")
-    print(f"  BTC size: {btc_size} · ETH size: {eth_size}")
-
-    results = {}
-    if signal == "LONG_BTC":
-        set_leverage("BTC/USD", eff_btc_lev)
-        results["btc"] = place_order("BTC/USD", "long",  btc_size)
+def execute_trade(sig, btc_px, eth_px_usd):
+    btc_sz = round(POSITION_SIZE/btc_px, 5)
+    eth_sz = round(POSITION_SIZE/eth_px_usd, 4)
+    print(f"  {sig}: ${POSITION_SIZE}/leg · {LEVERAGE}× · BTC {btc_sz} · ETH {eth_sz}")
+    res = {}
+    if sig == "LONG_BTC":
+        set_lev("BTC/USD", min(LEVERAGE,40)); res["btc"] = place_order("BTC/USD","long",btc_sz)
         time.sleep(0.5)
-        set_leverage("ETH/USD", eff_eth_lev)
-        results["eth"] = place_order("ETH/USD", "short", eth_size)
-    else:  # LONG_ETH
-        set_leverage("BTC/USD", eff_btc_lev)
-        results["btc"] = place_order("BTC/USD", "short", btc_size)
+        set_lev("ETH/USD", min(LEVERAGE,20)); res["eth"] = place_order("ETH/USD","short",eth_sz)
+    else:
+        set_lev("BTC/USD", min(LEVERAGE,40)); res["btc"] = place_order("BTC/USD","short",btc_sz)
         time.sleep(0.5)
-        set_leverage("ETH/USD", eff_eth_lev)
-        results["eth"] = place_order("ETH/USD", "long",  eth_size)
+        set_lev("ETH/USD", min(LEVERAGE,20)); res["eth"] = place_order("ETH/USD","long",eth_sz)
+    return {"btc_size":btc_sz,"eth_size":eth_sz,"results":res}
 
-    return {"btc_size": btc_size, "eth_size": eth_size, "results": results}
+def close_all():
+    for sym in ["BTC/USD","ETH/USD"]:
+        try: close_pos(sym)
+        except Exception as e: print(f"  Close {sym}: {e}")
 
-def close_all_positions():
-    """Closes both BTC/USD and ETH/USD positions."""
-    for sym in ["BTC/USD", "ETH/USD"]:
-        try:
-            close_position(sym)
-        except Exception as e:
-            print(f"  Close {sym} error: {e}")
+# ── Telegram ─────────────────────────────────────────────────────────
+def tg(text):
+    if not BOT_TOKEN or not CHAT_ID: return False
+    r = requests.post(f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage",
+                      json={"chat_id":CHAT_ID,"text":text,"parse_mode":"HTML"},timeout=10)
+    ok = r.json().get("ok"); print("  ✓ Telegram" if ok else f"  ✗ TG: {r.text[:80]}"); return ok
 
+def msg_open(sig, s, dom, btc_px, eth_px, sizes, acct):
+    arrow = "⬆️" if sig=="LONG_BTC" else "⬇️"
+    bias  = "Long BTC / Short ETH" if sig=="LONG_BTC" else "Long ETH / Short BTC"
+    bars  = "█"*s["strength"]+"░"*(5-s["strength"])
+    dom_l = f"\n📊 BTC.D: <b>{fmt(dom['btc_d'],2)}%</b>" if dom else ""
+    acc_l = f"\n💰 Equity: <b>${fmt(acct['equity'],2)}</b> · Avail: <b>${fmt(acct['avail'],2)}</b>" if acct else ""
+    return (f"{arrow} <b>TRADE OPENED — {bias}</b>\n\n"
+            f"⚡ Strength: {bars} {s['strength']}/5\n"
+            f"🕯 BTC 15M: <b>{'+' if s['btc_pct']>=0 else ''}{fmt(s['btc_pct'],3)}%</b> · "
+            f"ETH/BTC: <b>{'+' if s['eb_pct']>=0 else ''}{fmt(s['eb_pct'],3)}%</b>{dom_l}\n\n"
+            f"📦 BTC/USD: {sizes['btc_size']} @ ~${fmt(btc_px,0)} · {min(LEVERAGE,40)}×\n"
+            f"📦 ETH/USD: {sizes['eth_size']} @ ~${fmt(eth_px,2)} · {min(LEVERAGE,20)}×\n"
+            f"Size: ${POSITION_SIZE}/leg · ${POSITION_SIZE*2} total{acc_l}\n\n"
+            f"<i>{ts_s()} · GitHub Actions</i>")
 
-# ════════════════════════════════════════════════════════════════════
-# TELEGRAM
-# ════════════════════════════════════════════════════════════════════
-def send_telegram(text: str) -> bool:
-    if not BOT_TOKEN or not CHAT_ID:
-        print("  Telegram: missing credentials")
-        return False
-    r    = requests.post(
-        f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage",
-        json={"chat_id": CHAT_ID, "text": text, "parse_mode": "HTML"},
-        timeout=10,
-    )
-    data = r.json()
-    if data.get("ok"):
-        print("  ✓ Telegram sent")
-        return True
-    print(f"  ✗ Telegram failed: {data.get('description')}")
-    return False
+def msg_close(reason, old, new, acct):
+    acc_l = f"\n💰 Equity: <b>${fmt(acct['equity'],2)}</b> · PNL: <b>{'+' if acct['pnl']>=0 else ''}${fmt(acct['pnl'],2)}</b>" if acct else ""
+    return (f"✕ <b>POSITIONS CLOSED</b>\n\nReason: {reason}\n"
+            f"{old} → {new}{acc_l}\n\n<i>{ts_s()} · GitHub Actions</i>")
 
-def build_trade_open_msg(signal: str, sig: dict, btcdom, btc_price: float, eth_price: float, sizes: dict, acct: dict | None) -> str:
-    arrow    = "⬆️" if signal == "LONG_BTC" else "⬇️"
-    bias     = "Long BTC / Short ETH" if signal == "LONG_BTC" else "Long ETH / Short BTC"
-    str_bars = "█" * sig["strength"] + "░" * (5 - sig["strength"])
-    dom_line = f"\n📊 BTC.D: <b>{fmt(btcdom['btc_d'], 2)}%</b>" if btcdom else ""
-    acct_line = (
-        f"\n\n💰 Account equity: <b>${fmt(acct['equity'], 2)}</b>"
-        f" · Available: <b>${fmt(acct['avail'], 2)}</b>"
-    ) if acct else ""
-
-    return (
-        f"{arrow} <b>PAIRS TRADE OPENED</b> — {bias}\n\n"
-        f"📈 Signal: <b>{signal.replace('_', ' ')}</b>\n"
-        f"⚡ Strength: {str_bars} {sig['strength']}/5\n"
-        f"🕯 BTC 15M: <b>{'+' if sig['btc_pct'] >= 0 else ''}{fmt(sig['btc_pct'], 3)}%</b> · "
-        f"ETH/BTC 15M: <b>{'+' if sig['eb_pct'] >= 0 else ''}{fmt(sig['eb_pct'], 3)}%</b>"
-        f"{dom_line}\n\n"
-        f"─────────────────────\n"
-        f"📦 <b>Position Details</b>\n"
-        f"BTC/USD: {sizes['btc_size']} BTC @ ~${fmt(btc_price, 0)} · {min(LEVERAGE, 40)}×\n"
-        f"ETH/USD: {sizes['eth_size']} ETH @ ~${fmt(eth_price, 2)} · {min(LEVERAGE, 20)}×\n"
-        f"Size: ${POSITION_SIZE}/leg · ${POSITION_SIZE * 2} total"
-        f"{acct_line}\n\n"
-        f"<i>{ts_str()} · GitHub Actions runner</i>"
-    )
-
-def build_trade_close_msg(reason: str, old_signal: str, new_signal: str, acct: dict | None) -> str:
-    acct_line = (
-        f"\n💰 Equity: <b>${fmt(acct['equity'], 2)}</b>"
-        f" · PNL: <b>{'+' if acct['pnl'] >= 0 else ''}${fmt(acct['pnl'], 2)}</b>"
-    ) if acct else ""
-    return (
-        f"✕ <b>POSITIONS CLOSED</b>\n\n"
-        f"Reason: {reason}\n"
-        f"Was: <b>{old_signal.replace('_', ' ')}</b>"
-        f" → Now: <b>{new_signal.replace('_', ' ')}</b>"
-        f"{acct_line}\n\n"
-        f"<i>{ts_str()} · GitHub Actions runner</i>"
-    )
-
-def build_neutral_msg(sig: dict, btcdom) -> str:
-    str_bars = "█" * sig["strength"] + "░" * (5 - sig["strength"])
-    dom_line = f" · BTC.D {fmt(btcdom['btc_d'], 2)}%" if btcdom else ""
-    return (
-        f"⏸ <b>No signal — standing aside</b>\n\n"
-        f"BTC 15M: {'+' if sig['btc_pct'] >= 0 else ''}{fmt(sig['btc_pct'], 3)}% · "
-        f"ETH/BTC 15M: {'+' if sig['eb_pct'] >= 0 else ''}{fmt(sig['eb_pct'], 3)}%{dom_line}\n"
-        f"Strength: {str_bars} {sig['strength']}/5\n\n"
-        f"<i>{ts_str()}</i>"
-    )
-
-
-# ════════════════════════════════════════════════════════════════════
-# MAIN
-# ════════════════════════════════════════════════════════════════════
+# ── Main ─────────────────────────────────────────────────────────────
 def run():
-    now_ts = int(datetime.now(timezone.utc).timestamp())
-    print(f"\n{'='*60}")
-    print(f"BTC.D Pairs Trader — {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}")
-    print(f"{'='*60}")
-
-    # ── Load state ──────────────────────────────────────────────────
+    print(f"\n{'='*60}\nBTC.D Pairs Trader — {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}\n{'='*60}")
     state = load_state()
-    print(f"  Last signal: {state['current_signal']} · Position open: {state['position_open']}")
+    print(f"  Last: {state['current_signal']} · open={state['position_open']}")
 
-    # ── Validate credentials ────────────────────────────────────────
-    has_decibel = bool(DEC_BEARER and DEC_ACCOUNT)
-    if not has_decibel:
-        print("  WARNING: Decibel credentials missing — signal-only mode")
-    if not BOT_TOKEN or not CHAT_ID:
-        print("  WARNING: Telegram credentials missing — no notifications")
+    has_dec = bool(DEC_PRIVATE_KEY and DEC_SUB and DEC_NODE_KEY)
+    if not has_dec: print("  WARNING: Decibel credentials missing — signal-only mode")
 
-    # ── Fetch market data ───────────────────────────────────────────
-    print("\n  Fetching market data...")
-    btc15    = fetch_klines("XBTUSD", "15m", 120)
-    eb15     = fetch_klines("ETHXBT", "15m", 120)
-    btc_tick = fetch_ticker("XBTUSD")
-    eb_tick  = fetch_ticker("ETHXBT")
-    btcdom   = fetch_btc_dominance()
+    # Install CLI if trading is enabled
+    if has_dec: install_cli()
 
-    btc_price     = btc_tick["last"]
-    eth_price_usd = btc_price * eb_tick["last"]  # derive ETH/USD from BTC × ETH/BTC
+    print("\n  Fetching data...")
+    b15 = klines("XBTUSD","15m",120)
+    e15 = klines("ETHXBT","15m",120)
+    bt  = ticker("XBTUSD")
+    et  = ticker("ETHXBT")
+    bd  = btcdom()
+    btc_px     = bt["last"]
+    eth_px_usd = btc_px * et["last"]
+    print(f"  BTC: ${fmt(btc_px,0)} · ETH/BTC: {fmt(et['last'],6)}")
+    if bd: print(f"  BTC.D: {fmt(bd['btc_d'],2)}%")
 
-    print(f"  BTC: ${fmt(btc_price, 0)} · ETH/BTC: {fmt(eb_tick['last'], 6)}")
-    if btcdom:
-        print(f"  BTC.D: {fmt(btcdom['btc_d'], 2)}%")
+    sig  = signal(b15, e15)
+    curr = sig["signal"]
+    print(f"\n  Signal: {curr} · BTC {sig['btc_dir']} · ETH/BTC {sig['eb_dir']} · strength {sig['strength']}/5")
 
-    # ── Compute signal ──────────────────────────────────────────────
-    sig    = compute_signal(btc15, eb15)
-    signal = sig["signal"]
+    acct = get_balances() if has_dec else None
+    if acct: print(f"  Equity: ${fmt(acct['equity'],2)} · PNL: ${fmt(acct['pnl'],2)}")
 
-    print(f"\n  Signal: {signal}")
-    print(f"  BTC 15M: {'+' if sig['btc_pct'] >= 0 else ''}{fmt(sig['btc_pct'], 3)}% ({sig['btc_dir']})")
-    print(f"  ETH/BTC 15M: {'+' if sig['eb_pct'] >= 0 else ''}{fmt(sig['eb_pct'], 3)}% ({sig['eb_dir']})")
-    print(f"  Divergence strength: {sig['strength']}/5")
+    old = state["current_signal"]
+    acted = False
 
-    # ── Get account state ───────────────────────────────────────────
-    acct = get_account_overview() if has_decibel else None
-    if acct:
-        print(f"  Equity: ${fmt(acct['equity'], 2)} · PNL: ${fmt(acct['pnl'], 2)}")
+    if curr != old:
+        print(f"\n  Signal changed: {old} → {curr}")
+        if state["position_open"] and old != "NEUTRAL":
+            print(f"  Closing {old} position...")
+            if has_dec: close_all(); time.sleep(2)
+            acct = get_balances() if has_dec else None
+            tg(msg_close(f"Signal flipped to {curr}", old, curr, acct))
+            state["position_open"] = False
 
-    # ── Act on signal ───────────────────────────────────────────────
-    old_signal = state["current_signal"]
-    acted      = False
-
-    if signal != old_signal:
-        print(f"\n  Signal changed: {old_signal} → {signal}")
-
-        # Close existing position if one is open
-        if state["position_open"] and old_signal != "NEUTRAL":
-            print(f"  Closing {old_signal} position...")
-            if has_decibel:
-                close_all_positions()
-                time.sleep(2)
-            reason = f"Signal flipped to {signal}"
-            acct = get_account_overview() if has_decibel else None
-            send_telegram(build_trade_close_msg(reason, old_signal, signal, acct))
-            state["position_open"]  = False
-            state["entry_btc_size"] = 0.0
-            state["entry_eth_size"] = 0.0
-
-        # Open new position if signal is directional
-        if signal != "NEUTRAL":
-            print(f"\n  Opening {signal} position...")
-            if has_decibel:
-                sizes  = execute_trade(signal, btc_price, eth_price_usd)
-                acct   = get_account_overview()
+        if curr != "NEUTRAL":
+            if has_dec:
+                sizes = execute_trade(curr, btc_px, eth_px_usd)
+                acct  = get_balances()
                 state["position_open"]  = True
                 state["entry_btc_size"] = sizes["btc_size"]
                 state["entry_eth_size"] = sizes["eth_size"]
-                state["entry_ts"]       = now_ts
                 state["trade_count"]   += 1
-                send_telegram(build_trade_open_msg(signal, sig, btcdom, btc_price, eth_price_usd, sizes, acct))
+                tg(msg_open(curr, sig, bd, btc_px, eth_px_usd, sizes, acct))
             else:
-                # Signal-only mode — send alert without trading
-                bias = "Long BTC / Short ETH" if signal == "LONG_BTC" else "Long ETH / Short BTC"
-                send_telegram(
-                    f"📡 <b>SIGNAL: {bias}</b> (signal-only mode — add Decibel credentials to trade)\n\n"
-                    f"Strength: {'█' * sig['strength']}{'░' * (5 - sig['strength'])} {sig['strength']}/5\n"
-                    f"<i>{ts_str()}</i>"
-                )
-        elif signal == "NEUTRAL" and old_signal != "NEUTRAL":
-            # Signal went neutral — only notify, don't close (close happens on flip)
-            send_telegram(build_neutral_msg(sig, btcdom))
-
-        state["current_signal"] = signal
-        state["last_signal_ts"] = now_ts
+                bias = "Long BTC/Short ETH" if curr=="LONG_BTC" else "Long ETH/Short BTC"
+                tg(f"📡 <b>SIGNAL: {bias}</b> (signal-only — add Decibel keys to trade)\n"
+                   f"Strength: {'█'*sig['strength']}{'░'*(5-sig['strength'])} {sig['strength']}/5\n"
+                   f"<i>{ts_s()}</i>")
+        state["current_signal"] = curr
         acted = True
-
     else:
-        print(f"  Signal unchanged ({signal}) — holding.")
-        # Refresh account for logging
-        if has_decibel and state["position_open"]:
-            acct = get_account_overview()
-            if acct:
-                print(f"  Live PNL: ${fmt(acct['pnl'], 2)}")
+        print(f"  Unchanged ({curr}) — holding.")
 
-    # ── Save state ──────────────────────────────────────────────────
     save_state(state)
     print(f"\n  Done. Acted: {acted}")
     return 0
 
-
-# ════════════════════════════════════════════════════════════════════
-# ENTRY POINT
-# ════════════════════════════════════════════════════════════════════
 if __name__ == "__main__":
     try:
         sys.exit(run())
     except Exception as e:
-        print(f"\nFATAL ERROR: {e}")
-        import traceback
-        traceback.print_exc()
-        try:
-            send_telegram(
-                f"🔴 <b>BTC.D Trader — Fatal Error</b>\n\n"
-                f"<code>{str(e)[:300]}</code>\n\n"
-                f"<i>{ts_str()}</i>"
-            )
-        except Exception:
-            pass
+        print(f"\nFATAL: {e}")
+        import traceback; traceback.print_exc()
+        try: tg(f"🔴 <b>Trader Error</b>\n<code>{str(e)[:300]}</code>\n<i>{ts_s()}</i>")
+        except: pass
         sys.exit(1)
