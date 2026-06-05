@@ -101,8 +101,11 @@ def signal(btc15, eb15):
 # ── Decibel CLI execution ────────────────────────────────────────────
 def install_cli():
     print("  Installing @decibeltrade/cli...")
-    r = subprocess.run(["npm","install","-g","@decibeltrade/cli"],
-                       capture_output=True,text=True,timeout=120)
+    # Install locally in /tmp so Node can require it with full path
+    r = subprocess.run(
+        ["npm", "install", "@decibeltrade/cli"],
+        capture_output=True, text=True, timeout=120, cwd="/tmp"
+    )
     print("  Done." if r.returncode==0 else f"  Warning: {r.stderr[:100]}")
 
 def cli_env():
@@ -115,11 +118,12 @@ def cli_env():
     return e
 
 def run_cli(action, params):
-    """Run a Decibel action via the official CLI."""
+    """Run a Decibel action via the official CLI installed in /tmp."""
     script = f"""
-const cli = require('@decibeltrade/cli');
+const cli = require('/tmp/node_modules/@decibeltrade/cli');
 async function main() {{
-  const client = new (cli.DecibelClient || cli.default || cli)({{
+  const Client = cli.DecibelClient || cli.default || cli;
+  const client = new Client({{
     network: process.env.DECIBEL_NETWORK,
     privateKey: process.env.DECIBEL_PRIVATE_KEY,
     subaccountAddress: process.env.DECIBEL_SUBACCOUNT_ADDRESS,
@@ -137,8 +141,10 @@ async function main() {{
 }}
 main().catch(e=>{{console.error('CLI_ERROR:'+e.message);process.exit(1);}});
 """
-    result = subprocess.run(["node","-e",script], env=cli_env(),
-                            capture_output=True, text=True, timeout=45, cwd="/tmp")
+    result = subprocess.run(
+        ["node", "-e", script], env=cli_env(),
+        capture_output=True, text=True, timeout=45, cwd="/tmp"
+    )
     if result.returncode != 0:
         raise RuntimeError(f"CLI: {result.stderr[:250]}")
     out = result.stdout.strip()
