@@ -221,6 +221,8 @@ def get_open_bot_positions():
     except Exception as e:
         print(f"  Position check failed: {e}")
     return {"any_open": False, "positions": []}
+
+def get_balances():
     try:
         r = run_cli("get_balances", {"subaccountAddress": DEC_SUB})
         return {"equity":float(r.get("perpEquityBalance",0)),
