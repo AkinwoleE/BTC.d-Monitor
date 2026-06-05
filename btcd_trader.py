@@ -183,7 +183,44 @@ def cli_env():
     if DEC_GAS_KEY: e["DECIBEL_GAS_STATION_API_KEY"] = DEC_GAS_KEY
     return e
 
-def get_balances():
+def get_open_bot_positions():
+    """Check Decibel directly for open BTC/USD and ETH/USD positions."""
+    try:
+        rpc_call = json.dumps({
+            "jsonrpc": "2.0", "id": 1,
+            "method": "tools/call",
+            "params": {"name": "get_positions", "arguments": {}}
+        }) + "\n"
+        result = subprocess.run(
+            ["npx", "-y", "--package", "@decibeltrade/cli", "decibel-mcp"],
+            input=rpc_call, capture_output=True, text=True,
+            timeout=60, env=cli_env(),
+        )
+        stdout = result.stdout.strip()
+        for line in stdout.split("\n"):
+            line = line.strip()
+            if not line: continue
+            try:
+                msg = json.loads(line)
+                if msg.get("id") == 1:
+                    content = msg.get("result", {}).get("content", [])
+                    for item in content:
+                        if item.get("type") == "text":
+                            data = json.loads(item["text"])
+                            positions = data.get("positions", data if isinstance(data, list) else [])
+                            btc_open = any(
+                                "BTC" in str(p.get("market","")) and abs(float(p.get("size",0))) > 0
+                                for p in positions
+                            )
+                            eth_open = any(
+                                "ETH" in str(p.get("market","")) and abs(float(p.get("size",0))) > 0
+                                for p in positions
+                            )
+                            return {"any_open": btc_open or eth_open, "positions": positions}
+            except: continue
+    except Exception as e:
+        print(f"  Position check failed: {e}")
+    return {"any_open": False, "positions": []}
     try:
         r = run_cli("get_balances", {"subaccountAddress": DEC_SUB})
         return {"equity":float(r.get("perpEquityBalance",0)),
@@ -294,10 +331,16 @@ def run():
     old = state["current_signal"]
     acted = False
 
+    # Always check live positions directly — don't trust state file alone
+    live = get_open_bot_positions() if has_dec else {"any_open": state["position_open"]}
+    has_live_position = live["any_open"] or state["position_open"]
+    print(f"  Live positions open: {live['any_open']} · State says open: {state['position_open']}")
+
     if curr != old:
         print(f"\n  Signal changed: {old} → {curr}")
-        if state["position_open"] and old != "NEUTRAL":
-            print(f"  Closing {old} position...")
+        # Close if we have live positions OR state thinks we have positions
+        if has_live_position and old != "NEUTRAL":
+            print(f"  Closing positions (live check: {live['any_open']})...")
             if has_dec: close_all(); time.sleep(2)
             acct = get_balances() if has_dec else None
             tg(msg_close(f"Signal flipped to {curr}", old, curr, acct))
@@ -321,6 +364,12 @@ def run():
         acted = True
     else:
         print(f"  Unchanged ({curr}) — holding.")
+        # Even if signal unchanged, if we have live positions but state
+        # says closed — sync state back up
+        if live["any_open"] and not state["position_open"]:
+            print("  Syncing state — live positions detected but state said closed.")
+            state["position_open"] = True
+            state["current_signal"] = curr
 
     save_state(state)
     print(f"\n  Done. Acted: {acted}")
