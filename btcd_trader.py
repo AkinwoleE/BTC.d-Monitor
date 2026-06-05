@@ -100,12 +100,25 @@ def signal(btc15, eb15):
 
 # ── Decibel CLI execution ────────────────────────────────────────────
 def install_cli():
-    print("  Installing @decibeltrade/cli and dependencies...")
+    print("  Installing @decibeltrade/cli and @decibeltrade/sdk...")
+    # Install in current working directory (repo root on GitHub Actions)
     r = subprocess.run(
-        ["npm", "install", "@decibeltrade/cli", "@decibeltrade/sdk"],
-        capture_output=True, text=True, timeout=120, cwd="/tmp"
+        ["npm", "install", "--ignore-scripts",
+         "@decibeltrade/cli", "@decibeltrade/sdk"],
+        capture_output=True, text=True, timeout=120
     )
-    print("  Done." if r.returncode==0 else f"  Warning: {r.stderr[:200]}")
+    if r.returncode == 0:
+        print("  Done.")
+    else:
+        print(f"  Warning: {r.stderr[:200]}")
+
+    # Find and log the actual CLI dist path for debugging
+    result = subprocess.run(
+        ["node", "-e",
+         "try{const m=require.resolve('@decibeltrade/cli');console.log('FOUND:'+m);}catch(e){console.log('NOT_FOUND:'+e.message);}"],
+        capture_output=True, text=True, timeout=10
+    )
+    print(f"  CLI path check: {result.stdout.strip()[:120]}")
 
 def cli_env():
     e = os.environ.copy()
@@ -117,35 +130,49 @@ def cli_env():
     return e
 
 def run_cli(action, params):
-    """Run a Decibel action via the official CLI installed in /tmp."""
+    """Run a Decibel action via the official CLI using ESM imports."""
+    # The CLI uses ES modules — write a .mjs file for Node to execute
     script = f"""
-const cli = require('/tmp/node_modules/@decibeltrade/cli');
-async function main() {{
-  const Client = cli.DecibelClient || cli.default || cli;
-  const client = new Client({{
-    network: process.env.DECIBEL_NETWORK,
-    privateKey: process.env.DECIBEL_PRIVATE_KEY,
-    subaccountAddress: process.env.DECIBEL_SUBACCOUNT_ADDRESS,
-    nodeApiKey: process.env.DECIBEL_NODE_API_KEY,
-    gasStationApiKey: process.env.DECIBEL_GAS_STATION_API_KEY,
-  }});
-  await client.connect();
-  const p = {json.dumps(params)};
-  let r;
-  if      ('{action}'==='place_market_order') r = await client.exchange.placeMarketOrder(p);
-  else if ('{action}'==='close_position')     r = await client.exchange.closePosition(p);
-  else if ('{action}'==='set_leverage')       r = await client.exchange.setLeverage(p);
-  else if ('{action}'==='get_balances')       r = await client.info.getBalances(p);
-  console.log(JSON.stringify(r));
-}}
-main().catch(e=>{{console.error('CLI_ERROR:'+e.message);process.exit(1);}});
+import {{ createRequire }} from 'module';
+import {{ fileURLToPath }} from 'url';
+import path from 'path';
+
+// Dynamically find the CLI package
+const require2 = createRequire(import.meta.url);
+const cliPkg = require2.resolve('@decibeltrade/cli/package.json');
+const cliDir = path.dirname(cliPkg);
+const cliMain = require2(cliPkg).main || 'dist/index.js';
+const cliPath = path.join(cliDir, cliMain);
+
+const {{ DecibelClient }} = await import(cliPath);
+
+const client = new DecibelClient({{
+  network: process.env.DECIBEL_NETWORK,
+  privateKey: process.env.DECIBEL_PRIVATE_KEY,
+  subaccountAddress: process.env.DECIBEL_SUBACCOUNT_ADDRESS,
+  nodeApiKey: process.env.DECIBEL_NODE_API_KEY,
+  gasStationApiKey: process.env.DECIBEL_GAS_STATION_API_KEY,
+}});
+await client.connect();
+const p = {json.dumps(params)};
+let r;
+if      ('{action}'==='place_market_order') r = await client.exchange.placeMarketOrder(p);
+else if ('{action}'==='close_position')     r = await client.exchange.closePosition(p);
+else if ('{action}'==='set_leverage')       r = await client.exchange.setLeverage(p);
+else if ('{action}'==='get_balances')       r = await client.info.getBalances(p);
+console.log(JSON.stringify(r));
 """
+    script_path = "/tmp/decibel_run.mjs"
+    with open(script_path, "w") as f:
+        f.write(script)
+
     result = subprocess.run(
-        ["node", "-e", script], env=cli_env(),
-        capture_output=True, text=True, timeout=45, cwd="/tmp"
+        ["node", script_path],
+        env=cli_env(),
+        capture_output=True, text=True, timeout=60,
     )
     if result.returncode != 0:
-        raise RuntimeError(f"CLI: {result.stderr[:250]}")
+        raise RuntimeError(f"CLI: {result.stderr[:300]}")
     out = result.stdout.strip()
     if not out: raise RuntimeError("CLI empty response")
     return json.loads(out)
