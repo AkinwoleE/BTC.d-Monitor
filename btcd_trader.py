@@ -100,13 +100,12 @@ def signal(btc15, eb15):
 
 # ── Decibel CLI execution ────────────────────────────────────────────
 def install_cli():
-    print("  Installing @decibeltrade/cli...")
-    # Install locally in /tmp so Node can require it with full path
+    print("  Installing @decibeltrade/cli and dependencies...")
     r = subprocess.run(
-        ["npm", "install", "@decibeltrade/cli"],
+        ["npm", "install", "@decibeltrade/cli", "@decibeltrade/sdk"],
         capture_output=True, text=True, timeout=120, cwd="/tmp"
     )
-    print("  Done." if r.returncode==0 else f"  Warning: {r.stderr[:100]}")
+    print("  Done." if r.returncode==0 else f"  Warning: {r.stderr[:200]}")
 
 def cli_env():
     e = os.environ.copy()
