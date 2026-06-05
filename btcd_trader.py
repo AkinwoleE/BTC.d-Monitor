@@ -101,24 +101,37 @@ def signal(btc15, eb15):
 # ── Decibel CLI execution ────────────────────────────────────────────
 def install_cli():
     print("  Installing @decibeltrade/cli and @decibeltrade/sdk...")
-    # Install in current working directory (repo root on GitHub Actions)
     r = subprocess.run(
         ["npm", "install", "--ignore-scripts",
          "@decibeltrade/cli", "@decibeltrade/sdk"],
         capture_output=True, text=True, timeout=120
     )
-    if r.returncode == 0:
-        print("  Done.")
-    else:
-        print(f"  Warning: {r.stderr[:200]}")
+    print("  Done." if r.returncode==0 else f"  Warning: {r.stderr[:200]}")
 
-    # Find and log the actual CLI dist path for debugging
+    # Patch: the CLI bundles its own nested @decibeltrade/sdk that has
+    # admin.js as ESM but missing its own sub-imports. Fix by replacing
+    # the CLI's nested SDK dist with the top-level SDK dist which works.
+    import shutil
+    src = "node_modules/@decibeltrade/sdk/dist"
+    dst = "node_modules/@decibeltrade/cli/node_modules/@decibeltrade/sdk/dist"
+    if os.path.exists(src) and os.path.exists(dst):
+        print(f"  Patching CLI nested SDK dist...")
+        for fname in os.listdir(src):
+            src_f = os.path.join(src, fname)
+            dst_f = os.path.join(dst, fname)
+            if os.path.isfile(src_f):
+                shutil.copy2(src_f, dst_f)
+        print("  Patch applied.")
+    else:
+        print(f"  Patch skipped — src={os.path.exists(src)} dst={os.path.exists(dst)}")
+
+    # Confirm CLI is findable
     result = subprocess.run(
         ["node", "-e",
          "try{const m=require.resolve('@decibeltrade/cli');console.log('FOUND:'+m);}catch(e){console.log('NOT_FOUND:'+e.message);}"],
         capture_output=True, text=True, timeout=10
     )
-    print(f"  CLI path check: {result.stdout.strip()[:120]}")
+    print(f"  CLI: {result.stdout.strip()[:100]}")
 
 def cli_env():
     e = os.environ.copy()
