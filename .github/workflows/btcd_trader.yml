@@ -2,16 +2,14 @@ name: BTC.D Pairs Trader
 
 on:
   schedule:
-    # Every 15 minutes around the clock
     - cron: '0,15,30,45 * * * *'
-  # Manual trigger from GitHub Actions tab
   workflow_dispatch:
 
 jobs:
   trade:
     name: Run Signal Check + Execute Trade
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 8
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
@@ -19,7 +17,6 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      # Restore state file from previous run
       - name: Restore trader state
         uses: actions/cache@v4
         with:
@@ -33,22 +30,27 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install dependencies
+      - name: Set up Node.js (for Decibel CLI)
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Python dependencies
         run: pip install requests
 
       - name: Run trader
         env:
-          TELEGRAM_BOT_TOKEN:   ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID:     ${{ secrets.TELEGRAM_CHAT_ID }}
-          DECIBEL_BEARER_TOKEN: ${{ secrets.DECIBEL_BEARER_TOKEN }}
-          DECIBEL_ACCOUNT:      ${{ secrets.DECIBEL_ACCOUNT }}
-          DECIBEL_SUBACCOUNT:   ${{ secrets.DECIBEL_SUBACCOUNT }}
-          POSITION_SIZE_USD:    ${{ secrets.POSITION_SIZE_USD }}
-          LEVERAGE:             ${{ secrets.LEVERAGE }}
-          SLIPPAGE:             ${{ secrets.SLIPPAGE }}
+          TELEGRAM_BOT_TOKEN:          ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID:            ${{ secrets.TELEGRAM_CHAT_ID }}
+          DECIBEL_PRIVATE_KEY:         ${{ secrets.DECIBEL_PRIVATE_KEY }}
+          DECIBEL_SUBACCOUNT:          ${{ secrets.DECIBEL_SUBACCOUNT }}
+          DECIBEL_NODE_API_KEY:        ${{ secrets.DECIBEL_NODE_API_KEY }}
+          DECIBEL_GAS_STATION_API_KEY: ${{ secrets.DECIBEL_GAS_STATION_API_KEY }}
+          POSITION_SIZE_USD:           ${{ secrets.POSITION_SIZE_USD }}
+          LEVERAGE:                    ${{ secrets.LEVERAGE }}
+          SLIPPAGE:                    ${{ secrets.SLIPPAGE }}
         run: python btcd_trader.py
 
-      # Save updated state for next run
       - name: Save trader state
         if: always()
         uses: actions/cache@v4
