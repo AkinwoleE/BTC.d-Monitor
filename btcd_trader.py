@@ -43,10 +43,21 @@ KR_IV    = {"15m": 15, "1h": 60}
 STATE_FILE = "trader_state.json"
 
 def load_state():
+    defaults = {
+        "current_signal":  "NEUTRAL",
+        "position_open":   False,
+        "entry_btc_size":  0.0,
+        "entry_eth_size":  0.0,
+        "trade_count":     0,
+    }
     try:
-        with open(STATE_FILE) as f: return json.load(f)
-    except: return {"current_signal":"NEUTRAL","position_open":False,
-                    "entry_btc_size":0.0,"entry_eth_size":0.0,"trade_count":0}
+        with open(STATE_FILE) as f:
+            saved = json.load(f)
+        # Merge with defaults so missing keys don't crash
+        defaults.update(saved)
+    except Exception:
+        pass
+    return defaults
 
 def save_state(s):
     with open(STATE_FILE,"w") as f: json.dump(s,f,indent=2)
