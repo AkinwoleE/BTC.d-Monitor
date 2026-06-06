@@ -12,25 +12,20 @@ jobs:
     timeout-minutes: 8
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+    # Allow workflow to commit state back to repo
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
-
-      - name: Restore trader state
-        uses: actions/cache@v4
-        with:
-          path: trader_state.json
-          key: trader-state-${{ github.run_id }}
-          restore-keys: |
-            trader-state-
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
-      - name: Set up Node.js (for Decibel CLI)
+      - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
@@ -51,9 +46,12 @@ jobs:
           SLIPPAGE:                    ${{ secrets.SLIPPAGE }}
         run: python btcd_trader.py
 
-      - name: Save trader state
+      # Commit updated state file back to repo after every run
+      - name: Save trader state to repo
         if: always()
-        uses: actions/cache@v4
-        with:
-          path: trader_state.json
-          key: trader-state-${{ github.run_id }}
+        run: |
+          git config user.name  "BTC.D Trader Bot"
+          git config user.email "trader-bot@noreply.github.com"
+          git add trader_state.json
+          git diff --staged --quiet || git commit -m "bot: update trader state [skip ci]"
+          git push
