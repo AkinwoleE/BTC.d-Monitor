@@ -1,8 +1,13 @@
 name: BTC.D Pairs Trader
 
 on:
+  # Primary trigger: cron-job.org POSTs here every 15 min (precise, external)
+  repository_dispatch:
+    types: [cron-trigger]
+  # Fallback: GitHub's own scheduler in case cron-job.org is down
   schedule:
     - cron: '0,15,30,45 * * * *'
+  # Manual trigger from Actions tab
   workflow_dispatch:
 
 # Prevent overlapping runs — if a run is already executing (placing a trade),
