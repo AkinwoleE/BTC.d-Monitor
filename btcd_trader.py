@@ -358,7 +358,10 @@ def run():
         need_close = live["any_open"] or (state["position_open"] and old != "NEUTRAL")
         if need_close:
             print(f"  Closing positions (live={live['any_open']} state={state['position_open']})...")
-            if has_dec and live["any_open"]:
+            if has_dec:
+                # Always attempt close when need_close — close_all() catches
+                # its own errors so this is safe even if positions are already
+                # flat (e.g. live check returned False due to a network hiccup).
                 close_all()
                 time.sleep(2)
             acct = get_balances() if has_dec else None
