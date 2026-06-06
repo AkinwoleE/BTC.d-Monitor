@@ -49,6 +49,7 @@ def load_state():
         "entry_btc_size":  0.0,
         "entry_eth_size":  0.0,
         "trade_count":     0,
+        "last_run_utc":    "",
     }
     try:
         with open(STATE_FILE) as f:
@@ -351,10 +352,15 @@ def run():
 
     if curr != old:
         print(f"\n  Signal changed: {old} → {curr}")
-        # Close if we have live positions OR state thinks we have positions
-        if has_live_position and old != "NEUTRAL":
-            print(f"  Closing positions (live check: {live['any_open']})...")
-            if has_dec: close_all(); time.sleep(2)
+        # Close whenever live positions exist (ground truth) OR state believes
+        # they're open — don't gate on old != "NEUTRAL" because a state reset
+        # can leave old="NEUTRAL" while real positions are still on Decibel.
+        need_close = live["any_open"] or (state["position_open"] and old != "NEUTRAL")
+        if need_close:
+            print(f"  Closing positions (live={live['any_open']} state={state['position_open']})...")
+            if has_dec and live["any_open"]:
+                close_all()
+                time.sleep(2)
             acct = get_balances() if has_dec else None
             tg(msg_close(f"Signal flipped to {curr}", old, curr, acct))
             state["position_open"] = False
@@ -377,13 +383,24 @@ def run():
         acted = True
     else:
         print(f"  Unchanged ({curr}) — holding.")
-        # Even if signal unchanged, if we have live positions but state
-        # says closed — sync state back up
-        if live["any_open"] and not state["position_open"]:
+        # Orphaned positions: live open but signal is NEUTRAL (e.g. after a
+        # state reset mid-position). Close them so we don't carry invisible risk.
+        if curr == "NEUTRAL" and live["any_open"]:
+            print("  Orphaned live positions with NEUTRAL signal — closing...")
+            if has_dec:
+                close_all()
+                time.sleep(2)
+            acct = get_balances() if has_dec else None
+            tg(msg_close("Orphaned position cleanup (state reset detected)", old, curr, acct))
+            state["position_open"] = False
+            acted = True
+        # Sync: live positions exist but state says closed (state was stale)
+        elif live["any_open"] and not state["position_open"]:
             print("  Syncing state — live positions detected but state said closed.")
             state["position_open"] = True
             state["current_signal"] = curr
 
+    state["last_run_utc"] = datetime.now(timezone.utc).isoformat()
     save_state(state)
     print(f"\n  Done. Acted: {acted}")
     return 0
