@@ -226,8 +226,8 @@ function renderTable(trades){
 
 async function load(){
   const[lr,sr]=await Promise.allSettled([
-    fetch('https://raw.githubusercontent.com/AkinwoleE/BTC.d-Monitor/main/trader_log.json?t='+Date.now()).then(r=>r.ok?r.json():[]).catch(()=>[]),
-    fetch('https://raw.githubusercontent.com/AkinwoleE/BTC.d-Monitor/main/trader_state.json?t='+Date.now()).then(r=>r.ok?r.json():{}).catch(()=>{})
+    fetch('./trader_log.json?t='+Date.now()).then(r=>r.ok?r.json():[]).catch(()=>[]),
+    fetch('./trader_state.json?t='+Date.now()).then(r=>r.ok?r.json():{}).catch(()=>{})
   ]);
   const log=lr.status==='fulfilled'?lr.value:[];
   const state=sr.status==='fulfilled'?sr.value:{};
