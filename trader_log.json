@@ -208,5 +208,19 @@
     "pnl": 0.03,
     "trade_duration_minutes": 29.9,
     "signal_strength": 3
+  },
+  {
+    "timestamp": "2026-06-07T14:30:59.625688+00:00",
+    "action": "OPEN",
+    "signal": "LONG_BTC",
+    "btc_side": "long",
+    "eth_side": "short",
+    "btc_size": 0.00161,
+    "eth_size": 0.0613,
+    "btc_entry_price": 62122.9,
+    "eth_entry_price": 1631.04,
+    "pnl": null,
+    "trade_duration_minutes": null,
+    "signal_strength": 2
   }
 ]
