@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>BTC.D Monitor · Unified</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0c0e14;--surface:#13151f;--s2:#181b2a;--border:#232640;
+  --purple:#7c5cfc;--cyan:#38bdf8;--green:#22c55e;--red:#ef4444;--yellow:#f59e0b;
+  --text:#e2e8f0;--text2:#94a3b8;--text3:#475569;
+  --font:"Inter",sans-serif;--mono:"JetBrains Mono",monospace;
+}
+[data-theme=light]{
+  --bg:#f1f5f9;--surface:#fff;--s2:#f8fafc;--border:#e2e8f0;
+  --text:#0f172a;--text2:#475569;--text3:#94a3b8;
+}
+body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:100vh;font-size:14px}
+a{color:var(--cyan);text-decoration:none}a:hover{text-decoration:underline}
+.wrap{max-width:1280px;margin:0 auto;padding:24px 20px}
+header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px}
+header h1{font-size:1.35rem;font-weight:700;letter-spacing:-.02em}
+header h1 span{color:var(--cyan)}
+.hdr-sub{font-size:12px;color:var(--text2);margin-top:4px}
+.hdr-right{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.btn{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:7px 13px;cursor:pointer;font-size:13px;color:var(--text);transition:border-color .15s;font-family:var(--font)}
+.btn:hover{border-color:var(--purple)}
+.prices-bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px}
+.px-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;
+  padding:12px 16px;flex:1;min-width:120px}
+.px-lbl{font-size:11px;color:var(--text2);margin-bottom:4px;font-weight:500;text-transform:uppercase;letter-spacing:.05em}
+.px-val{font-family:var(--mono);font-size:1.1rem;font-weight:600}
+.px-chg{font-family:var(--mono);font-size:12px;margin-left:6px}
+.g{color:var(--green)}.r{color:var(--red)}.y{color:var(--yellow)}.c{color:var(--cyan)}.m{color:var(--text2)}
+.main-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:14px}
+@media(max-width:900px){.main-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:560px){.main-grid{grid-template-columns:1fr}}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 20px}
+.card.lp{border-left:3px solid var(--purple)}
+.card.lc{border-left:3px solid var(--cyan)}
+.card.lg{border-left:3px solid var(--green)}
+.card.ly{border-left:3px solid var(--yellow)}
+.lbl{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--text2);margin-bottom:10px}
+.signal-big{font-family:var(--mono);font-size:1.7rem;font-weight:700;line-height:1;margin-bottom:8px}
+.sig-neutral{color:var(--text2)}
+.sig-btc{color:var(--yellow)}
+.sig-eth{color:var(--cyan)}
+.signal-sub{font-size:12px;color:var(--text2)}
+.strength-row{margin-top:10px}
+.bars{font-family:var(--mono);font-size:1.2rem;letter-spacing:2px;color:var(--purple)}
+.status-row{display:flex;flex-direction:column;gap:8px}
+.sr-item{display:flex;justify-content:space-between;align-items:center;font-size:13px}
+.sr-item .sk{color:var(--text2)}
+.sr-item .sv{font-family:var(--mono);font-weight:500}
+.badge{display:inline-block;padding:2px 8px;border-radius:99px;font-size:11px;font-weight:600}
+.b-open{background:rgba(34,197,94,.12);color:var(--green)}
+.b-flat{background:rgba(100,116,139,.12);color:var(--text2)}
+.b-btc{background:rgba(245,158,11,.12);color:var(--yellow)}
+.b-eth{background:rgba(56,189,248,.12);color:var(--cyan)}
+.b-neutral{background:rgba(124,92,252,.12);color:var(--purple)}
+.b-run{background:rgba(56,189,248,.12);color:var(--cyan)}
+.dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:5px}
+.dot-g{background:var(--green)}.dot-r{background:var(--red)}.dot-y{background:var(--yellow)}
+section{margin-bottom:14px}
+.pos-row{display:flex;gap:24px;flex-wrap:wrap;margin-top:10px}
+.pi label{font-size:11px;color:var(--text2);display:block;margin-bottom:3px}
+.pi .pv{font-family:var(--mono);font-size:13px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;padding:6px 10px;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--text2);border-bottom:1px solid var(--border);white-space:nowrap}
+td{padding:8px 10px;border-bottom:1px solid var(--border);font-family:var(--mono)}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:var(--s2)}
+.tbl-wrap{overflow-x:auto}
+.empty{text-align:center;padding:28px;color:var(--text2);font-size:13px}
+footer{text-align:center;padding:28px 0 16px;color:var(--text2);font-size:13px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div>
+    <h1>BTC.D Monitor &middot; <span>Live</span></h1>
+    <div class="hdr-sub" id="upd">Loading data…</div>
+  </div>
+  <div class="hdr-right">
+    <button class="btn" id="rfbtn">&#8635; Refresh</button>
+    <a href="performance.html" class="btn">Performance &#8250;</a>
+    <button class="btn" id="tbtn">&#9728;&#65039;</button>
+  </div>
+</header>
+
+<div class="prices-bar">
+  <div class="px-card">
+    <div class="px-lbl">BTC / USD</div>
+    <div><span class="px-val" id="btc-px">—</span><span class="px-chg" id="btc-chg"></span></div>
+  </div>
+  <div class="px-card">
+    <div class="px-lbl">ETH / BTC</div>
+    <div><span class="px-val" id="eb-px">—</span><span class="px-chg" id="eb-chg"></span></div>
+  </div>
+  <div class="px-card">
+    <div class="px-lbl">ETH / USD</div>
+    <div><span class="px-val" id="eth-px">—</span></div>
+  </div>
+  <div class="px-card">
+    <div class="px-lbl">BTC Dominance</div>
+    <div><span class="px-val" id="btcd">—</span></div>
+  </div>
+</div>
+
+<div class="main-grid">
+  <div class="card lp">
+    <div class="lbl">Live Signal (15M)</div>
+    <div class="signal-big sig-neutral" id="sig-val">—</div>
+    <div class="signal-sub" id="sig-dir">Computing…</div>
+    <div class="strength-row">
+      <div class="bars" id="str-bars">░░░░░</div>
+      <div class="m" style="font-size:12px;margin-top:3px" id="str-lbl">strength 0/5</div>
+    </div>
+  </div>
+
+  <div class="card lc">
+    <div class="lbl">Bot Status</div>
+    <div class="status-row" id="bot-status">
+      <div class="sr-item"><span class="sk">Signal</span><span class="sv m">Loading…</span></div>
+    </div>
+  </div>
+
+  <div class="card ly">
+    <div class="lbl">Last Run</div>
+    <div class="status-row" id="run-status">
+      <div class="sr-item"><span class="sk">Time</span><span class="sv m">—</span></div>
+    </div>
+  </div>
+</div>
+
+<section>
+  <div class="card lg">
+    <div class="lbl">Open Positions</div>
+    <div id="pos-body"><span class="m">Loading state…</span></div>
+  </div>
+</section>
+
+<section>
+  <div class="card">
+    <div class="lbl" style="margin-bottom:12px">Recent Trades</div>
+    <div class="tbl-wrap" id="hist-tbl"><div class="empty">No trades yet</div></div>
+  </div>
+</section>
+
+<footer>
+  <a href="performance.html">Full Performance Dashboard &#8250;</a>
+  &nbsp;&middot;&nbsp;
+  Data: <a href="https://www.kraken.com" target="_blank">Kraken</a> &amp;
+  <a href="https://api.coinlore.net" target="_blank">CoinLore</a>
+  &nbsp;&middot;&nbsp; Auto-refresh 60s
+</footer>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+let dark=localStorage.getItem('theme')!=='light';
+function applyTheme(){
+  document.documentElement.setAttribute('data-theme',dark?'dark':'light');
+  $("tbtn").textContent=dark?'\u2600\ufe0f':'\ud83c\udf19';
+  localStorage.setItem('theme',dark?'dark':'light');
+}
+$("tbtn").onclick=()=>{dark=!dark;applyTheme()};
+applyTheme();
+
+const fmt=(n,d=2)=>n==null||isNaN(n)?'—':(+n).toFixed(d);
+const fmtDate=ts=>{
+  if(!ts)return'—';
+  const d=new Date(ts);
+  return d.toLocaleDateString('en-GB',{month:'short',day:'numeric'})
+    +' '+d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+};
+const pc=n=>n>0?'g':n<0?'r':'';
+const bars=n=>'\u2588'.repeat(n)+'\u2591'.repeat(5-n);
+
+// Kraken OHLC fetch
+async function fetchKlines(pair,interval,n){
+  const since=Math.floor(Date.now()/1000)-interval*60*(n+5);
+  const url=`https://api.kraken.com/0/public/OHLC?pair=${pair}&interval=${interval}&since=${since}`;
+  const d=await fetch(url).then(r=>r.json());
+  const keyMap={XBTUSD:'XXBTZUSD',ETHXBT:'XETHXXBT'};
+  const key=keyMap[pair]||Object.keys(d.result).find(k=>k!=='last');
+  return d.result[key].slice(-n).map(c=>({
+    ts:+c[0]*1000,open:+c[1],high:+c[2],low:+c[3],close:+c[4],vol:+c[6]
+  }));
+}
+async function fetchTicker(pair){
+  const d=await fetch(`https://api.kraken.com/0/public/Ticker?pair=${pair}`).then(r=>r.json());
+  const k=Object.keys(d.result)[0],t=d.result[k];
+  return{last:+t.c[0],pct:(+t.c[0]-+t.o)/+t.o*100};
+}
+async function fetchDom(){
+  try{
+    const d=await fetch('https://api.coinlore.net/api/global/').then(r=>r.json());
+    const v=Array.isArray(d)?d[0]:d;
+    return{btc:+v.btc_d,eth:+v.eth_d};
+  }catch(e){return null}
+}
+
+// Signal computation (mirrors Python signal())
+function computeSignal(btc15,eb15){
+  const cdir=c=>c.close>=c.open?'up':'dn';
+  const l3b=btc15.slice(-4,-1),l3e=eb15.slice(-4,-1);
+  if(l3b.length<3)return{signal:'NEUTRAL',strength:0,btc_dir:'dn',eb_dir:'dn',btc_pct:0,eb_pct:0};
+  const bd=l3b.filter(c=>cdir(c)==='up').length>=2?'up':'dn';
+  const ed=l3e.filter(c=>cdir(c)==='up').length>=2?'up':'dn';
+  const n=Math.min(btc15.length,eb15.length,16);
+  let dv=0;
+  for(let i=0;i<n;i++) if(cdir(btc15[btc15.length-n+i])!==cdir(eb15[eb15.length-n+i]))dv++;
+  const strength=Math.round(dv/n*5);
+  const pctFn=c=>c.open?(c.close-c.open)/c.open*100:0;
+  let signal='NEUTRAL';
+  if(bd==='up'&&ed==='dn')signal='LONG_BTC';
+  else if(bd==='dn'&&ed==='up')signal='LONG_ETH';
+  return{signal,strength,btc_dir:bd,eb_dir:ed,
+    btc_pct:pctFn(btc15[btc15.length-2]),eb_pct:pctFn(eb15[eb15.length-2])};
+}
+
+function renderSignal(sig){
+  const cls={LONG_BTC:'sig-btc',LONG_ETH:'sig-eth',NEUTRAL:'sig-neutral'};
+  const el=$("sig-val");
+  el.className='signal-big '+(cls[sig.signal]||'sig-neutral');
+  el.textContent=sig.signal;
+  $("sig-dir").textContent=
+    `BTC: ${sig.btc_dir} (${sig.btc_pct>=0?'+':''}${fmt(sig.btc_pct,3)}%)  `+
+    `ETH/BTC: ${sig.eb_dir} (${sig.eb_pct>=0?'+':''}${fmt(sig.eb_pct,3)}%)`;
+  $("str-bars").textContent=bars(sig.strength);
+  $("str-lbl").textContent=`strength ${sig.strength}/5`;
+}
+
+function renderBotStatus(state){
+  if(!state){$("bot-status").innerHTML='<div class="sr-item"><span class="sk m">No state file</span></div>';return}
+  const s=state.current_signal||'NEUTRAL';
+  const isOpen=state.position_open;
+  const lb=s==='LONG_BTC',le=s==='LONG_ETH';
+  $("bot-status").innerHTML=`
+    <div class="sr-item">
+      <span class="sk">Signal</span>
+      <span class="sv"><span class="badge ${lb?'b-btc':le?'b-eth':'b-neutral'}">${s}</span></span>
+    </div>
+    <div class="sr-item">
+      <span class="sk">Position</span>
+      <span class="sv"><span class="badge ${isOpen?'b-open':'b-flat'}">${isOpen?'OPEN':'FLAT'}</span></span>
+    </div>
+    <div class="sr-item">
+      <span class="sk">Trade #</span>
+      <span class="sv">${state.trade_count||0}</span>
+    </div>`;
+  const rt=state.last_run_utc;
+  if(rt){
+    const ago=Math.round((Date.now()-new Date(rt))/60000);
+    const dot=ago<20?'dot-g':ago<40?'dot-y':'dot-r';
+    $("run-status").innerHTML=`
+      <div class="sr-item">
+        <span class="sk">Last run</span>
+        <span class="sv">${fmtDate(rt)}</span>
+      </div>
+      <div class="sr-item">
+        <span class="sk">Age</span>
+        <span class="sv"><span class="dot ${dot}"></span>${ago}m ago</span>
+      </div>`;
+  }
+}
+
+function renderPos(state){
+  const el=$("pos-body");
+  if(!state?.position_open){
+    el.innerHTML='<span class="m">No open position &mdash; </span><span class="badge b-flat">FLAT</span>';
+    return;
+  }
+  const s=state.current_signal,lb=s==='LONG_BTC';
+  el.innerHTML=`<div class="pos-row">
+    <div class="pi"><label>Signal</label><div class="pv"><span class="badge ${lb?'b-btc':'b-eth'}">${s}</span></div></div>
+    <div class="pi"><label>Status</label><div class="pv"><span class="badge b-open">OPEN</span></div></div>
+    ${state.entry_btc_size?`<div class="pi"><label>BTC Size</label><div class="pv">${state.entry_btc_size}</div></div>`:''}
+    ${state.entry_eth_size?`<div class="pi"><label>ETH Size</label><div class="pv">${state.entry_eth_size}</div></div>`:''}
+    ${state.entry_btc_price?`<div class="pi"><label>BTC Entry</label><div class="pv">$${(+state.entry_btc_price).toLocaleString()}</div></div>`:''}
+    ${state.entry_eth_price?`<div class="pi"><label>ETH Entry</label><div class="pv">$${(+state.entry_eth_price).toFixed(2)}</div></div>`:''}
+    ${state.entry_time_utc?`<div class="pi"><label>Opened</label><div class="pv">${fmtDate(state.entry_time_utc)}</div></div>`:''}
+  </div>`;
+}
+
+function renderHistory(log){
+  if(!log?.length){return}
+  const opens={};
+  const trades=[];
+  for(const e of log){
+    if(e.action==='OPEN')opens[e.signal]=e;
+    else if(e.action==='CLOSE'){trades.push({open:opens[e.signal]||null,close:e});delete opens[e.signal];}
+  }
+  for(const o of Object.values(opens))trades.push({open:o,close:null});
+  if(!trades.length)return;
+  const rows=trades.slice(-10).reverse().map((t,i)=>{
+    const sig=t.open?.signal||t.close?.signal||'';
+    const sc=sig==='LONG_BTC'?'y':sig==='LONG_ETH'?'c':'';
+    const dur=t.close?.trade_duration_minutes!=null?`${t.close.trade_duration_minutes}m`:'—';
+    const pnl=t.close?.pnl!=null?`<span class="${pc(t.close.pnl)}">$${fmt(t.close.pnl)}</span>`:'—';
+    const closed=t.close?fmtDate(t.close.timestamp):'<span class="badge b-open" style="font-size:10px">OPEN</span>';
+    return`<tr>
+      <td class="${sc}">${sig.replace('LONG_','')}</td>
+      <td>${t.open?fmtDate(t.open.timestamp):'—'}</td>
+      <td>${closed}</td>
+      <td>${dur}</td>
+      <td>${pnl}</td>
+      <td>${t.open?.signal_strength!=null?`<span style="color:var(--purple)">${'█'.repeat(t.open.signal_strength)+'░'.repeat(5-t.open.signal_strength)}</span>`:'—'}</td>
+    </tr>`;
+  }).join('');
+  $("hist-tbl").innerHTML=`<table><thead><tr>
+    <th>Signal</th><th>Opened</th><th>Closed</th><th>Duration</th><th>PnL</th><th>Strength</th>
+  </tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+async function refresh(){
+  $("upd").textContent='Refreshing…';
+  try{
+    const[bt,et,dom,b15,e15,state,log]=await Promise.allSettled([
+      fetchTicker('XBTUSD'),
+      fetchTicker('ETHXBT'),
+      fetchDom(),
+      fetchKlines('XBTUSD',15,120),
+      fetchKlines('ETHXBT',15,120),
+      fetch('./trader_state.json').then(r=>r.ok?r.json():null).catch(()=>null),
+      fetch('./trader_log.json').then(r=>r.ok?r.json():[]).catch(()=>[])
+    ]);
+
+    const btcT=bt.value,ebT=et.value;
+    if(btcT){
+      $("btc-px").textContent='$'+btcT.last.toLocaleString(undefined,{maximumFractionDigits:0});
+      const chg=$("btc-chg");
+      chg.textContent=(btcT.pct>=0?'+':'')+(btcT.pct.toFixed(2))+'%';
+      chg.className='px-chg '+(btcT.pct>=0?'g':'r');
+    }
+    if(ebT){
+      $("eb-px").textContent=ebT.last.toFixed(6);
+      const chg=$("eb-chg");
+      chg.textContent=(ebT.pct>=0?'+':'')+(ebT.pct.toFixed(3))+'%';
+      chg.className='px-chg '+(ebT.pct>=0?'g':'r');
+    }
+    if(btcT&&ebT)$("eth-px").textContent='$'+(btcT.last*ebT.last).toFixed(2);
+    if(dom.value)$("btcd").textContent=dom.value.btc.toFixed(2)+'%';
+
+    if(b15.value&&e15.value){
+      const sig=computeSignal(b15.value,e15.value);
+      renderSignal(sig);
+    }
+    const stateVal=state.value;
+    renderBotStatus(stateVal);
+    renderPos(stateVal);
+    renderHistory(log.value||[]);
+
+    $("upd").textContent='Updated '+new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  }catch(e){
+    $("upd").textContent='Error: '+e.message;
+    console.error(e);
+  }
+}
+
+$("rfbtn").onclick=refresh;
+refresh();
+setInterval(refresh,60000);
+</script>
+</body></html>
