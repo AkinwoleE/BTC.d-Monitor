@@ -1,8 +1,8 @@
 {
-  "current_signal": "LONG_BTC",
-  "position_open": true,
+  "current_signal": "NEUTRAL",
+  "position_open": false,
   "entry_btc_size": 0.00163,
   "entry_eth_size": 0.063,
   "trade_count": 18,
-  "last_run_utc": "2026-06-07T02:00:47.790319+00:00"
+  "last_run_utc": "2026-06-07T02:15:59.140570+00:00"
 }
