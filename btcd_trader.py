@@ -14,6 +14,7 @@ Optional:
   POSITION_SIZE_USD  (default 100)
   LEVERAGE           (default 3)
   SLIPPAGE           (default 1)
+  TRAIL_PCT          (default 0.50)  — trailing stop pullback fraction
 """
 
 import os, sys, json, time, subprocess, requests
@@ -31,6 +32,8 @@ DEC_GAS_KEY     = os.environ.get("DECIBEL_GAS_STATION_API_KEY", "")
 POSITION_SIZE = float(os.environ.get("POSITION_SIZE_USD", "100"))
 LEVERAGE      = int(os.environ.get("LEVERAGE", "3"))
 SLIPPAGE      = float(os.environ.get("SLIPPAGE", "1"))
+TRAIL_PCT     = float(os.environ.get("TRAIL_PCT", "0.50"))
+FEE_RATE      = 0.00034  # Decibel Tier 0 taker rate
 MAX_LEV       = {"BTC/USD": 40, "ETH/USD": 20}
 
 # ── Data sources ─────────────────────────────────────────────────────────────
@@ -55,6 +58,9 @@ def load_state():
         "entry_btc_price": 0.0,
         "entry_eth_price": 0.0,
         "entry_equity":    0.0,
+        "fee_threshold":   0.0,
+        "peak_pnl":        0.0,
+        "trail_active":    False,
     }
     try:
         with open(STATE_FILE) as f:
@@ -97,6 +103,10 @@ def trade_duration_min(entry_time_utc):
         return round((datetime.now(timezone.utc) - entry_t).total_seconds() / 60, 1)
     except Exception:
         return None
+
+def calc_fee_threshold(btc_price, btc_size, eth_price, eth_size):
+    """Round-trip fee: open + close, both legs, taker rate."""
+    return round((btc_price * btc_size + eth_price * eth_size) * FEE_RATE * 2, 4)
 
 # ── Data fetching ─────────────────────────────────────────────────────────────
 def klines(pair, tf, n):
@@ -350,6 +360,13 @@ def msg_lag(lag):
             f"<i>Alert only — no trade placed</i>\n\n"
             f"<i>{ts_s()}</i>")
 
+def msg_trail_stop(current_pnl, peak_pnl, acct):
+    acc_l = (f"\n\U0001f4b0 Equity: <b>${fmt(acct['equity'],2)}</b>" if acct else "")
+    return (f"📈 <b>TRAILING STOP TRIGGERED</b>\n\n"
+            f"Locked: <b>{'+' if current_pnl >= 0 else ''}${fmt(current_pnl,2)}</b>\n"
+            f"Peak was: <b>${fmt(peak_pnl,2)}</b>{acc_l}\n\n"
+            f"<i>{ts_s()} · GitHub Actions</i>")
+
 # ── Main ──────────────────────────────────────────────────────────────────────
 def run():
     print(f"\n{'='*60}")
@@ -422,6 +439,8 @@ def run():
                                               if acct else None),
                     "trade_duration_minutes": trade_duration_min(state.get("entry_time_utc", "")),
                     "signal_strength":        sig["strength"],
+                    "exit_reason":            "SIGNAL_FLIP",
+                    "peak_pnl":               state.get("peak_pnl", None),
                 })
             tg(msg_close(f"Signal flipped to {curr}", old, curr, acct))
             state["position_open"] = False
@@ -453,6 +472,11 @@ def run():
                 state["entry_eth_price"] = round(eth_px_usd, 2)
                 state["entry_equity"]    = acct["equity"] if acct else 0.0
                 state["trade_count"]    += 1
+                fee_thr = calc_fee_threshold(btc_px, sizes["btc_size"], eth_px_usd, sizes["eth_size"])
+                state["fee_threshold"]   = fee_thr
+                state["peak_pnl"]        = 0.0
+                state["trail_active"]    = False
+                print(f"  Fee threshold: ${fmt(fee_thr,4)}")
                 tg(msg_open(curr, sig, bd, btc_px, eth_px_usd, sizes, acct))
             else:
                 bias = "Long BTC/Short ETH" if curr == "LONG_BTC" else "Long ETH/Short BTC"
@@ -463,7 +487,61 @@ def run():
         acted = True
     else:
         print(f"  Unchanged ({curr}) -- holding.")
-        if curr == "NEUTRAL" and live["any_open"]:
+        trail_stopped = False
+
+        if state["position_open"] and has_dec and acct and curr != "NEUTRAL":
+            current_pnl = acct.get("pnl", 0.0)
+            fee_thr     = state.get("fee_threshold", 0.0)
+            peak        = state.get("peak_pnl", 0.0)
+            active      = state.get("trail_active", False)
+
+            if current_pnl < fee_thr:
+                print(f"  Fee zone — PnL: ${fmt(current_pnl,3)}, need ${fmt(fee_thr,3)} to cover fees")
+            else:
+                if not active:
+                    print(f"  Trail activated — PnL ${fmt(current_pnl,3)} cleared fee threshold ${fmt(fee_thr,3)}")
+                    state["trail_active"] = True
+                    active = True
+
+                if current_pnl > peak:
+                    state["peak_pnl"] = current_pnl
+                    peak = current_pnl
+                    print(f"  New peak PnL: ${fmt(peak,3)}")
+
+                stop_level = peak * (1 - TRAIL_PCT)
+                print(f"  Trail: PnL=${fmt(current_pnl,3)}  peak=${fmt(peak,3)}  stop=${fmt(stop_level,3)}")
+
+                if current_pnl < stop_level:
+                    print(f"  TRAIL STOP: ${fmt(current_pnl,3)} < stop ${fmt(stop_level,3)}")
+                    close_all()
+                    time.sleep(2)
+                    acct = get_balances()
+                    append_log({
+                        "timestamp":              datetime.now(timezone.utc).isoformat(),
+                        "action":                 "CLOSE",
+                        "signal":                 old,
+                        "btc_side":               "long"  if old == "LONG_BTC" else "short",
+                        "eth_side":               "short" if old == "LONG_BTC" else "long",
+                        "btc_size":               state.get("entry_btc_size", 0),
+                        "eth_size":               state.get("entry_eth_size", 0),
+                        "btc_entry_price":        state.get("entry_btc_price", 0),
+                        "eth_entry_price":        state.get("entry_eth_price", 0),
+                        "pnl":                    (round(acct["equity"] -
+                                                  state.get("entry_equity", acct["equity"]), 2)
+                                                  if acct else None),
+                        "trade_duration_minutes": trade_duration_min(state.get("entry_time_utc", "")),
+                        "signal_strength":        sig["strength"],
+                        "exit_reason":            "TRAIL_STOP",
+                        "peak_pnl":               peak,
+                    })
+                    tg(msg_trail_stop(acct["pnl"] if acct else current_pnl, peak, acct))
+                    state["position_open"] = False
+                    state["peak_pnl"]      = 0.0
+                    state["trail_active"]  = False
+                    trail_stopped = True
+                    acted = True
+
+        if not trail_stopped and curr == "NEUTRAL" and live["any_open"]:
             print("  Orphaned live positions -- closing...")
             if has_dec:
                 close_all()
@@ -485,11 +563,13 @@ def run():
                                               if acct else None),
                     "trade_duration_minutes": trade_duration_min(state.get("entry_time_utc", "")),
                     "signal_strength":        sig["strength"],
+                    "exit_reason":            "ORPHAN_CLEANUP",
+                    "peak_pnl":               state.get("peak_pnl", None),
                 })
             tg(msg_close("Orphaned position cleanup (state reset detected)", old, curr, acct))
             state["position_open"] = False
             acted = True
-        elif live["any_open"] and not state["position_open"]:
+        elif not trail_stopped and live["any_open"] and not state["position_open"]:
             print("  Syncing state -- live positions detected but state said closed.")
             state["position_open"]  = True
             state["current_signal"] = curr
