@@ -15,6 +15,7 @@ Optional:
   LEVERAGE           (default 3)
   SLIPPAGE           (default 1)
   TRAIL_PCT          (default 0.50)  — trailing stop pullback fraction
+  STOP_LOSS_USD      (default -0.14) — hard PnL floor to close position
 """
 
 import os, sys, json, time, subprocess, requests
@@ -33,6 +34,7 @@ POSITION_SIZE = float(os.environ.get("POSITION_SIZE_USD", "100"))
 LEVERAGE      = int(os.environ.get("LEVERAGE", "3"))
 SLIPPAGE      = float(os.environ.get("SLIPPAGE", "1"))
 TRAIL_PCT     = float(os.environ.get("TRAIL_PCT", "0.50"))
+STOP_LOSS_USD = float(os.environ.get("STOP_LOSS_USD", "-0.14"))
 FEE_RATE      = 0.00034  # Decibel Tier 0 taker rate
 MAX_LEV       = {"BTC/USD": 40, "ETH/USD": 20}
 
@@ -495,7 +497,37 @@ def run():
             peak        = state.get("peak_pnl", 0.0)
             active      = state.get("trail_active", False)
 
-            if current_pnl < fee_thr:
+            if current_pnl <= STOP_LOSS_USD:
+                print(f"  STOP LOSS: PnL ${fmt(current_pnl,3)} <= floor ${fmt(STOP_LOSS_USD,3)}")
+                close_all()
+                time.sleep(2)
+                acct = get_balances()
+                append_log({
+                    "timestamp":              datetime.now(timezone.utc).isoformat(),
+                    "action":                 "CLOSE",
+                    "signal":                 old,
+                    "btc_side":               "long"  if old == "LONG_BTC" else "short",
+                    "eth_side":               "short" if old == "LONG_BTC" else "long",
+                    "btc_size":               state.get("entry_btc_size", 0),
+                    "eth_size":               state.get("entry_eth_size", 0),
+                    "btc_entry_price":        state.get("entry_btc_price", 0),
+                    "eth_entry_price":        state.get("entry_eth_price", 0),
+                    "pnl":                    (round(acct["equity"] -
+                                              state.get("entry_equity", acct["equity"]), 2)
+                                              if acct else None),
+                    "trade_duration_minutes": trade_duration_min(state.get("entry_time_utc", "")),
+                    "signal_strength":        sig["strength"],
+                    "exit_reason":            "STOP_LOSS",
+                    "peak_pnl":               state.get("peak_pnl", None),
+                })
+                tg(f"\U0001f6d1 <b>STOP LOSS HIT</b>\n\nPnL: <b>${fmt(current_pnl,3)}</b> reached floor "
+                   f"<b>${fmt(STOP_LOSS_USD,3)}</b>\n\n<i>{ts_s()} · GitHub Actions</i>")
+                state["position_open"] = False
+                state["peak_pnl"]      = 0.0
+                state["trail_active"]  = False
+                trail_stopped = True
+                acted = True
+            elif current_pnl < fee_thr:
                 print(f"  Fee zone — PnL: ${fmt(current_pnl,3)}, need ${fmt(fee_thr,3)} to cover fees")
             else:
                 if not active:
