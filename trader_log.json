@@ -1414,5 +1414,19 @@
     "signal_strength": 2,
     "exit_reason": "STOP_LOSS",
     "peak_pnl": 0.0
+  },
+  {
+    "timestamp": "2026-06-09T16:46:21.056333+00:00",
+    "action": "OPEN",
+    "signal": "LONG_BTC",
+    "btc_side": "long",
+    "eth_side": "short",
+    "btc_size": 0.00163,
+    "eth_size": 0.0614,
+    "btc_entry_price": 61303.3,
+    "eth_entry_price": 1629.69,
+    "pnl": null,
+    "trade_duration_minutes": null,
+    "signal_strength": 2
   }
 ]
