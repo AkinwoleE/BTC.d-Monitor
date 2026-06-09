@@ -80,7 +80,7 @@ tr:hover td{background:var(--s2)}
   <div class="card lg"><div class="lbl">Total PnL</div><div class="val" id="s-pnl">—</div></div>
   <div class="card lg"><div class="lbl">Best Trade</div><div class="val" id="s-best">—</div></div>
   <div class="card lr"><div class="lbl">Worst Trade</div><div class="val" id="s-worst">—</div></div>
-  <div class="card lp"><div class="lbl">Avg / Trade</div><div class="val" id="s-avg">—</div></div>
+  <div class="card lp"><div class="lbl">Total Volume</div><div class="val" id="s-vol">—</div></div>
 </div>
 
 <section>
@@ -146,12 +146,17 @@ function stats(trades){
   const ps=cl.map(t=>t.close.pnl);
   const w=ps.filter(p=>p>0).length;
   const tot=ps.reduce((a,b)=>a+b,0);
+  const vol=trades.reduce((a,t)=>{
+    const o=t.open;
+    if(!o)return a;
+    return a+(o.btc_entry_price*o.btc_size||0)+(o.eth_entry_price*o.eth_size||0);
+  },0);
   return{total:trades.length,closed:cl.length,
     wr:cl.length?w/cl.length*100:null,
     pnl:cl.length?tot:null,
     best:ps.length?Math.max(...ps):null,
     worst:ps.length?Math.min(...ps):null,
-    avg:cl.length?tot/cl.length:null};
+    vol:trades.length?vol:null};
 }
 
 let chart=null,lastTrades=[];
@@ -253,7 +258,7 @@ async function load(){
   $("s-pnl").innerHTML=st.pnl!=null?`<span class="${pc(st.pnl)}">$${fmt(st.pnl)}</span>`:'—';
   $("s-best").innerHTML=st.best!=null?`<span class="g">+$${fmt(st.best)}</span>`:'—';
   $("s-worst").innerHTML=st.worst!=null?`<span class="r">$${fmt(st.worst)}</span>`:'—';
-  $("s-avg").innerHTML=st.avg!=null?`<span class="${pc(st.avg)}">$${fmt(st.avg)}</span>`:'—';
+  $("s-vol").innerHTML=st.vol!=null?`<span class="c">$${(st.vol).toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:0})}</span>`:'—';
   rebuildChart();
   renderPos(state);
   renderTable(lastTrades);
