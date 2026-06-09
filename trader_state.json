@@ -1,15 +1,15 @@
 {
-  "current_signal": "NEUTRAL",
-  "position_open": false,
-  "entry_btc_size": 0.00158,
-  "entry_eth_size": 0.059,
-  "trade_count": 57,
-  "last_run_utc": "2026-06-09T01:15:45.444632+00:00",
-  "entry_time_utc": "2026-06-08T22:31:06.433109+00:00",
-  "entry_btc_price": 63346.9,
-  "entry_eth_price": 1694.91,
-  "entry_equity": 60.788416,
-  "fee_threshold": 0.1361,
-  "peak_pnl": 0.19888800000000306,
-  "trail_active": true
+  "current_signal": "LONG_BTC",
+  "position_open": true,
+  "entry_btc_size": 0.00159,
+  "entry_eth_size": 0.0599,
+  "trade_count": 58,
+  "last_run_utc": "2026-06-09T01:31:00.892653+00:00",
+  "entry_time_utc": "2026-06-09T01:31:00.475646+00:00",
+  "entry_btc_price": 62776.6,
+  "entry_eth_price": 1669.73,
+  "entry_equity": 61.00297099912999,
+  "fee_threshold": 0.1359,
+  "peak_pnl": 0.0,
+  "trail_active": false
 }
