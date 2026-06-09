@@ -247,7 +247,7 @@ async function load(){
   const log=lr.status==='fulfilled'?lr.value:[];
   const state=sr.status==='fulfilled'?sr.value:{};
   lastTrades=pairTrades(log);
-  const st=stats(lastTrades);
+  const st=stats(lastTrades.slice(1));
   $("s-tot").textContent=st.total;
   $("s-wr").innerHTML=st.wr!=null?`<span class="${st.wr>=50?'g':'r'}">${st.wr.toFixed(1)}%</span>`:'—';
   $("s-pnl").innerHTML=st.pnl!=null?`<span class="${pc(st.pnl)}">$${fmt(st.pnl)}</span>`:'—';
