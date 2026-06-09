@@ -157,9 +157,10 @@ function stats(trades){
 let chart=null,lastTrades=[];
 function rebuildChart(){
   const cl=lastTrades.filter(t=>t.close?.pnl!=null);
-  const labels=['Start',...cl.map(t=>fmtDate(t.close.timestamp))];
+  const cl2=cl.slice(1);
+  const labels=['Start',...cl2.map(t=>fmtDate(t.close.timestamp))];
   let cum=0;
-  const data=[0,...cl.map(t=>{cum+=t.close.pnl;return+cum.toFixed(2)})];
+  const data=[0,...cl2.map(t=>{cum+=t.close.pnl;return+cum.toFixed(2)})];
   const gridClr=dark?'rgba(255,255,255,.05)':'rgba(0,0,0,.06)';
   const tickClr=dark?'#475569':'#94a3b8';
   if(chart)chart.destroy();
