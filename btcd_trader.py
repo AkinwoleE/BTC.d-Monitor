@@ -414,6 +414,18 @@ def run():
     print(f"\n  Signal: {curr}  BTC {sig['btc_dir']}  ETH/BTC {sig['eb_dir']}"
           f"  strength {sig['strength']}/5  convergence={ct}")
 
+    append_log({
+        "timestamp":        datetime.now(timezone.utc).isoformat(),
+        "action":           "SIGNAL",
+        "signal":           curr,
+        "btc_dir":          sig["btc_dir"],
+        "eb_dir":           sig["eb_dir"],
+        "signal_strength":  sig["strength"],
+        "convergence_type": ct,
+        "btc_price":        round(btc_px, 2),
+        "position_open":    state["position_open"],
+    })
+
     lag = check_lag_signal(b1h, e1h, e15)
     if lag:
         print(f"  LAG: BTC 1H {fmt(lag['btc_1h_pct'],3)}%  "
