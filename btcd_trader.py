@@ -110,6 +110,18 @@ def calc_fee_threshold(btc_price, btc_size, eth_price, eth_size):
     """Round-trip fee: open + close, both legs, taker rate."""
     return round((btc_price * btc_size + eth_price * eth_size) * FEE_RATE * 2, 4)
 
+def conv_type(btc15, eb15):
+    """Classify market regime using same 2-of-3 closed-candle logic as signal()."""
+    l3b = btc15[-4:-1]; l3e = eb15[-4:-1]
+    if len(l3b) < 3 or len(l3e) < 3:
+        return None
+    btc_up = sum(1 for c in l3b if cdir(c) == "up") >= 2
+    eb_up  = sum(1 for c in l3e if cdir(c) == "up") >= 2
+    if btc_up and eb_up:         return "BROAD_RALLY"
+    if not btc_up and not eb_up: return "BROAD_SELLOFF"
+    if btc_up:                   return "BTC_LEADS_UP"
+    return "BTC_LEADS_DOWN"
+
 # ── Data fetching ─────────────────────────────────────────────────────────────
 def klines(pair, tf, n):
     iv    = KR_IV.get(tf, 15)
@@ -398,8 +410,9 @@ def run():
 
     sig  = signal(b15, e15)
     curr = sig["signal"]
+    ct   = conv_type(b15, e15)
     print(f"\n  Signal: {curr}  BTC {sig['btc_dir']}  ETH/BTC {sig['eb_dir']}"
-          f"  strength {sig['strength']}/5")
+          f"  strength {sig['strength']}/5  convergence={ct}")
 
     lag = check_lag_signal(b1h, e1h, e15)
     if lag:
@@ -443,6 +456,7 @@ def run():
                     "signal_strength":        sig["strength"],
                     "exit_reason":            "SIGNAL_FLIP",
                     "peak_pnl":               state.get("peak_pnl", None),
+                    "convergence_type":        ct,
                 })
             tg(msg_close(f"Signal flipped to {curr}", old, curr, acct))
             state["position_open"] = False
@@ -465,6 +479,7 @@ def run():
                     "pnl":                    None,
                     "trade_duration_minutes": None,
                     "signal_strength":        sig["strength"],
+                    "convergence_type":        ct,
                 })
                 state["position_open"]   = True
                 state["entry_btc_size"]  = sizes["btc_size"]
@@ -519,6 +534,7 @@ def run():
                     "signal_strength":        sig["strength"],
                     "exit_reason":            "STOP_LOSS",
                     "peak_pnl":               state.get("peak_pnl", None),
+                    "convergence_type":        ct,
                 })
                 tg(f"\U0001f6d1 <b>STOP LOSS HIT</b>\n\nPnL: <b>${fmt(current_pnl,3)}</b> reached floor "
                    f"<b>${fmt(STOP_LOSS_USD,3)}</b>\n\n<i>{ts_s()} · GitHub Actions</i>")
@@ -565,6 +581,7 @@ def run():
                         "signal_strength":        sig["strength"],
                         "exit_reason":            "TRAIL_STOP",
                         "peak_pnl":               peak,
+                        "convergence_type":        ct,
                     })
                     tg(msg_trail_stop(acct["pnl"] if acct else current_pnl, peak, acct))
                     state["position_open"] = False
@@ -597,6 +614,7 @@ def run():
                     "signal_strength":        sig["strength"],
                     "exit_reason":            "ORPHAN_CLEANUP",
                     "peak_pnl":               state.get("peak_pnl", None),
+                    "convergence_type":        ct,
                 })
             tg(msg_close("Orphaned position cleanup (state reset detected)", old, curr, acct))
             state["position_open"] = False
