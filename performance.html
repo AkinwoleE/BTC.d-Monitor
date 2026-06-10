@@ -211,21 +211,19 @@ function renderPos(state){
   </div>`;
 }
 
-function exitBadge(reason){
+function exitBadge(reason, ct){
   if(!reason) return '\u2014';
+  if(reason==='SIGNAL_FLIP'){
+    if(ct==='BROAD_RALLY')    return '<span class="badge b-rally">Both Rising</span>';
+    if(ct==='BROAD_SELLOFF')  return '<span class="badge b-selloff">Both Down</span>';
+    if(ct==='BTC_LEADS_UP')   return '<span class="badge b-btcup">BTC&#x2191; Led</span>';
+    if(ct==='BTC_LEADS_DOWN') return '<span class="badge b-btcdn">BTC&#x2193; Led</span>';
+    return '<span class="badge b-flip">Signal Flip</span>';
+  }
   if(reason==='TRAIL_STOP')    return '<span class="badge b-trail">Trail Stop</span>';
-  if(reason==='SIGNAL_FLIP')   return '<span class="badge b-flip">Signal Flip</span>';
   if(reason==='STOP_LOSS')     return '<span class="badge b-stop">Stop Loss</span>';
   if(reason==='ORPHAN_CLEANUP') return '<span class="badge b-orphan">Cleanup</span>';
   return `<span class="badge b-orphan">${reason}</span>`;
-}
-function convBadge(ct){
-  if(!ct) return '\u2014';
-  if(ct==='BROAD_RALLY')   return '<span class="badge b-rally">Rally</span>';
-  if(ct==='BROAD_SELLOFF') return '<span class="badge b-selloff">Selloff</span>';
-  if(ct==='BTC_LEADS_UP')  return '<span class="badge b-btcup">BTC&#x2191;</span>';
-  if(ct==='BTC_LEADS_DOWN')return '<span class="badge b-btcdn">BTC&#x2193;</span>';
-  return `<span class="badge b-orphan">${ct}</span>`;
 }
 function renderTable(trades){
   if(!trades.length)return;
@@ -240,20 +238,19 @@ function renderTable(trades){
     const pnl=t.close?.pnl!=null?`<span class="${pc(t.close.pnl)}">$${fmt(t.close.pnl)}</span>`:'\u2014';
     const peak=t.close?.peak_pnl!=null?`<span class="g">$${fmt(t.close.peak_pnl)}</span>`:'\u2014';
     const str=t.open?.signal_strength!=null?`<span class="bars">${bars(t.open.signal_strength)}</span>`:'\u2014';
-    const reason=exitBadge(t.close?.exit_reason);
-    const ctx=convBadge(t.open?.convergence_type||t.close?.convergence_type);
+    const reason=exitBadge(t.close?.exit_reason, t.close?.convergence_type);
     return`<tr><td class="m">${trades.length-i}</td>
       <td class="${sc}">${sig.replace('LONG_','')}</td>
       <td>${t.open?.btc_side||'\u2014'} / ${t.open?.eth_side||'\u2014'}</td>
       <td>${be}</td><td>${ee}</td>
       <td>${opened}</td><td>${closed}</td>
-      <td>${dur}</td><td>${pnl}</td><td>${peak}</td><td>${reason}</td><td>${ctx}</td><td>${str}</td></tr>`;
+      <td>${dur}</td><td>${pnl}</td><td>${peak}</td><td>${reason}</td><td>${str}</td></tr>`;
   }).join('');
   $("tbl").innerHTML=`<table><thead><tr>
     <th>#</th><th>Signal</th><th>BTC/ETH</th>
     <th>BTC Entry</th><th>ETH Entry</th>
     <th>Opened</th><th>Closed</th>
-    <th>Duration</th><th>PnL</th><th>Peak PnL</th><th>Close</th><th>Market</th><th>Strength</th>
+    <th>Duration</th><th>PnL</th><th>Peak PnL</th><th>Close</th><th>Strength</th>
   </tr></thead><tbody>${rows}</tbody></table>`;
 }
 
