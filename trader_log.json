@@ -1913,5 +1913,22 @@
     "trade_duration_minutes": null,
     "signal_strength": 2,
     "convergence_type": "BTC_LEADS_DOWN"
+  },
+  {
+    "timestamp": "2026-06-10T13:16:05.548180+00:00",
+    "action": "CLOSE",
+    "signal": "LONG_ETH",
+    "btc_side": "short",
+    "eth_side": "long",
+    "btc_size": 0.00162,
+    "eth_size": 0.0612,
+    "btc_entry_price": 61551.6,
+    "eth_entry_price": 1635.18,
+    "pnl": -0.0,
+    "trade_duration_minutes": 14.9,
+    "signal_strength": 2,
+    "exit_reason": "SIGNAL_FLIP",
+    "peak_pnl": 0.0,
+    "convergence_type": "BROAD_SELLOFF"
   }
 ]
