@@ -60,9 +60,10 @@ def load_state():
         "entry_btc_price": 0.0,
         "entry_eth_price": 0.0,
         "entry_equity":    0.0,
-        "fee_threshold":   0.0,
-        "peak_pnl":        0.0,
-        "trail_active":    False,
+        "fee_threshold":      0.0,
+        "peak_pnl":           0.0,
+        "trail_active":       False,
+        "last_lag_alert_utc": "",
     }
     try:
         with open(STATE_FILE) as f:
@@ -430,7 +431,19 @@ def run():
     if lag:
         print(f"  LAG: BTC 1H {fmt(lag['btc_1h_pct'],3)}%  "
               f"ETH/BTC 1H {fmt(lag['eb_1h_pct'],4)}%  ratio {lag['lag_ratio']}x")
-        tg(msg_lag(lag))
+        last_lag = state.get("last_lag_alert_utc", "")
+        lag_elapsed = None
+        if last_lag:
+            try:
+                lag_elapsed = (datetime.now(timezone.utc) -
+                               datetime.fromisoformat(last_lag)).total_seconds() / 60
+            except Exception:
+                pass
+        if lag_elapsed is None or lag_elapsed >= 60:
+            tg(msg_lag(lag))
+            state["last_lag_alert_utc"] = datetime.now(timezone.utc).isoformat()
+        else:
+            print(f"  LAG alert suppressed — {fmt(lag_elapsed,1)}m since last (cooldown 60m)")
 
     acct = get_balances() if has_dec else None
     if acct: print(f"  Equity: ${fmt(acct['equity'],2)}  PNL: ${fmt(acct['pnl'],2)}")
