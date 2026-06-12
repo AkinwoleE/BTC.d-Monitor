@@ -457,14 +457,15 @@ def run():
     if curr != old:
         print(f"\n  Signal changed: {old} -> {curr}")
 
-        # BTC_LEADS hold: skip close/reopen during a transitional BTC-leads phase
-        if ct == "BTC_LEADS_UP" and curr == "LONG_BTC":
+        # BTC_LEADS hold: skip close/reopen only when a position already exists
+        has_position = live["any_open"] or state["position_open"]
+        if ct == "BTC_LEADS_UP" and curr == "LONG_BTC" and has_position:
             print("  BTC_LEADS_UP detected — holding into anticipated LONG_BTC signal")
             tg(f"⚡ BTC_LEADS_UP — holding position, LONG_BTC anticipated\n"
                f"<i>{ts_s()} · GitHub Actions</i>")
             state["current_signal"] = curr
             acted = True
-        elif ct == "BTC_LEADS_DOWN" and curr == "LONG_ETH":
+        elif ct == "BTC_LEADS_DOWN" and curr == "LONG_ETH" and has_position:
             print("  BTC_LEADS_DOWN detected — holding into anticipated LONG_ETH signal")
             tg(f"⚡ BTC_LEADS_DOWN — holding position, LONG_ETH anticipated\n"
                f"<i>{ts_s()} · GitHub Actions</i>")
