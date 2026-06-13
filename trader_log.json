@@ -13513,5 +13513,16 @@
     "convergence_type": "BTC_LEADS_DOWN",
     "btc_price": 64077.1,
     "position_open": true
+  },
+  {
+    "timestamp": "2026-06-13T17:40:47.420760+00:00",
+    "action": "SIGNAL",
+    "signal": "LONG_ETH",
+    "btc_dir": "dn",
+    "eb_dir": "up",
+    "signal_strength": 2,
+    "convergence_type": "BTC_LEADS_DOWN",
+    "btc_price": 64064.5,
+    "position_open": true
   }
 ]
