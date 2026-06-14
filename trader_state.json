@@ -1,10 +1,10 @@
 {
-  "current_signal": "LONG_ETH",
-  "position_open": true,
+  "current_signal": "NEUTRAL",
+  "position_open": false,
   "entry_btc_size": 0.00155,
   "entry_eth_size": 0.0596,
   "trade_count": 144,
-  "last_run_utc": "2026-06-14T06:10:48.593428+00:00",
+  "last_run_utc": "2026-06-14T06:15:55.721068+00:00",
   "entry_time_utc": "2026-06-14T06:01:09.980751+00:00",
   "entry_btc_price": 64331.7,
   "entry_eth_price": 1677.96,
