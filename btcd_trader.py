@@ -64,6 +64,7 @@ def load_state():
         "peak_pnl":           0.0,
         "trail_active":       False,
         "last_lag_alert_utc": "",
+        "open_signal":        "",
     }
     try:
         with open(STATE_FILE) as f:
@@ -480,12 +481,13 @@ def run():
                     time.sleep(2)
                 acct = get_balances() if has_dec else None
                 if old != "NEUTRAL":
+                    open_sig = state.get("open_signal") or old
                     append_log({
                         "timestamp":              datetime.now(timezone.utc).isoformat(),
                         "action":                 "CLOSE",
-                        "signal":                 old,
-                        "btc_side":               "long"  if old == "LONG_BTC" else "short",
-                        "eth_side":               "short" if old == "LONG_BTC" else "long",
+                        "signal":                 open_sig,
+                        "btc_side":               "long"  if open_sig == "LONG_BTC" else "short",
+                        "eth_side":               "short" if open_sig == "LONG_BTC" else "long",
                         "btc_size":               state.get("entry_btc_size", 0),
                         "eth_size":               state.get("entry_eth_size", 0),
                         "btc_entry_price":        state.get("entry_btc_price", 0),
@@ -501,6 +503,7 @@ def run():
                     })
                 tg(msg_close(f"Signal flipped to {curr}", old, curr, acct))
                 state["position_open"] = False
+                state["open_signal"]   = ""
 
             if curr != "NEUTRAL":
                 if has_dec:
@@ -534,6 +537,7 @@ def run():
                     state["fee_threshold"]   = fee_thr
                     state["peak_pnl"]        = 0.0
                     state["trail_active"]    = False
+                    state["open_signal"]     = curr
                     print(f"  Fee threshold: ${fmt(fee_thr,4)}")
                     tg(msg_open(curr, sig, bd, btc_px, eth_px_usd, sizes, acct))
                 else:
@@ -558,12 +562,13 @@ def run():
                 close_all()
                 time.sleep(2)
                 acct = get_balances()
+                open_sig = state.get("open_signal") or old
                 append_log({
                     "timestamp":              datetime.now(timezone.utc).isoformat(),
                     "action":                 "CLOSE",
-                    "signal":                 old,
-                    "btc_side":               "long"  if old == "LONG_BTC" else "short",
-                    "eth_side":               "short" if old == "LONG_BTC" else "long",
+                    "signal":                 open_sig,
+                    "btc_side":               "long"  if open_sig == "LONG_BTC" else "short",
+                    "eth_side":               "short" if open_sig == "LONG_BTC" else "long",
                     "btc_size":               state.get("entry_btc_size", 0),
                     "eth_size":               state.get("entry_eth_size", 0),
                     "btc_entry_price":        state.get("entry_btc_price", 0),
@@ -582,6 +587,7 @@ def run():
                 state["position_open"] = False
                 state["peak_pnl"]      = 0.0
                 state["trail_active"]  = False
+                state["open_signal"]   = ""
                 trail_stopped = True
                 acted = True
             elif current_pnl < fee_thr:
@@ -605,12 +611,13 @@ def run():
                     close_all()
                     time.sleep(2)
                     acct = get_balances()
+                    open_sig = state.get("open_signal") or old
                     append_log({
                         "timestamp":              datetime.now(timezone.utc).isoformat(),
                         "action":                 "CLOSE",
-                        "signal":                 old,
-                        "btc_side":               "long"  if old == "LONG_BTC" else "short",
-                        "eth_side":               "short" if old == "LONG_BTC" else "long",
+                        "signal":                 open_sig,
+                        "btc_side":               "long"  if open_sig == "LONG_BTC" else "short",
+                        "eth_side":               "short" if open_sig == "LONG_BTC" else "long",
                         "btc_size":               state.get("entry_btc_size", 0),
                         "eth_size":               state.get("entry_eth_size", 0),
                         "btc_entry_price":        state.get("entry_btc_price", 0),
@@ -628,6 +635,7 @@ def run():
                     state["position_open"] = False
                     state["peak_pnl"]      = 0.0
                     state["trail_active"]  = False
+                    state["open_signal"]   = ""
                     trail_stopped = True
                     acted = True
 
@@ -638,12 +646,13 @@ def run():
                 time.sleep(2)
             acct = get_balances() if has_dec else None
             if state.get("position_open") and state.get("current_signal","NEUTRAL") != "NEUTRAL":
+                open_sig = state.get("open_signal") or state["current_signal"]
                 append_log({
                     "timestamp":              datetime.now(timezone.utc).isoformat(),
                     "action":                 "CLOSE",
-                    "signal":                 state["current_signal"],
-                    "btc_side":               "long"  if state["current_signal"] == "LONG_BTC" else "short",
-                    "eth_side":               "short" if state["current_signal"] == "LONG_BTC" else "long",
+                    "signal":                 open_sig,
+                    "btc_side":               "long"  if open_sig == "LONG_BTC" else "short",
+                    "eth_side":               "short" if open_sig == "LONG_BTC" else "long",
                     "btc_size":               state.get("entry_btc_size", 0),
                     "eth_size":               state.get("entry_eth_size", 0),
                     "btc_entry_price":        state.get("entry_btc_price", 0),
@@ -659,6 +668,7 @@ def run():
                 })
             tg(msg_close("Orphaned position cleanup (state reset detected)", old, curr, acct))
             state["position_open"] = False
+            state["open_signal"]   = ""
             acted = True
         elif not trail_stopped and live["any_open"] and not state["position_open"]:
             print("  Syncing state -- live positions detected but state said closed.")

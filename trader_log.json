@@ -21203,9 +21203,9 @@
   {
     "timestamp": "2026-06-17T01:00:58.529347+00:00",
     "action": "CLOSE",
-    "signal": "LONG_BTC",
-    "btc_side": "long",
-    "eth_side": "short",
+    "signal": "LONG_ETH",
+    "btc_side": "short",
+    "eth_side": "long",
     "btc_size": 0.00152,
     "eth_size": 0.0558,
     "btc_entry_price": 65678.4,
