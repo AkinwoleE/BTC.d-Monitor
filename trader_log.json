@@ -23757,84 +23757,16 @@
     "convergence_type": "BROAD_SELLOFF"
   },
   {
-    "timestamp": "2026-06-17T17:05:29.294063+00:00",
+    "timestamp": "2026-06-17T17:08:13.882287+00:00",
     "action": "SIGNAL",
     "signal": "NEUTRAL",
     "btc_dir": "dn",
     "eb_dir": "dn",
     "signal_strength": 3,
     "convergence_type": "BROAD_SELLOFF",
-    "btc_price": 65819.0,
-    "position_open": false
-  },
-  {
-    "timestamp": "2026-06-17T17:10:41.395829+00:00",
-    "action": "SIGNAL",
-    "signal": "NEUTRAL",
-    "btc_dir": "dn",
-    "eb_dir": "dn",
-    "signal_strength": 3,
-    "convergence_type": "BROAD_SELLOFF",
-    "btc_price": 65888.5,
-    "position_open": false
-  },
-  {
-    "timestamp": "2026-06-17T17:15:37.744718+00:00",
-    "action": "SIGNAL",
-    "signal": "NEUTRAL",
-    "btc_dir": "dn",
-    "eb_dir": "dn",
-    "signal_strength": 3,
-    "convergence_type": "BROAD_SELLOFF",
-    "btc_price": 65799.4,
-    "position_open": false
-  },
-  {
-    "timestamp": "2026-06-17T17:20:32.668831+00:00",
-    "action": "SIGNAL",
-    "signal": "NEUTRAL",
-    "btc_dir": "dn",
-    "eb_dir": "dn",
-    "signal_strength": 3,
-    "convergence_type": "BROAD_SELLOFF",
-    "btc_price": 65860.1,
-    "position_open": false
-  },
-  {
-    "timestamp": "2026-06-17T17:25:31.345126+00:00",
-    "action": "SIGNAL",
-    "signal": "NEUTRAL",
-    "btc_dir": "dn",
-    "eb_dir": "dn",
-    "signal_strength": 3,
-    "convergence_type": "BROAD_SELLOFF",
-    "btc_price": 65928.4,
-    "position_open": false
-  },
-  {
-    "timestamp": "2026-06-17T17:30:39.410450+00:00",
-    "action": "SIGNAL",
-    "signal": "LONG_BTC",
-    "btc_dir": "up",
-    "eb_dir": "dn",
-    "signal_strength": 3,
-    "convergence_type": "BTC_LEADS_UP",
-    "btc_price": 65932.2,
-    "position_open": false
-  },
-  {
-    "timestamp": "2026-06-17T17:31:01.261248+00:00",
-    "action": "OPEN",
-    "signal": "LONG_BTC",
-    "btc_side": "long",
-    "eth_side": "short",
-    "btc_size": 0.00152,
-    "eth_size": 0.0563,
-    "btc_entry_price": 65932.2,
-    "eth_entry_price": 1776.35,
-    "pnl": null,
-    "trade_duration_minutes": null,
-    "signal_strength": 3,
-    "convergence_type": "BTC_LEADS_UP"
+    "btc_price": 65900.0,
+    "position_open": false,
+    "bb_width": 1.9981,
+    "bb_expanding": true
   }
 ]

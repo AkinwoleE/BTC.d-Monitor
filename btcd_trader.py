@@ -196,6 +196,36 @@ def check_lag_signal(btc1h, eb1h, eb15):
         }
     return None
 
+def bb_filter(eb1h, period=20, lookback=3):
+    """
+    Bollinger Band Width on ETH/BTC 1H closes.
+    Compares current width to width `lookback` candles ago.
+    Excludes the currently-forming candle (uses [-period-1:-1] for closed candles).
+    Returns None if insufficient data.
+    """
+    needed = period + lookback + 1
+    if len(eb1h) < needed:
+        return None
+
+    def width(candles):
+        closes = [c["close"] for c in candles]
+        ma  = sum(closes) / period
+        std = (sum((c - ma) ** 2 for c in closes) / period) ** 0.5
+        return (4 * std) / ma * 100   # (upper-lower)/mid * 100
+
+    curr_w = width(eb1h[-(period + 1):-1])
+    prev_w = width(eb1h[-(period + lookback + 1):-(lookback + 1)])
+
+    is_expanding  = curr_w > prev_w
+    expansion_pct = (curr_w - prev_w) / prev_w * 100 if prev_w else 0.0
+
+    return {
+        "bb_width":      round(curr_w, 4),
+        "prev_bb_width": round(prev_w, 4),
+        "is_expanding":  is_expanding,
+        "expansion_pct": round(expansion_pct, 2),
+    }
+
 # ── Decibel CLI execution ─────────────────────────────────────────────────────
 def install_cli():
     print("  Caching @decibeltrade/cli via npx...")
@@ -340,17 +370,20 @@ def tg(text):
     print("  Telegram OK" if ok else f"  Telegram FAIL: {r.text[:80]}")
     return ok
 
-def msg_open(sig, s, dom, btc_px, eth_px, sizes, acct):
+def msg_open(sig, s, dom, btc_px, eth_px, sizes, acct, bb=None):
     arrow = "⬆️" if sig == "LONG_BTC" else "⬇️"
     bias  = "Long BTC / Short ETH" if sig == "LONG_BTC" else "Long ETH / Short BTC"
     bars  = "█" * s["strength"] + "░" * (5 - s["strength"])
     dom_l = f"\n\U0001f4ca BTC.D: <b>{fmt(dom['btc_d'],2)}%</b>" if dom else ""
     acc_l = (f"\n\U0001f4b0 Equity: <b>${fmt(acct['equity'],2)}</b>"
              f" · Avail: <b>${fmt(acct['avail'],2)}</b>" if acct else "")
+    bb_l  = (f"\n\U0001f4c9 BB Width: <b>{fmt(bb['bb_width'],3)}%</b>"
+             f" ({'▲ expanding' if bb['is_expanding'] else '▽ contracting'},"
+             f" {'+' if bb['expansion_pct']>=0 else ''}{fmt(bb['expansion_pct'],1)}% vs 3h)") if bb else ""
     return (f"{arrow} <b>TRADE OPENED — {bias}</b>\n\n"
             f"⚡ Strength: {bars} {s['strength']}/5\n"
             f"\U0001f56f BTC 15M: <b>{'+' if s['btc_pct']>=0 else ''}{fmt(s['btc_pct'],3)}%</b>"
-            f" · ETH/BTC: <b>{'+' if s['eb_pct']>=0 else ''}{fmt(s['eb_pct'],3)}%</b>{dom_l}\n\n"
+            f" · ETH/BTC: <b>{'+' if s['eb_pct']>=0 else ''}{fmt(s['eb_pct'],3)}%</b>{dom_l}{bb_l}\n\n"
             f"\U0001f4e6 BTC/USD: {sizes['btc_size']} @ ~${fmt(btc_px,0)}"
             f" · {min(LEVERAGE,40)}x\n"
             f"\U0001f4e6 ETH/USD: {sizes['eth_size']} @ ~${fmt(eth_px,2)}"
@@ -400,8 +433,8 @@ def run():
     print("\n  Fetching data...")
     b15 = klines("XBTUSD", "15m", 120)
     e15 = klines("ETHXBT", "15m", 120)
-    b1h = klines("XBTUSD", "1h",  24)
-    e1h = klines("ETHXBT", "1h",  24)
+    b1h = klines("XBTUSD", "1h",  28)
+    e1h = klines("ETHXBT", "1h",  28)
     bt  = ticker("XBTUSD")
     et  = ticker("ETHXBT")
     bd  = btcdom()
@@ -413,8 +446,13 @@ def run():
     sig  = signal(b15, e15)
     curr = sig["signal"]
     ct   = conv_type(b15, e15)
+    bb   = bb_filter(e1h)
+    bb_tag = (f"BB {fmt(bb['bb_width'],3)}% "
+              f"{'▲' if bb['is_expanding'] else '▽'}"
+              f" ({'+' if bb['expansion_pct']>=0 else ''}{fmt(bb['expansion_pct'],1)}% vs 3h)") if bb else "BB n/a"
     print(f"\n  Signal: {curr}  BTC {sig['btc_dir']}  ETH/BTC {sig['eb_dir']}"
           f"  strength {sig['strength']}/5  convergence={ct}")
+    print(f"  {bb_tag}")
 
     append_log({
         "timestamp":        datetime.now(timezone.utc).isoformat(),
@@ -426,6 +464,8 @@ def run():
         "convergence_type": ct,
         "btc_price":        round(btc_px, 2),
         "position_open":    state["position_open"],
+        "bb_width":         bb["bb_width"]     if bb else None,
+        "bb_expanding":     bb["is_expanding"] if bb else None,
     })
 
     lag = check_lag_signal(b1h, e1h, e15)
@@ -506,7 +546,14 @@ def run():
                 state["open_signal"]   = ""
 
             if curr != "NEUTRAL":
-                if has_dec:
+                bb_skip = bb is not None and not bb["is_expanding"]
+                if bb_skip:
+                    print(f"  BB contracting ({fmt(bb['bb_width'],3)}% vs {fmt(bb['prev_bb_width'],3)}% 3h ago) — skipping entry")
+                    tg(f"⏸ <b>ENTRY SKIPPED — BB contracting</b>\n"
+                       f"Signal: {curr} | BB Width: {fmt(bb['bb_width'],3)}% ({fmt(bb['expansion_pct'],1)}% vs 3h)\n"
+                       f"<i>Waiting for volatility expansion before entering</i>\n"
+                       f"<i>{ts_s()} · GitHub Actions</i>")
+                elif has_dec:
                     sizes   = execute_trade(curr, btc_px, eth_px_usd)
                     acct    = get_balances()
                     now_iso = datetime.now(timezone.utc).isoformat()
@@ -523,7 +570,9 @@ def run():
                         "pnl":                    None,
                         "trade_duration_minutes": None,
                         "signal_strength":        sig["strength"],
-                        "convergence_type":        ct,
+                        "convergence_type":       ct,
+                        "bb_width_at_entry":      bb["bb_width"] if bb else None,
+                        "bb_expanding":           True,
                     })
                     state["position_open"]   = True
                     state["entry_btc_size"]  = sizes["btc_size"]
@@ -539,13 +588,16 @@ def run():
                     state["trail_active"]    = False
                     state["open_signal"]     = curr
                     print(f"  Fee threshold: ${fmt(fee_thr,4)}")
-                    tg(msg_open(curr, sig, bd, btc_px, eth_px_usd, sizes, acct))
+                    tg(msg_open(curr, sig, bd, btc_px, eth_px_usd, sizes, acct, bb))
                 else:
                     bias = "Long BTC/Short ETH" if curr == "LONG_BTC" else "Long ETH/Short BTC"
                     tg(f"<b>SIGNAL: {bias}</b> (signal-only -- add Decibel keys to trade)\n"
                        f"Strength: {chr(9608)*sig['strength']}{chr(9617)*(5-sig['strength'])}"
                        f" {sig['strength']}/5\n<i>{ts_s()}</i>")
-            state["current_signal"] = curr
+                if not bb_skip:
+                    state["current_signal"] = curr
+            else:
+                state["current_signal"] = curr
             acted = True
     else:
         print(f"  Unchanged ({curr}) -- holding.")
