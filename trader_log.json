@@ -23755,5 +23755,16 @@
     "exit_reason": "SIGNAL_FLIP",
     "peak_pnl": 0.24335099999999893,
     "convergence_type": "BROAD_SELLOFF"
+  },
+  {
+    "timestamp": "2026-06-17T17:05:29.294063+00:00",
+    "action": "SIGNAL",
+    "signal": "NEUTRAL",
+    "btc_dir": "dn",
+    "eb_dir": "dn",
+    "signal_strength": 3,
+    "convergence_type": "BROAD_SELLOFF",
+    "btc_price": 65819.0,
+    "position_open": false
   }
 ]
