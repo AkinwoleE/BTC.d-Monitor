@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en" data-theme="cream">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>BTC.D Monitor · Unified</title>
@@ -8,14 +8,14 @@
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --bg:#0c0e14;--surface:#13151f;--s2:#181b2a;--border:#232640;
-  --purple:#7c5cfc;--cyan:#38bdf8;--green:#22c55e;--red:#ef4444;--yellow:#f59e0b;
-  --text:#e2e8f0;--text2:#94a3b8;--text3:#475569;
+  --bg:#E7DECF;--surface:#FAF6EE;--s2:#F0E8DA;--border:#DCD2C0;
+  --purple:#C15F3C;--cyan:#3F6F73;--green:#2E7D52;--red:#BC4A3C;--yellow:#B07D2B;
+  --text:#2B2722;--text2:#7C7466;--text3:#A89E8B;
   --font:"Inter",sans-serif;--mono:"JetBrains Mono",monospace;
 }
-[data-theme=light]{
-  --bg:#f1f5f9;--surface:#fff;--s2:#f8fafc;--border:#e2e8f0;
-  --text:#0f172a;--text2:#475569;--text3:#94a3b8;
+[data-theme=dark]{
+  --bg:#1A1714;--surface:#231F1A;--s2:#2A251F;--border:#39322A;
+  --text:#EDE6D8;--text2:#A39A88;--text3:#6E6557;
 }
 body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:100vh;font-size:14px}
 a{color:var(--cyan);text-decoration:none}a:hover{text-decoration:underline}
@@ -75,9 +75,31 @@ tr:hover td{background:var(--s2)}
 .tbl-wrap{overflow-x:auto}
 .empty{text-align:center;padding:28px;color:var(--text2);font-size:13px}
 footer{text-align:center;padding:28px 0 16px;color:var(--text2);font-size:13px}
+.topnav{position:sticky;top:0;z-index:50;background:color-mix(in srgb,var(--surface) 86%,transparent);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid var(--border)}
+.topnav-inner{max-width:1280px;margin:0 auto;padding:11px 20px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.nav-brand{display:flex;align-items:center;gap:9px;font-weight:700;font-size:15px;letter-spacing:-.01em;color:var(--text);text-decoration:none;white-space:nowrap}
+.nav-brand:hover{text-decoration:none}
+.nav-brand .mark{width:10px;height:10px;border-radius:2px;background:var(--purple);transform:rotate(45deg);flex-shrink:0}
+.nav-links{display:flex;gap:3px;background:var(--s2);border:1px solid var(--border);border-radius:11px;padding:3px}
+.nav-links a{padding:7px 15px;border-radius:8px;font-size:13px;font-weight:500;color:var(--text2);transition:color .15s,background .15s;text-decoration:none;white-space:nowrap}
+.nav-links a:hover{color:var(--text);text-decoration:none}
+.nav-links a.active{background:var(--surface);color:var(--text);box-shadow:0 1px 2px rgba(0,0,0,.05);font-weight:600}
+.nav-right{display:flex;align-items:center;gap:9px}
+@media(max-width:560px){.nav-links a{padding:6px 11px;font-size:12px}.nav-brand span.bn{display:none}}
 </style>
 </head>
 <body>
+<nav class="topnav"><div class="topnav-inner">
+  <a class="nav-brand" href="unified.html"><span class="mark"></span><span class="bn">BTC.D Trader</span></a>
+  <div class="nav-links">
+    <a href="unified.html" class="active">Live Monitor</a>
+    <a href="btcd-monitor-15m-binance_8.html">Signal Analysis</a>
+    <a href="performance.html">Performance</a>
+  </div>
+  <div class="nav-right">
+    <button class="btn" id="tbtn">&#9728;&#65039;</button>
+  </div>
+</div></nav>
 <div class="wrap">
 
 <header>
@@ -87,8 +109,6 @@ footer{text-align:center;padding:28px 0 16px;color:var(--text2);font-size:13px}
   </div>
   <div class="hdr-right">
     <button class="btn" id="rfbtn">&#8635; Refresh</button>
-    <a href="performance.html" class="btn">Performance &#8250;</a>
-    <button class="btn" id="tbtn">&#9728;&#65039;</button>
   </div>
 </header>
 
@@ -162,11 +182,11 @@ footer{text-align:center;padding:28px 0 16px;color:var(--text2);font-size:13px}
 
 <script>
 const $=id=>document.getElementById(id);
-let dark=localStorage.getItem('theme')!=='light';
+let dark=localStorage.getItem('theme')==='dark';
 function applyTheme(){
-  document.documentElement.setAttribute('data-theme',dark?'dark':'light');
+  document.documentElement.setAttribute('data-theme',dark?'dark':'cream');
   $("tbtn").textContent=dark?'\u2600\ufe0f':'\ud83c\udf19';
-  localStorage.setItem('theme',dark?'dark':'light');
+  localStorage.setItem('theme',dark?'dark':'cream');
 }
 $("tbtn").onclick=()=>{dark=!dark;applyTheme()};
 applyTheme();

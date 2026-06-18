@@ -8,21 +8,28 @@
 <style>
   *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
   :root{
-    --bg:#0c0e14;--surface:#13151f;--surface2:#1a1d2a;--surface3:#20243a;
-    --border:#252a40;--border2:#2e3450;--text:#e8eaf6;--muted:#6b7280;--muted2:#4b5563;
-    --purple:#7c5cfc;--purple2:#5b3fd4;--purple-glow:rgba(124,92,252,.15);
-    --cyan:#38bdf8;--cyan2:#0ea5e9;--cyan-glow:rgba(56,189,248,.12);
-    --green:#4ade80;--green2:#16a34a;--green-glow:rgba(74,222,128,.12);
-    --red:#f87171;--red2:#dc2626;--red-glow:rgba(248,113,113,.12);
-    --amber:#fbbf24;--amber2:#d97706;--amber-glow:rgba(251,191,36,.12);
+    --bg:#E7DECF;--surface:#FAF6EE;--surface2:#F0E8DA;--surface3:#E6DCCB;
+    --border:#DCD2C0;--border2:#CBBEA7;--text:#2B2722;--muted:#857C6D;--muted2:#A89E8B;
+    --purple:#C15F3C;--purple2:#A54B2D;--purple-glow:rgba(193,95,60,.12);
+    --cyan:#3F6F73;--cyan2:#2F595C;--cyan-glow:rgba(63,111,115,.12);
+    --green:#2E7D52;--green2:#236A43;--green-glow:rgba(46,125,82,.12);
+    --red:#BC4A3C;--red2:#9E3A2E;--red-glow:rgba(188,74,60,.12);
+    --amber:#B07D2B;--amber2:#946722;--amber-glow:rgba(176,125,43,.12);
+    --accent:#3F6F73;--accent-glow:rgba(63,111,115,.12);
     --mono:'JetBrains Mono',monospace;--sans:'Inter',system-ui,sans-serif;
     --radius:8px;--radius-sm:5px;
+  }
+  [data-theme=dark]{
+    --bg:#1A1714;--surface:#231F1A;--surface2:#2A251F;--surface3:#322B23;
+    --border:#39322A;--border2:#4A4135;--text:#EDE6D8;--muted:#A39A88;--muted2:#6E6557;
+    --purple-glow:rgba(193,95,60,.16);--cyan-glow:rgba(63,111,115,.16);
+    --green-glow:rgba(46,125,82,.16);--red-glow:rgba(188,74,60,.16);--amber-glow:rgba(176,125,43,.16);--accent-glow:rgba(63,111,115,.16);
   }
 
   body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh;overflow-x:hidden;font-size:14px;line-height:1.5}
 
   /* Subtle grid texture */
-  body::before{content:'';position:fixed;inset:0;background-image:radial-gradient(ellipse 80% 50% at 50% -10%,rgba(124,92,252,.08),transparent);pointer-events:none;z-index:0}
+  body::before{content:'';position:fixed;inset:0;background-image:radial-gradient(ellipse 80% 50% at 50% -10%,rgba(193,95,60,.06),transparent);pointer-events:none;z-index:0}
 
   .app{position:relative;z-index:1;max-width:1000px;margin:0 auto;padding:32px 24px 64px}
 
@@ -260,9 +267,31 @@
   .fstatus{font-family:var(--mono);font-size:9px;margin-top:3px;display:flex;align-items:center;gap:5px}
   .fstatus.ok{color:var(--green)}.fstatus.err{color:var(--red)}.fstatus.chk{color:var(--amber)}.fstatus.hint{color:var(--muted)}
   .fsdot{width:5px;height:5px;border-radius:50%;background:currentColor;flex-shrink:0}
+
+  /* ── Top nav ── */
+  .topnav{position:sticky;top:0;z-index:50;background:color-mix(in srgb,var(--surface) 86%,transparent);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid var(--border)}
+  .topnav-inner{max-width:1000px;margin:0 auto;padding:11px 24px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+  .nav-brand{display:flex;align-items:center;gap:9px;font-weight:700;font-size:15px;letter-spacing:-.01em;color:var(--text);text-decoration:none;font-family:var(--sans);white-space:nowrap}
+  .nav-brand .mark{width:10px;height:10px;border-radius:2px;background:var(--purple);transform:rotate(45deg);flex-shrink:0}
+  .nav-links{display:flex;gap:3px;background:var(--surface2);border:1px solid var(--border);border-radius:11px;padding:3px}
+  .nav-links a{padding:7px 15px;border-radius:8px;font-size:13px;font-weight:500;color:var(--muted);transition:color .15s,background .15s;text-decoration:none;white-space:nowrap;font-family:var(--sans)}
+  .nav-links a:hover{color:var(--text)}
+  .nav-links a.active{background:var(--surface);color:var(--text);box-shadow:0 1px 2px rgba(0,0,0,.05);font-weight:600}
+  @media(max-width:560px){.nav-links a{padding:6px 11px;font-size:12px}.nav-brand span.bn{display:none}}
+  .nav-tbtn{display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:9px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:14px;cursor:pointer;flex-shrink:0;transition:background .15s}
+  .nav-tbtn:hover{background:var(--surface3)}
 </style>
 </head>
 <body>
+<nav class="topnav"><div class="topnav-inner">
+  <a class="nav-brand" href="unified.html"><span class="mark"></span><span class="bn">BTC.D Trader</span></a>
+  <div class="nav-links">
+    <a href="unified.html">Live Monitor</a>
+    <a href="btcd-monitor-15m-binance_8.html" class="active">Signal Analysis</a>
+    <a href="performance.html">Performance</a>
+  </div>
+  <button class="nav-tbtn" id="tbtn" title="Toggle theme">&#9728;&#65039;</button>
+</div></nav>
 <div class="app">
 
   <div class="header">
@@ -982,7 +1011,7 @@ function spark(id,prices,up){
   const mn=Math.min(...prices),mx=Math.max(...prices),rng=mx-mn||1;
   const W=200,H=48,p=3;
   const pts=prices.map((v,i)=>`${p+(i/(prices.length-1))*(W-p*2)},${H-p-((v-mn)/rng)*(H-p*2)}`);
-  const col=up?'#00e5a0':'#ff4560';
+  const col=up?'#2E7D52':'#BC4A3C';
   svg.innerHTML=`<defs><linearGradient id="g${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${col}" stop-opacity=".22"/><stop offset="100%" stop-color="${col}" stop-opacity="0"/></linearGradient></defs><path d="M${pts[0]} L${pts.join('L')} L${W-p},${H} L${p},${H} Z" fill="url(#g${id})"/><path d="M${pts.join('L')}" fill="none" stroke="${col}" stroke-width="1.5" stroke-linejoin="round"/>`;
 }
 
@@ -1521,6 +1550,15 @@ async function checkAndNotify(signalType, strengthBars, btcSharePct, ethSharePct
 window.onTgToggle = function() {
   tgLog(tgEnabled() ? 'Notifications enabled.' : 'Notifications disabled.');
 };
+
+let __dark=localStorage.getItem('theme')==='dark';
+function __applyTheme(){
+  document.documentElement.setAttribute('data-theme',__dark?'dark':'cream');
+  var b=document.getElementById('tbtn');if(b)b.innerHTML=__dark?'\u2600\ufe0f':'\ud83c\udf19';
+  localStorage.setItem('theme',__dark?'dark':'cream');
+}
+__applyTheme();
+document.getElementById('tbtn').addEventListener('click',function(){__dark=!__dark;__applyTheme();});
 
 loadAll();
 </script>

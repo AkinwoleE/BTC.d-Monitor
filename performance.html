@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en" data-theme="cream">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>BTC.D Trader · Performance</title>
@@ -8,14 +8,14 @@
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --bg:#0c0e14;--surface:#13151f;--s2:#181b2a;--border:#232640;
-  --purple:#7c5cfc;--cyan:#38bdf8;--green:#22c55e;--red:#ef4444;--yellow:#f59e0b;
-  --text:#e2e8f0;--text2:#94a3b8;--text3:#475569;
+  --bg:#E7DECF;--surface:#FAF6EE;--s2:#F0E8DA;--border:#DCD2C0;
+  --purple:#C15F3C;--cyan:#3F6F73;--green:#2E7D52;--red:#BC4A3C;--yellow:#B07D2B;
+  --text:#2B2722;--text2:#7C7466;--text3:#A89E8B;
   --font:"Inter",sans-serif;--mono:"JetBrains Mono",monospace;
 }
-[data-theme=light]{
-  --bg:#f1f5f9;--surface:#fff;--s2:#f8fafc;--border:#e2e8f0;
-  --text:#0f172a;--text2:#475569;--text3:#94a3b8;
+[data-theme=dark]{
+  --bg:#1A1714;--surface:#231F1A;--s2:#2A251F;--border:#39322A;
+  --text:#EDE6D8;--text2:#A39A88;--text3:#6E6557;
 }
 body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:100vh;font-size:14px}
 a{color:var(--cyan);text-decoration:none}a:hover{text-decoration:underline}
@@ -66,15 +66,36 @@ tr:hover td{background:var(--s2)}
 .b-selloff{background:rgba(239,68,68,.12);color:var(--red)}
 .b-btcup{background:rgba(245,158,11,.12);color:var(--yellow)}
 .b-btcdn{background:rgba(56,189,248,.12);color:var(--cyan)}
+.topnav{position:sticky;top:0;z-index:50;background:color-mix(in srgb,var(--surface) 86%,transparent);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid var(--border)}
+.topnav-inner{max-width:1280px;margin:0 auto;padding:11px 20px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.nav-brand{display:flex;align-items:center;gap:9px;font-weight:700;font-size:15px;letter-spacing:-.01em;color:var(--text);text-decoration:none;white-space:nowrap}
+.nav-brand:hover{text-decoration:none}
+.nav-brand .mark{width:10px;height:10px;border-radius:2px;background:var(--purple);transform:rotate(45deg);flex-shrink:0}
+.nav-links{display:flex;gap:3px;background:var(--s2);border:1px solid var(--border);border-radius:11px;padding:3px}
+.nav-links a{padding:7px 15px;border-radius:8px;font-size:13px;font-weight:500;color:var(--text2);transition:color .15s,background .15s;text-decoration:none;white-space:nowrap}
+.nav-links a:hover{color:var(--text);text-decoration:none}
+.nav-links a.active{background:var(--surface);color:var(--text);box-shadow:0 1px 2px rgba(0,0,0,.05);font-weight:600}
+.nav-right{display:flex;align-items:center;gap:9px}
+@media(max-width:560px){.nav-links a{padding:6px 11px;font-size:12px}.nav-brand span.bn{display:none}}
 </style>
 </head>
 <body>
+<nav class="topnav"><div class="topnav-inner">
+  <a class="nav-brand" href="unified.html"><span class="mark"></span><span class="bn">BTC.D Trader</span></a>
+  <div class="nav-links">
+    <a href="unified.html">Live Monitor</a>
+    <a href="btcd-monitor-15m-binance_8.html">Signal Analysis</a>
+    <a href="performance.html" class="active">Performance</a>
+  </div>
+  <div class="nav-right">
+    <button class="btn" id="tbtn">&#9728;&#65039;</button>
+  </div>
+</div></nav>
 <div class="wrap">
 <header>
   <div><h1>BTC.D Pairs Trader &middot; <span>Performance</span></h1></div>
   <div id="last-upd" style="font-size:12px;color:var(--text2);margin-bottom:4px"></div><div class="hdr-right">
     <a href="unified.html" class="btn">← Live Monitor</a>
-    <button class="btn" id="tbtn">&#9728;&#65039;</button>
   </div>
 </header>
 
@@ -114,12 +135,12 @@ tr:hover td{background:var(--s2)}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
 const $=id=>document.getElementById(id);
-let dark=localStorage.getItem('theme')!=='light';
+let dark=localStorage.getItem('theme')==='dark';
 const tbtn=$("tbtn");
 function applyTheme(){
-  document.documentElement.setAttribute('data-theme',dark?'dark':'light');
+  document.documentElement.setAttribute('data-theme',dark?'dark':'cream');
   tbtn.textContent=dark?'\u2600\ufe0f':'\ud83c\udf19';
-  localStorage.setItem('theme',dark?'dark':'light');
+  localStorage.setItem('theme',dark?'dark':'cream');
 }
 tbtn.onclick=()=>{dark=!dark;applyTheme();rebuildChart()};
 applyTheme();
@@ -170,17 +191,17 @@ function rebuildChart(){
   const labels=['Start',...cl2.map(t=>fmtDate(t.close.timestamp))];
   let cum=0;
   const data=[0,...cl2.map(t=>{cum+=t.close.pnl;return+cum.toFixed(2)})];
-  const gridClr=dark?'rgba(255,255,255,.05)':'rgba(0,0,0,.06)';
-  const tickClr=dark?'#475569':'#94a3b8';
+  const gridClr=dark?'rgba(255,255,255,.06)':'rgba(60,50,35,.10)';
+  const tickClr=dark?'#A39A88':'#7C7466';
   if(chart)chart.destroy();
   chart=new Chart($("ch"),{
     type:'line',
     data:{labels,datasets:[{data,
-      borderColor:'#7c5cfc',
+      borderColor:'#C15F3C',
       backgroundColor:ctx=>{const g=ctx.chart.ctx.createLinearGradient(0,0,0,240);
-        g.addColorStop(0,'rgba(124,92,252,.22)');g.addColorStop(1,'rgba(124,92,252,0)');return g},
+        g.addColorStop(0,'rgba(193,95,60,.20)');g.addColorStop(1,'rgba(193,95,60,0)');return g},
       fill:true,tension:.35,pointRadius:data.length<20?4:2,
-      pointBackgroundColor:'#7c5cfc',borderWidth:2}]},
+      pointBackgroundColor:'#C15F3C',borderWidth:2}]},
     options:{responsive:true,maintainAspectRatio:false,
       plugins:{legend:{display:false},tooltip:{callbacks:{
         label:c=>` $${c.raw.toFixed(2)}`}}},
