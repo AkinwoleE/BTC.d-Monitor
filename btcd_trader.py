@@ -229,11 +229,16 @@ def bb_filter(eb1h, period=20, lookback=3):
 # ── Decibel CLI execution ─────────────────────────────────────────────────────
 def install_cli():
     print("  Caching @decibeltrade/cli via npx...")
-    r = subprocess.run(
-        ["npx", "-y", "--package", "@decibeltrade/cli", "decibel-mcp", "--version"],
-        capture_output=True, text=True, timeout=120, env=cli_env()
-    )
-    print(f"  Cache result: {(r.stdout+r.stderr).strip()[:80]}")
+    try:
+        r = subprocess.run(
+            ["npx", "-y", "--package", "@decibeltrade/cli", "decibel-mcp", "--version"],
+            capture_output=True, text=True, timeout=30, env=cli_env()
+        )
+        print(f"  Cache result: {(r.stdout+r.stderr).strip()[:80]}")
+    except subprocess.TimeoutExpired:
+        print("  WARNING: install_cli timed out (30s) — skipping cache warm, run_cli will proceed independently")
+    except Exception as e:
+        print(f"  WARNING: install_cli failed ({e}) — skipping cache warm, run_cli will proceed independently")
 
 def run_cli(action, params):
     rpc_call = json.dumps({
