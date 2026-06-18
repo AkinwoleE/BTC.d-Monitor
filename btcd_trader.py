@@ -63,8 +63,9 @@ def load_state():
         "fee_threshold":      0.0,
         "peak_pnl":           0.0,
         "trail_active":       False,
-        "last_lag_alert_utc": "",
-        "open_signal":        "",
+        "last_lag_alert_utc":   "",
+        "open_signal":          "",
+        "last_bb_skip_signal":  "",
     }
     try:
         with open(STATE_FILE) as f:
@@ -554,10 +555,12 @@ def run():
                 bb_skip = bb is not None and not bb["is_expanding"]
                 if bb_skip:
                     print(f"  BB contracting ({fmt(bb['bb_width'],3)}% vs {fmt(bb['prev_bb_width'],3)}% 3h ago) — skipping entry")
-                    tg(f"⏸ <b>ENTRY SKIPPED — BB contracting</b>\n"
-                       f"Signal: {curr} | BB Width: {fmt(bb['bb_width'],3)}% ({fmt(bb['expansion_pct'],1)}% vs 3h)\n"
-                       f"<i>Waiting for volatility expansion before entering</i>\n"
-                       f"<i>{ts_s()} · GitHub Actions</i>")
+                    if curr != state["last_bb_skip_signal"]:
+                        tg(f"⏸ <b>ENTRY SKIPPED — BB contracting</b>\n"
+                           f"Signal: {curr} | BB Width: {fmt(bb['bb_width'],3)}% ({fmt(bb['expansion_pct'],1)}% vs 3h)\n"
+                           f"<i>Waiting for volatility expansion before entering</i>\n"
+                           f"<i>{ts_s()} · GitHub Actions</i>")
+                    state["last_bb_skip_signal"] = curr
                 elif has_dec:
                     sizes   = execute_trade(curr, btc_px, eth_px_usd)
                     acct    = get_balances()
@@ -591,7 +594,8 @@ def run():
                     state["fee_threshold"]   = fee_thr
                     state["peak_pnl"]        = 0.0
                     state["trail_active"]    = False
-                    state["open_signal"]     = curr
+                    state["open_signal"]          = curr
+                    state["last_bb_skip_signal"]  = ""
                     print(f"  Fee threshold: ${fmt(fee_thr,4)}")
                     tg(msg_open(curr, sig, bd, btc_px, eth_px_usd, sizes, acct, bb))
                 else:
@@ -602,7 +606,8 @@ def run():
                 if not bb_skip:
                     state["current_signal"] = curr
             else:
-                state["current_signal"] = curr
+                state["current_signal"]      = curr
+                state["last_bb_skip_signal"] = ""
             acted = True
     else:
         print(f"  Unchanged ({curr}) -- holding.")
