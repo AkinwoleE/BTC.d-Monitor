@@ -197,10 +197,10 @@ def check_lag_signal(btc1h, eb1h, eb15):
         }
     return None
 
-def bb_filter(eb1h, period=20, lookback=3):
+def bb_filter(eb1h, period=20, lookback=1):
     """
     Bollinger Band Width on ETH/BTC 1H closes.
-    Compares current width to width `lookback` candles ago.
+    Compares current closed candle's width to the immediately prior closed candle's width.
     Excludes the currently-forming candle (uses [-period-1:-1] for closed candles).
     Returns None if insufficient data.
     """
@@ -385,7 +385,7 @@ def msg_open(sig, s, dom, btc_px, eth_px, sizes, acct, bb=None):
              f" · Avail: <b>${fmt(acct['avail'],2)}</b>" if acct else "")
     bb_l  = (f"\n\U0001f4c9 BB Width: <b>{fmt(bb['bb_width'],3)}%</b>"
              f" ({'▲ expanding' if bb['is_expanding'] else '▽ contracting'},"
-             f" {'+' if bb['expansion_pct']>=0 else ''}{fmt(bb['expansion_pct'],1)}% vs 3h)") if bb else ""
+             f" {'+' if bb['expansion_pct']>=0 else ''}{fmt(bb['expansion_pct'],1)}% vs prior candle)") if bb else ""
     return (f"{arrow} <b>TRADE OPENED — {bias}</b>\n\n"
             f"⚡ Strength: {bars} {s['strength']}/5\n"
             f"\U0001f56f BTC 15M: <b>{'+' if s['btc_pct']>=0 else ''}{fmt(s['btc_pct'],3)}%</b>"
@@ -455,7 +455,7 @@ def run():
     bb   = bb_filter(e1h)
     bb_tag = (f"BB {fmt(bb['bb_width'],3)}% "
               f"{'▲' if bb['is_expanding'] else '▽'}"
-              f" ({'+' if bb['expansion_pct']>=0 else ''}{fmt(bb['expansion_pct'],1)}% vs 3h)") if bb else "BB n/a"
+              f" ({'+' if bb['expansion_pct']>=0 else ''}{fmt(bb['expansion_pct'],1)}% vs prior candle)") if bb else "BB n/a"
     print(f"\n  Signal: {curr}  BTC {sig['btc_dir']}  ETH/BTC {sig['eb_dir']}"
           f"  strength {sig['strength']}/5  convergence={ct}")
     print(f"  {bb_tag}")
@@ -554,10 +554,10 @@ def run():
             if curr != "NEUTRAL":
                 bb_skip = bb is not None and not bb["is_expanding"]
                 if bb_skip:
-                    print(f"  BB contracting ({fmt(bb['bb_width'],3)}% vs {fmt(bb['prev_bb_width'],3)}% 3h ago) — skipping entry")
+                    print(f"  BB contracting ({fmt(bb['bb_width'],3)}% vs {fmt(bb['prev_bb_width'],3)}% prior candle) — skipping entry")
                     if curr != state["last_bb_skip_signal"]:
                         tg(f"⏸ <b>ENTRY SKIPPED — BB contracting</b>\n"
-                           f"Signal: {curr} | BB Width: {fmt(bb['bb_width'],3)}% ({fmt(bb['expansion_pct'],1)}% vs 3h)\n"
+                           f"Signal: {curr} | BB Width: {fmt(bb['bb_width'],3)}% ({fmt(bb['expansion_pct'],1)}% vs prior candle)\n"
                            f"<i>Waiting for volatility expansion before entering</i>\n"
                            f"<i>{ts_s()} · GitHub Actions</i>")
                     state["last_bb_skip_signal"] = curr
