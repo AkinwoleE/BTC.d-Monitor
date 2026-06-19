@@ -129,6 +129,11 @@ footer{text-align:center;padding:28px 0 16px;color:var(--text2);font-size:13px}
     <div class="px-lbl">BTC Dominance</div>
     <div><span class="px-val" id="btcd">—</span></div>
   </div>
+  <div class="px-card">
+    <div class="px-lbl">Decibel Equity</div>
+    <div><span class="px-val" id="eq-val">—</span><span class="px-chg" id="eq-pnl"></span></div>
+    <div id="eq-age" style="font-size:10px;color:var(--text3);margin-top:3px;font-family:var(--mono)"></div>
+  </div>
 </div>
 
 <div class="main-grid">
@@ -375,6 +380,16 @@ async function refresh(){
     renderBotStatus(stateVal);
     renderPos(stateVal);
     renderHistory(log.value||[]);
+    if(stateVal?.equity_updated_utc){
+      $("eq-val").textContent='$'+fmt(stateVal.last_equity,2);
+      const upnl=+(stateVal.last_unrealized_pnl)||0;
+      $("eq-pnl").textContent=(upnl>=0?'+':'-')+'$'+fmt(Math.abs(upnl),2);
+      $("eq-pnl").className='px-chg '+pc(upnl);
+      if(stateVal.equity_updated_utc){
+        const eqMin=Math.round((Date.now()-new Date(stateVal.equity_updated_utc))/60000);
+        $("eq-age").textContent=eqMin+'m ago';
+      }
+    }
 
     $("upd").textContent='Updated '+new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
   }catch(e){

@@ -66,6 +66,10 @@ def load_state():
         "last_lag_alert_utc":   "",
         "open_signal":          "",
         "last_bb_skip_signal":  "",
+        "last_equity":          0.0,
+        "last_avail":           0.0,
+        "last_unrealized_pnl":  0.0,
+        "equity_updated_utc":   "",
     }
     try:
         with open(STATE_FILE) as f:
@@ -737,6 +741,10 @@ def run():
             state["position_open"]  = True
             state["current_signal"] = curr
 
+    state["last_equity"]         = acct["equity"] if acct else state.get("last_equity", 0.0)
+    state["last_avail"]          = acct["avail"]  if acct else state.get("last_avail", 0.0)
+    state["last_unrealized_pnl"] = acct["pnl"]    if acct else state.get("last_unrealized_pnl", 0.0)
+    state["equity_updated_utc"]  = datetime.now(timezone.utc).isoformat() if acct else state.get("equity_updated_utc", "")
     state["last_run_utc"] = datetime.now(timezone.utc).isoformat()
     save_state(state)
     print(f"\n  Done. Acted: {acted}")
