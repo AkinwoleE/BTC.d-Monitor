@@ -34783,5 +34783,18 @@
     "exit_reason": "SIGNAL_FLIP",
     "peak_pnl": 0.0,
     "convergence_type": "BROAD_RALLY"
+  },
+  {
+    "timestamp": "2026-06-20T10:20:29.372320+00:00",
+    "action": "SIGNAL",
+    "signal": "NEUTRAL",
+    "btc_dir": "up",
+    "eb_dir": "up",
+    "signal_strength": 4,
+    "convergence_type": "BROAD_RALLY",
+    "btc_price": 63630.3,
+    "position_open": false,
+    "bb_width": 1.1429,
+    "bb_expanding": true
   }
 ]
