@@ -1,10 +1,10 @@
 {
-  "current_signal": "LONG_ETH",
-  "position_open": true,
+  "current_signal": "NEUTRAL",
+  "position_open": false,
   "entry_btc_size": 0.00156,
   "entry_eth_size": 0.0581,
   "trade_count": 218,
-  "last_run_utc": "2026-06-21T12:55:28.677699+00:00",
+  "last_run_utc": "2026-06-21T13:00:46.350612+00:00",
   "entry_time_utc": "2026-06-21T12:00:47.497760+00:00",
   "entry_btc_price": 64089.0,
   "entry_eth_price": 1722.33,
@@ -13,10 +13,10 @@
   "peak_pnl": 0.0,
   "trail_active": false,
   "last_lag_alert_utc": "2026-06-21T08:00:29.096600+00:00",
-  "open_signal": "LONG_ETH",
+  "open_signal": "",
   "last_bb_skip_signal": "",
-  "last_equity": 36.592715999999996,
-  "last_avail": 26.599173299999993,
-  "last_unrealized_pnl": -0.0187040000000102,
-  "equity_updated_utc": "2026-06-21T12:55:28.677682+00:00"
+  "last_equity": 36.523405,
+  "last_avail": 36.523405,
+  "last_unrealized_pnl": 0.0,
+  "equity_updated_utc": "2026-06-21T13:00:46.350596+00:00"
 }
