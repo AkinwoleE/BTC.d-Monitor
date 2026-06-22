@@ -44913,5 +44913,18 @@
     "position_open": false,
     "bb_width": 1.8663,
     "bb_expanding": true
+  },
+  {
+    "timestamp": "2026-06-22T17:54:22.180636+00:00",
+    "action": "SIGNAL",
+    "signal": "NEUTRAL",
+    "btc_dir": "dn",
+    "eb_dir": "dn",
+    "signal_strength": 2,
+    "convergence_type": "BROAD_SELLOFF",
+    "btc_price": 64550.3,
+    "position_open": false,
+    "bb_width": 1.8663,
+    "bb_expanding": true
   }
 ]
