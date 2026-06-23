@@ -49204,5 +49204,18 @@
     "position_open": false,
     "bb_width": 1.9916,
     "bb_expanding": false
+  },
+  {
+    "timestamp": "2026-06-23T04:24:26.427320+00:00",
+    "action": "SIGNAL",
+    "signal": "LONG_ETH",
+    "btc_dir": "dn",
+    "eb_dir": "up",
+    "signal_strength": 2,
+    "convergence_type": "BTC_LEADS_DOWN",
+    "btc_price": 63860.0,
+    "position_open": false,
+    "bb_width": 1.9916,
+    "bb_expanding": false
   }
 ]
