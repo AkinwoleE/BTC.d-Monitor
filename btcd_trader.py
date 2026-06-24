@@ -11,11 +11,12 @@ GitHub Secrets required:
   DECIBEL_GAS_STATION_API_KEY — Geomi Gas Station key
 
 Optional:
-  POSITION_SIZE_USD  (default 100)
-  LEVERAGE           (default 3)
-  SLIPPAGE           (default 1)
-  TRAIL_PCT          (default 0.50)  — trailing stop pullback fraction
-  STOP_LOSS_USD      (default -0.30) — hard PnL floor to close position
+  POSITION_SIZE_USD    (default 100)
+  LEVERAGE             (default 3)
+  SLIPPAGE             (default 1)
+  STOP_LOSS_USD        (default -0.10) — hard PnL floor, checked first every cycle
+  TRAIL_ACTIVATE_USD   (default  0.10) — trail activates once PnL reaches this
+  TRAIL_GIVEBACK_USD   (default  0.05) — trail fires if PnL drops this far from peak
 """
 
 import os, sys, json, time, subprocess, requests
@@ -30,13 +31,13 @@ DEC_NODE_KEY    = os.environ.get("DECIBEL_NODE_API_KEY", "")
 DEC_GAS_KEY     = os.environ.get("DECIBEL_GAS_STATION_API_KEY", "")
 
 # ── Parameters ───────────────────────────────────────────────────────────────
-POSITION_SIZE = float(os.environ.get("POSITION_SIZE_USD", "100"))
-LEVERAGE      = int(os.environ.get("LEVERAGE", "3"))
-SLIPPAGE      = float(os.environ.get("SLIPPAGE", "1"))
-TRAIL_PCT     = float(os.environ.get("TRAIL_PCT", "0.50"))
-STOP_LOSS_USD = float(os.environ.get("STOP_LOSS_USD", "-0.30"))
-FEE_RATE      = 0.00034  # Decibel Tier 0 taker rate
-MAX_LEV       = {"BTC/USD": 40, "ETH/USD": 20}
+POSITION_SIZE      = float(os.environ.get("POSITION_SIZE_USD",  "100"))
+LEVERAGE           = int(os.environ.get("LEVERAGE",           "3"))
+SLIPPAGE           = float(os.environ.get("SLIPPAGE",         "1"))
+STOP_LOSS_USD      = float(os.environ.get("STOP_LOSS_USD",    "-0.10"))
+TRAIL_ACTIVATE_USD = float(os.environ.get("TRAIL_ACTIVATE_USD", "0.10"))
+TRAIL_GIVEBACK_USD = float(os.environ.get("TRAIL_GIVEBACK_USD", "0.05"))
+MAX_LEV            = {"BTC/USD": 40, "ETH/USD": 20}
 
 # ── Data sources ─────────────────────────────────────────────────────────────
 KRAKEN   = "https://api.kraken.com/0/public"
@@ -60,7 +61,6 @@ def load_state():
         "entry_btc_price": 0.0,
         "entry_eth_price": 0.0,
         "entry_equity":    0.0,
-        "fee_threshold":      0.0,
         "peak_pnl":           0.0,
         "trail_active":       False,
         "last_lag_alert_utc":   "",
@@ -113,9 +113,6 @@ def trade_duration_min(entry_time_utc):
     except Exception:
         return None
 
-def calc_fee_threshold(btc_price, btc_size, eth_price, eth_size):
-    """Round-trip fee: open + close, both legs, taker rate."""
-    return round((btc_price * btc_size + eth_price * eth_size) * FEE_RATE * 2, 4)
 
 def conv_type(btc15, eb15):
     """Classify market regime using same 2-of-3 closed-candle logic as signal()."""
@@ -594,13 +591,10 @@ def run():
                     state["entry_eth_price"] = round(eth_px_usd, 2)
                     state["entry_equity"]    = acct["equity"] if acct else 0.0
                     state["trade_count"]    += 1
-                    fee_thr = calc_fee_threshold(btc_px, sizes["btc_size"], eth_px_usd, sizes["eth_size"])
-                    state["fee_threshold"]   = fee_thr
                     state["peak_pnl"]        = 0.0
                     state["trail_active"]    = False
                     state["open_signal"]          = curr
                     state["last_bb_skip_signal"]  = ""
-                    print(f"  Fee threshold: ${fmt(fee_thr,4)}")
                     tg(msg_open(curr, sig, bd, btc_px, eth_px_usd, sizes, acct, bb))
                 else:
                     bias = "Long BTC/Short ETH" if curr == "LONG_BTC" else "Long ETH/Short BTC"
@@ -619,7 +613,6 @@ def run():
 
         if state["position_open"] and has_dec and acct and curr != "NEUTRAL":
             current_pnl = acct.get("pnl", 0.0)
-            fee_thr     = state.get("fee_threshold", 0.0)
             peak        = state.get("peak_pnl", 0.0)
             active      = state.get("trail_active", False)
 
@@ -656,54 +649,55 @@ def run():
                 state["open_signal"]   = ""
                 trail_stopped = True
                 acted = True
-            elif current_pnl < fee_thr:
-                print(f"  Fee zone — PnL: ${fmt(current_pnl,3)}, need ${fmt(fee_thr,3)} to cover fees")
             else:
-                if not active:
-                    print(f"  Trail activated — PnL ${fmt(current_pnl,3)} cleared fee threshold ${fmt(fee_thr,3)}")
+                if not active and current_pnl >= TRAIL_ACTIVATE_USD:
+                    print(f"  Trail activated — PnL ${fmt(current_pnl,3)} >= activate ${fmt(TRAIL_ACTIVATE_USD,3)}")
                     state["trail_active"] = True
                     active = True
 
-                if current_pnl > peak:
-                    state["peak_pnl"] = current_pnl
-                    peak = current_pnl
-                    print(f"  New peak PnL: ${fmt(peak,3)}")
+                if active:
+                    if current_pnl > peak:
+                        state["peak_pnl"] = current_pnl
+                        peak = current_pnl
+                        print(f"  New peak PnL: ${fmt(peak,3)}")
 
-                stop_level = peak * (1 - TRAIL_PCT)
-                print(f"  Trail: PnL=${fmt(current_pnl,3)}  peak=${fmt(peak,3)}  stop=${fmt(stop_level,3)}")
+                    stop_level = peak - TRAIL_GIVEBACK_USD
+                    print(f"  Trail: PnL=${fmt(current_pnl,3)}  peak=${fmt(peak,3)}  stop=${fmt(stop_level,3)}")
 
-                if current_pnl < stop_level:
-                    print(f"  TRAIL STOP: ${fmt(current_pnl,3)} < stop ${fmt(stop_level,3)}")
-                    close_all()
-                    time.sleep(2)
-                    acct = get_balances()
-                    open_sig = state.get("open_signal") or old
-                    append_log({
-                        "timestamp":              datetime.now(timezone.utc).isoformat(),
-                        "action":                 "CLOSE",
-                        "signal":                 open_sig,
-                        "btc_side":               "long"  if open_sig == "LONG_BTC" else "short",
-                        "eth_side":               "short" if open_sig == "LONG_BTC" else "long",
-                        "btc_size":               state.get("entry_btc_size", 0),
-                        "eth_size":               state.get("entry_eth_size", 0),
-                        "btc_entry_price":        state.get("entry_btc_price", 0),
-                        "eth_entry_price":        state.get("entry_eth_price", 0),
-                        "pnl":                    (round(acct["equity"] -
-                                                  state.get("entry_equity", acct["equity"]), 2)
-                                                  if acct else None),
-                        "trade_duration_minutes": trade_duration_min(state.get("entry_time_utc", "")),
-                        "signal_strength":        sig["strength"],
-                        "exit_reason":            "TRAIL_STOP",
-                        "peak_pnl":               peak,
-                        "convergence_type":        ct,
-                    })
-                    tg(msg_trail_stop(acct["pnl"] if acct else current_pnl, peak, acct))
-                    state["position_open"] = False
-                    state["peak_pnl"]      = 0.0
-                    state["trail_active"]  = False
-                    state["open_signal"]   = ""
-                    trail_stopped = True
-                    acted = True
+                    if current_pnl <= stop_level:
+                        print(f"  TRAIL STOP: ${fmt(current_pnl,3)} <= stop ${fmt(stop_level,3)}")
+                        close_all()
+                        time.sleep(2)
+                        acct = get_balances()
+                        open_sig = state.get("open_signal") or old
+                        append_log({
+                            "timestamp":              datetime.now(timezone.utc).isoformat(),
+                            "action":                 "CLOSE",
+                            "signal":                 open_sig,
+                            "btc_side":               "long"  if open_sig == "LONG_BTC" else "short",
+                            "eth_side":               "short" if open_sig == "LONG_BTC" else "long",
+                            "btc_size":               state.get("entry_btc_size", 0),
+                            "eth_size":               state.get("entry_eth_size", 0),
+                            "btc_entry_price":        state.get("entry_btc_price", 0),
+                            "eth_entry_price":        state.get("entry_eth_price", 0),
+                            "pnl":                    (round(acct["equity"] -
+                                                      state.get("entry_equity", acct["equity"]), 2)
+                                                      if acct else None),
+                            "trade_duration_minutes": trade_duration_min(state.get("entry_time_utc", "")),
+                            "signal_strength":        sig["strength"],
+                            "exit_reason":            "TRAIL_STOP",
+                            "peak_pnl":               peak,
+                            "convergence_type":        ct,
+                        })
+                        tg(msg_trail_stop(acct["pnl"] if acct else current_pnl, peak, acct))
+                        state["position_open"] = False
+                        state["peak_pnl"]      = 0.0
+                        state["trail_active"]  = False
+                        state["open_signal"]   = ""
+                        trail_stopped = True
+                        acted = True
+                else:
+                    print(f"  Waiting for trail — PnL ${fmt(current_pnl,3)}, activate at ${fmt(TRAIL_ACTIVATE_USD,3)}")
 
         if not trail_stopped and curr == "NEUTRAL" and live["any_open"]:
             print("  Orphaned live positions -- closing...")

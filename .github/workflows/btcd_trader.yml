@@ -59,6 +59,9 @@ jobs:
           POSITION_SIZE_USD:           ${{ secrets.POSITION_SIZE_USD }}
           LEVERAGE:                    ${{ secrets.LEVERAGE }}
           SLIPPAGE:                    ${{ secrets.SLIPPAGE }}
+          STOP_LOSS_USD:               ${{ secrets.STOP_LOSS_USD }}
+          TRAIL_ACTIVATE_USD:          ${{ secrets.TRAIL_ACTIVATE_USD }}
+          TRAIL_GIVEBACK_USD:          ${{ secrets.TRAIL_GIVEBACK_USD }}
         run: python btcd_trader.py
 
       - name: Save state to repo
