@@ -31,12 +31,12 @@ DEC_NODE_KEY    = os.environ.get("DECIBEL_NODE_API_KEY", "")
 DEC_GAS_KEY     = os.environ.get("DECIBEL_GAS_STATION_API_KEY", "")
 
 # ── Parameters ───────────────────────────────────────────────────────────────
-POSITION_SIZE      = float(os.environ.get("POSITION_SIZE_USD",  "100"))
-LEVERAGE           = int(os.environ.get("LEVERAGE",           "3"))
-SLIPPAGE           = float(os.environ.get("SLIPPAGE",         "1"))
-STOP_LOSS_USD      = float(os.environ.get("STOP_LOSS_USD",    "-0.10"))
-TRAIL_ACTIVATE_USD = float(os.environ.get("TRAIL_ACTIVATE_USD", "0.10"))
-TRAIL_GIVEBACK_USD = float(os.environ.get("TRAIL_GIVEBACK_USD", "0.05"))
+POSITION_SIZE      = float(os.environ.get("POSITION_SIZE_USD")  or "100")
+LEVERAGE           = int(os.environ.get("LEVERAGE")           or "3")
+SLIPPAGE           = float(os.environ.get("SLIPPAGE")         or "1")
+STOP_LOSS_USD      = float(os.environ.get("STOP_LOSS_USD")    or "-0.10")
+TRAIL_ACTIVATE_USD = float(os.environ.get("TRAIL_ACTIVATE_USD") or "0.10")
+TRAIL_GIVEBACK_USD = float(os.environ.get("TRAIL_GIVEBACK_USD") or "0.05")
 MAX_LEV            = {"BTC/USD": 40, "ETH/USD": 20}
 
 # ── Data sources ─────────────────────────────────────────────────────────────
