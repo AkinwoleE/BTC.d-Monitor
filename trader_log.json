@@ -66793,5 +66793,18 @@
     "convergence_type": "BTC_LEADS_UP",
     "bb_width_at_entry": 2.5318,
     "bb_expanding": true
+  },
+  {
+    "timestamp": "2026-06-25T09:48:21.762266+00:00",
+    "action": "SIGNAL",
+    "signal": "LONG_BTC",
+    "btc_dir": "up",
+    "eb_dir": "dn",
+    "signal_strength": 4,
+    "convergence_type": "BTC_LEADS_UP",
+    "btc_price": 61660.5,
+    "position_open": true,
+    "bb_width": 2.5318,
+    "bb_expanding": true
   }
 ]
