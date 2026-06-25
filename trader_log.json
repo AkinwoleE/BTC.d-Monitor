@@ -72085,5 +72085,18 @@
     "exit_reason": "TRAIL_STOP",
     "peak_pnl": 0.11013200000000048,
     "convergence_type": "BTC_LEADS_UP"
+  },
+  {
+    "timestamp": "2026-06-25T22:26:20.413471+00:00",
+    "action": "SIGNAL",
+    "signal": "LONG_BTC",
+    "btc_dir": "up",
+    "eb_dir": "dn",
+    "signal_strength": 2,
+    "convergence_type": "BTC_LEADS_UP",
+    "btc_price": 59734.2,
+    "position_open": false,
+    "bb_width": 2.9467,
+    "bb_expanding": true
   }
 ]
