@@ -66763,5 +66763,35 @@
     "position_open": false,
     "bb_width": 2.5318,
     "bb_expanding": true
+  },
+  {
+    "timestamp": "2026-06-25T09:46:21.414213+00:00",
+    "action": "SIGNAL",
+    "signal": "LONG_BTC",
+    "btc_dir": "up",
+    "eb_dir": "dn",
+    "signal_strength": 4,
+    "convergence_type": "BTC_LEADS_UP",
+    "btc_price": 61657.1,
+    "position_open": false,
+    "bb_width": 2.5318,
+    "bb_expanding": true
+  },
+  {
+    "timestamp": "2026-06-25T09:46:44.397395+00:00",
+    "action": "OPEN",
+    "signal": "LONG_BTC",
+    "btc_side": "long",
+    "eth_side": "short",
+    "btc_size": 0.00162,
+    "eth_size": 0.0607,
+    "btc_entry_price": 61657.1,
+    "eth_entry_price": 1646.55,
+    "pnl": null,
+    "trade_duration_minutes": null,
+    "signal_strength": 4,
+    "convergence_type": "BTC_LEADS_UP",
+    "bb_width_at_entry": 2.5318,
+    "bb_expanding": true
   }
 ]
