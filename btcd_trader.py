@@ -20,7 +20,7 @@ Optional:
 """
 
 import os, sys, json, time, subprocess, requests
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 # ── Credentials ──────────────────────────────────────────────────────────────
 BOT_TOKEN       = os.environ.get("TELEGRAM_BOT_TOKEN", "")
@@ -43,7 +43,7 @@ MAX_LEV            = {"BTC/USD": 40, "ETH/USD": 20}
 KRAKEN   = "https://api.kraken.com/0/public"
 COINLORE = "https://api.coinlore.net/api/global/"
 KR_KEY   = {"XBTUSD": "XXBTZUSD", "ETHXBT": "XETHXXBT"}
-KR_IV    = {"15m": 15, "1h": 60}
+KR_IV    = {"15m": 15, "1h": 60, "5m": 5}
 
 # ── State + log files ─────────────────────────────────────────────────────────
 STATE_FILE = "trader_state.json"
@@ -63,9 +63,12 @@ def load_state():
         "entry_equity":    0.0,
         "peak_pnl":           0.0,
         "trail_active":       False,
-        "last_lag_alert_utc":   "",
-        "open_signal":          "",
-        "last_bb_skip_signal":  "",
+        "last_lag_alert_utc":           "",
+        "open_signal":                  "",
+        "last_st_skip_signal":          "",
+        "supertrend_aligned":           False,
+        "supertrend_hold_until":        "",
+        "entry_supertrend_direction":   "",
         "last_equity":          0.0,
         "last_avail":           0.0,
         "last_unrealized_pnl":  0.0,
@@ -198,35 +201,56 @@ def check_lag_signal(btc1h, eb1h, eb15):
         }
     return None
 
-def bb_filter(eb1h, period=20, lookback=1):
+def supertrend(candles, period=10, mult=3.0):
     """
-    Bollinger Band Width on ETH/BTC 1H closes.
-    Compares current closed candle's width to the immediately prior closed candle's width.
-    Excludes the currently-forming candle (uses [-period-1:-1] for closed candles).
-    Returns None if insufficient data.
+    Supertrend(10, 3) on ETH/BTC candles.
+    Returns 'green' (bullish → LONG_ETH aligned) or 'red' (bearish → LONG_BTC aligned),
+    or None if insufficient data. Last forming candle is excluded (uses candles[:-1]).
     """
-    needed = period + lookback + 1
-    if len(eb1h) < needed:
+    cs = candles[:-1]   # exclude currently-forming candle
+    if len(cs) < period + 2:
         return None
 
-    def width(candles):
-        closes = [c["close"] for c in candles]
-        ma  = sum(closes) / period
-        std = (sum((c - ma) ** 2 for c in closes) / period) ** 0.5
-        return (4 * std) / ma * 100   # (upper-lower)/mid * 100
+    # True Range (needs previous close)
+    tr = []
+    for i in range(1, len(cs)):
+        h, l, pc = cs[i]["high"], cs[i]["low"], cs[i-1]["close"]
+        tr.append(max(h - l, abs(h - pc), abs(l - pc)))
 
-    curr_w = width(eb1h[-(period + 1):-1])
-    prev_w = width(eb1h[-(period + lookback + 1):-(lookback + 1)])
+    if len(tr) < period:
+        return None
 
-    is_expanding  = curr_w > prev_w
-    expansion_pct = (curr_w - prev_w) / prev_w * 100 if prev_w else 0.0
+    # Wilder ATR: seed = mean of first `period` values, then RMA
+    atr = [0.0] * len(tr)
+    atr[period - 1] = sum(tr[:period]) / period
+    for i in range(period, len(tr)):
+        atr[i] = (atr[i - 1] * (period - 1) + tr[i]) / period
 
-    return {
-        "bb_width":      round(curr_w, 4),
-        "prev_bb_width": round(prev_w, 4),
-        "is_expanding":  is_expanding,
-        "expansion_pct": round(expansion_pct, 2),
-    }
+    # Supertrend bands — walk from first ATR-valid candle
+    fu = None   # final upper band
+    fl = None   # final lower band
+    direction = "green"
+
+    for i in range(period - 1, len(tr)):
+        ci = i + 1   # cs index (tr[i] corresponds to cs[ci])
+        hl2 = (cs[ci]["high"] + cs[ci]["low"]) / 2
+        bu  = hl2 + mult * atr[i]
+        bl  = hl2 - mult * atr[i]
+        prev_close = cs[ci - 1]["close"]
+
+        if fu is None:
+            fu, fl = bu, bl
+        else:
+            fu = bu if (bu < fu or prev_close > fu) else fu
+            fl = bl if (bl > fl or prev_close < fl) else fl
+
+        prev_dir = direction
+        if prev_dir == "green" and cs[ci]["close"] < fl:
+            direction = "red"
+        elif prev_dir == "red" and cs[ci]["close"] > fu:
+            direction = "green"
+
+    return direction
 
 # ── Decibel CLI execution ─────────────────────────────────────────────────────
 def install_cli():
@@ -377,20 +401,18 @@ def tg(text):
     print("  Telegram OK" if ok else f"  Telegram FAIL: {r.text[:80]}")
     return ok
 
-def msg_open(sig, s, dom, btc_px, eth_px, sizes, acct, bb=None):
+def msg_open(sig, s, dom, btc_px, eth_px, sizes, acct, st_dir=None):
     arrow = "⬆️" if sig == "LONG_BTC" else "⬇️"
     bias  = "Long BTC / Short ETH" if sig == "LONG_BTC" else "Long ETH / Short BTC"
     bars  = "█" * s["strength"] + "░" * (5 - s["strength"])
     dom_l = f"\n\U0001f4ca BTC.D: <b>{fmt(dom['btc_d'],2)}%</b>" if dom else ""
     acc_l = (f"\n\U0001f4b0 Equity: <b>${fmt(acct['equity'],2)}</b>"
              f" · Avail: <b>${fmt(acct['avail'],2)}</b>" if acct else "")
-    bb_l  = (f"\n\U0001f4c9 BB Width: <b>{fmt(bb['bb_width'],3)}%</b>"
-             f" ({'▲ expanding' if bb['is_expanding'] else '▽ contracting'},"
-             f" {'+' if bb['expansion_pct']>=0 else ''}{fmt(bb['expansion_pct'],1)}% vs prior candle)") if bb else ""
+    st_l  = f"\n📡 ST 5M ETH/BTC: <b>{'🟢 green' if st_dir == 'green' else '🔴 red'}</b>" if st_dir else ""
     return (f"{arrow} <b>TRADE OPENED — {bias}</b>\n\n"
             f"⚡ Strength: {bars} {s['strength']}/5\n"
             f"\U0001f56f BTC 15M: <b>{'+' if s['btc_pct']>=0 else ''}{fmt(s['btc_pct'],3)}%</b>"
-            f" · ETH/BTC: <b>{'+' if s['eb_pct']>=0 else ''}{fmt(s['eb_pct'],3)}%</b>{dom_l}{bb_l}\n\n"
+            f" · ETH/BTC: <b>{'+' if s['eb_pct']>=0 else ''}{fmt(s['eb_pct'],3)}%</b>{dom_l}{st_l}\n\n"
             f"\U0001f4e6 BTC/USD: {sizes['btc_size']} @ ~${fmt(btc_px,0)}"
             f" · {min(LEVERAGE,40)}x\n"
             f"\U0001f4e6 ETH/USD: {sizes['eth_size']} @ ~${fmt(eth_px,2)}"
@@ -442,6 +464,7 @@ def run():
     e15 = klines("ETHXBT", "15m", 120)
     b1h = klines("XBTUSD", "1h",  28)
     e1h = klines("ETHXBT", "1h",  28)
+    e5m = klines("ETHXBT", "5m",  50)
     bt  = ticker("XBTUSD")
     et  = ticker("ETHXBT")
     bd  = btcdom()
@@ -453,13 +476,10 @@ def run():
     sig  = signal(b15, e15)
     curr = sig["signal"]
     ct   = conv_type(b15, e15)
-    bb   = bb_filter(e1h)
-    bb_tag = (f"BB {fmt(bb['bb_width'],3)}% "
-              f"{'▲' if bb['is_expanding'] else '▽'}"
-              f" ({'+' if bb['expansion_pct']>=0 else ''}{fmt(bb['expansion_pct'],1)}% vs prior candle)") if bb else "BB n/a"
+    st_dir = supertrend(e5m)
     print(f"\n  Signal: {curr}  BTC {sig['btc_dir']}  ETH/BTC {sig['eb_dir']}"
           f"  strength {sig['strength']}/5  convergence={ct}")
-    print(f"  {bb_tag}")
+    print(f"  ST 5M ETH/BTC: {st_dir or 'n/a'}")
 
     append_log({
         "timestamp":        datetime.now(timezone.utc).isoformat(),
@@ -471,8 +491,7 @@ def run():
         "convergence_type": ct,
         "btc_price":        round(btc_px, 2),
         "position_open":    state["position_open"],
-        "bb_width":         bb["bb_width"]     if bb else None,
-        "bb_expanding":     bb["is_expanding"] if bb else None,
+        "supertrend_5m":    st_dir,
     })
 
     lag = check_lag_signal(b1h, e1h, e15)
@@ -502,7 +521,71 @@ def run():
     live = get_open_bot_positions() if has_dec else {"any_open": state["position_open"]}
     print(f"  Live open: {live['any_open']}  State open: {state['position_open']}")
 
-    if curr != old:
+    # ── Supertrend hold window ──────────────────────────────────────────────────
+    in_st_hold    = False
+    st_hold_until = None
+    if state.get("supertrend_aligned") and state.get("supertrend_hold_until"):
+        try:
+            st_hold_until = datetime.fromisoformat(state["supertrend_hold_until"])
+            in_st_hold    = datetime.now(timezone.utc) < st_hold_until
+            if not in_st_hold:
+                state["supertrend_aligned"] = False
+                print("  Supertrend hold window expired — normal stop/trail/signal-flip logic now active")
+        except Exception:
+            pass
+
+    if in_st_hold:
+        entry_st  = state.get("entry_supertrend_direction", "")
+        remaining = (st_hold_until - datetime.now(timezone.utc)).total_seconds() / 60
+        print(f"  Supertrend hold active — {fmt(remaining,1)}min remaining"
+              f"  direction={st_dir or 'n/a'}  entry={entry_st}")
+        if has_dec and state["position_open"] and st_dir is not None and st_dir != entry_st:
+            # ST flipped — close with SUPERTREND_FLIP
+            print(f"  SUPERTREND_FLIP: {entry_st} → {st_dir} — closing")
+            close_all()
+            time.sleep(2)
+            acct     = get_balances()
+            open_sig = state.get("open_signal") or old
+            elapsed  = trade_duration_min(state.get("entry_time_utc", ""))
+            append_log({
+                "timestamp":                       datetime.now(timezone.utc).isoformat(),
+                "action":                          "CLOSE",
+                "signal":                          open_sig,
+                "btc_side":                        "long"  if open_sig == "LONG_BTC" else "short",
+                "eth_side":                        "short" if open_sig == "LONG_BTC" else "long",
+                "btc_size":                        state.get("entry_btc_size", 0),
+                "eth_size":                        state.get("entry_eth_size", 0),
+                "btc_entry_price":                 state.get("entry_btc_price", 0),
+                "eth_entry_price":                 state.get("entry_eth_price", 0),
+                "pnl":                             (round(acct["equity"] -
+                                                   state.get("entry_equity", acct["equity"]), 2)
+                                                   if acct else None),
+                "trade_duration_minutes":          elapsed,
+                "signal_strength":                 sig["strength"],
+                "exit_reason":                     "SUPERTREND_FLIP",
+                "peak_pnl":                        state.get("peak_pnl", None),
+                "convergence_type":                ct,
+                "supertrend_hold_minutes_elapsed": elapsed,
+            })
+            tg(f"🔄 <b>Supertrend flipped — closing position</b>\n"
+               f"Entry: {entry_st} → Now: {st_dir}\n"
+               f"Held for {fmt(elapsed or 0, 1)}min\n"
+               f"<i>{ts_s()} · GitHub Actions</i>")
+            state["position_open"]              = False
+            state["peak_pnl"]                   = 0.0
+            state["trail_active"]               = False
+            state["open_signal"]                = ""
+            state["supertrend_aligned"]         = False
+            state["supertrend_hold_until"]      = ""
+            state["entry_supertrend_direction"] = ""
+            acted = True
+        else:
+            # Hold in place — signal flip and stop/trail skipped during window
+            if curr != old:
+                print(f"  Signal changed {old} → {curr} during ST hold — holding position")
+            # Don't update current_signal; position stays open; retry open next cycle after hold
+
+    elif curr != old:
         print(f"\n  Signal changed: {old} -> {curr}")
 
         # BTC_LEADS hold: skip close/reopen only when a position already exists
@@ -549,63 +632,71 @@ def run():
                         "convergence_type":        ct,
                     })
                 tg(msg_close(f"Signal flipped to {curr}", old, curr, acct))
-                state["position_open"] = False
-                state["open_signal"]   = ""
+                state["position_open"]              = False
+                state["open_signal"]                = ""
+                state["supertrend_aligned"]         = False
+                state["supertrend_hold_until"]      = ""
+                state["entry_supertrend_direction"] = ""
 
             if curr != "NEUTRAL":
-                bb_skip = bb is not None and not bb["is_expanding"]
-                if bb_skip:
-                    print(f"  BB contracting ({fmt(bb['bb_width'],3)}% vs {fmt(bb['prev_bb_width'],3)}% prior candle) — skipping entry")
-                    if curr != state["last_bb_skip_signal"]:
-                        tg(f"⏸ <b>ENTRY SKIPPED — BB contracting</b>\n"
-                           f"Signal: {curr} | BB Width: {fmt(bb['bb_width'],3)}% ({fmt(bb['expansion_pct'],1)}% vs prior candle)\n"
-                           f"<i>Waiting for volatility expansion before entering</i>\n"
+                # Supertrend alignment gate
+                st_ok = (st_dir is None
+                         or (curr == "LONG_ETH" and st_dir == "green")
+                         or (curr == "LONG_BTC" and st_dir == "red"))
+                if not st_ok:
+                    print(f"  ST misalign ({st_dir}) for {curr} — skipping entry, retry next cycle")
+                    if curr != state.get("last_st_skip_signal", ""):
+                        tg(f"⏸ <b>ENTRY SKIPPED — Supertrend misaligned</b>\n"
+                           f"Signal: {curr} | ST 5M ETH/BTC: {st_dir}\n"
+                           f"<i>Will retry when Supertrend aligns</i>\n"
                            f"<i>{ts_s()} · GitHub Actions</i>")
-                    state["last_bb_skip_signal"] = curr
-                elif has_dec:
-                    sizes   = execute_trade(curr, btc_px, eth_px_usd)
-                    acct    = get_balances()
-                    now_iso = datetime.now(timezone.utc).isoformat()
-                    append_log({
-                        "timestamp":              now_iso,
-                        "action":                 "OPEN",
-                        "signal":                 curr,
-                        "btc_side":               "long"  if curr == "LONG_BTC" else "short",
-                        "eth_side":               "short" if curr == "LONG_BTC" else "long",
-                        "btc_size":               sizes["btc_size"],
-                        "eth_size":               sizes["eth_size"],
-                        "btc_entry_price":        round(btc_px, 2),
-                        "eth_entry_price":        round(eth_px_usd, 2),
-                        "pnl":                    None,
-                        "trade_duration_minutes": None,
-                        "signal_strength":        sig["strength"],
-                        "convergence_type":       ct,
-                        "bb_width_at_entry":      bb["bb_width"] if bb else None,
-                        "bb_expanding":           True,
-                    })
-                    state["position_open"]   = True
-                    state["entry_btc_size"]  = sizes["btc_size"]
-                    state["entry_eth_size"]  = sizes["eth_size"]
-                    state["entry_time_utc"]  = now_iso
-                    state["entry_btc_price"] = round(btc_px, 2)
-                    state["entry_eth_price"] = round(eth_px_usd, 2)
-                    state["entry_equity"]    = acct["equity"] if acct else 0.0
-                    state["trade_count"]    += 1
-                    state["peak_pnl"]        = 0.0
-                    state["trail_active"]    = False
-                    state["open_signal"]          = curr
-                    state["last_bb_skip_signal"]  = ""
-                    tg(msg_open(curr, sig, bd, btc_px, eth_px_usd, sizes, acct, bb))
+                    state["last_st_skip_signal"] = curr
                 else:
-                    bias = "Long BTC/Short ETH" if curr == "LONG_BTC" else "Long ETH/Short BTC"
-                    tg(f"<b>SIGNAL: {bias}</b> (signal-only -- add Decibel keys to trade)\n"
-                       f"Strength: {chr(9608)*sig['strength']}{chr(9617)*(5-sig['strength'])}"
-                       f" {sig['strength']}/5\n<i>{ts_s()}</i>")
-                if not bb_skip:
+                    state["last_st_skip_signal"] = ""
+                    if has_dec:
+                        sizes   = execute_trade(curr, btc_px, eth_px_usd)
+                        acct    = get_balances()
+                        now_iso = datetime.now(timezone.utc).isoformat()
+                        append_log({
+                            "timestamp":                    now_iso,
+                            "action":                       "OPEN",
+                            "signal":                       curr,
+                            "btc_side":                     "long"  if curr == "LONG_BTC" else "short",
+                            "eth_side":                     "short" if curr == "LONG_BTC" else "long",
+                            "btc_size":                     sizes["btc_size"],
+                            "eth_size":                     sizes["eth_size"],
+                            "btc_entry_price":              round(btc_px, 2),
+                            "eth_entry_price":              round(eth_px_usd, 2),
+                            "pnl":                          None,
+                            "trade_duration_minutes":       None,
+                            "signal_strength":              sig["strength"],
+                            "convergence_type":             ct,
+                            "supertrend_direction_at_entry": st_dir,
+                        })
+                        state["position_open"]              = True
+                        state["entry_btc_size"]             = sizes["btc_size"]
+                        state["entry_eth_size"]             = sizes["eth_size"]
+                        state["entry_time_utc"]             = now_iso
+                        state["entry_btc_price"]            = round(btc_px, 2)
+                        state["entry_eth_price"]            = round(eth_px_usd, 2)
+                        state["entry_equity"]               = acct["equity"] if acct else 0.0
+                        state["trade_count"]               += 1
+                        state["peak_pnl"]                   = 0.0
+                        state["trail_active"]               = False
+                        state["open_signal"]                = curr
+                        state["supertrend_aligned"]         = True
+                        state["supertrend_hold_until"]      = (datetime.now(timezone.utc) + timedelta(minutes=90)).isoformat()
+                        state["entry_supertrend_direction"] = st_dir
+                        tg(msg_open(curr, sig, bd, btc_px, eth_px_usd, sizes, acct, st_dir))
+                    else:
+                        bias = "Long BTC/Short ETH" if curr == "LONG_BTC" else "Long ETH/Short BTC"
+                        tg(f"<b>SIGNAL: {bias}</b> (signal-only -- add Decibel keys to trade)\n"
+                           f"Strength: {chr(9608)*sig['strength']}{chr(9617)*(5-sig['strength'])}"
+                           f" {sig['strength']}/5\n<i>{ts_s()}</i>")
                     state["current_signal"] = curr
             else:
                 state["current_signal"]      = curr
-                state["last_bb_skip_signal"] = ""
+                state["last_st_skip_signal"] = ""
             acted = True
     else:
         print(f"  Unchanged ({curr}) -- holding.")
@@ -643,10 +734,13 @@ def run():
                 })
                 tg(f"\U0001f6d1 <b>STOP LOSS HIT</b>\n\nPnL: <b>${fmt(current_pnl,3)}</b> reached floor "
                    f"<b>${fmt(STOP_LOSS_USD,3)}</b>\n\n<i>{ts_s()} · GitHub Actions</i>")
-                state["position_open"] = False
-                state["peak_pnl"]      = 0.0
-                state["trail_active"]  = False
-                state["open_signal"]   = ""
+                state["position_open"]              = False
+                state["peak_pnl"]                   = 0.0
+                state["trail_active"]               = False
+                state["open_signal"]                = ""
+                state["supertrend_aligned"]         = False
+                state["supertrend_hold_until"]      = ""
+                state["entry_supertrend_direction"] = ""
                 trail_stopped = True
                 acted = True
             else:
@@ -690,10 +784,13 @@ def run():
                             "convergence_type":        ct,
                         })
                         tg(msg_trail_stop(acct["pnl"] if acct else current_pnl, peak, acct))
-                        state["position_open"] = False
-                        state["peak_pnl"]      = 0.0
-                        state["trail_active"]  = False
-                        state["open_signal"]   = ""
+                        state["position_open"]              = False
+                        state["peak_pnl"]                   = 0.0
+                        state["trail_active"]               = False
+                        state["open_signal"]                = ""
+                        state["supertrend_aligned"]         = False
+                        state["supertrend_hold_until"]      = ""
+                        state["entry_supertrend_direction"] = ""
                         trail_stopped = True
                         acted = True
                 else:
@@ -727,8 +824,11 @@ def run():
                     "convergence_type":        ct,
                 })
             tg(msg_close("Orphaned position cleanup (state reset detected)", old, curr, acct))
-            state["position_open"] = False
-            state["open_signal"]   = ""
+            state["position_open"]              = False
+            state["open_signal"]                = ""
+            state["supertrend_aligned"]         = False
+            state["supertrend_hold_until"]      = ""
+            state["entry_supertrend_direction"] = ""
             acted = True
         elif not trail_stopped and live["any_open"] and not state["position_open"]:
             print("  Syncing state -- live positions detected but state said closed.")
