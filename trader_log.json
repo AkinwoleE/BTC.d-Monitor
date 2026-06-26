@@ -80308,5 +80308,18 @@
     "position_open": false,
     "bb_width": 1.9748,
     "bb_expanding": true
+  },
+  {
+    "timestamp": "2026-06-26T18:38:25.612960+00:00",
+    "action": "SIGNAL",
+    "signal": "NEUTRAL",
+    "btc_dir": "dn",
+    "eb_dir": "dn",
+    "signal_strength": 2,
+    "convergence_type": "BROAD_SELLOFF",
+    "btc_price": 59717.3,
+    "position_open": false,
+    "bb_width": 1.9748,
+    "bb_expanding": true
   }
 ]
