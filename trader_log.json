@@ -83835,5 +83835,17 @@
     "btc_price": 60258.6,
     "position_open": true,
     "supertrend_5m": "red"
+  },
+  {
+    "timestamp": "2026-06-27T04:04:23.281111+00:00",
+    "action": "SIGNAL",
+    "signal": "LONG_BTC",
+    "btc_dir": "up",
+    "eb_dir": "dn",
+    "signal_strength": 1,
+    "convergence_type": "BTC_LEADS_UP",
+    "btc_price": 60253.1,
+    "position_open": true,
+    "supertrend_5m": "red"
   }
 ]
