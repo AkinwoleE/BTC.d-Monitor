@@ -85779,5 +85779,17 @@
     "btc_price": 60334.0,
     "position_open": false,
     "supertrend_5m": "green"
+  },
+  {
+    "timestamp": "2026-06-27T09:04:18.150088+00:00",
+    "action": "SIGNAL",
+    "signal": "NEUTRAL",
+    "btc_dir": "dn",
+    "eb_dir": "dn",
+    "signal_strength": 3,
+    "convergence_type": "BROAD_SELLOFF",
+    "btc_price": 60343.1,
+    "position_open": false,
+    "supertrend_5m": "green"
   }
 ]
