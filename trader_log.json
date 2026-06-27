@@ -84797,5 +84797,17 @@
     "peak_pnl": 0.0,
     "convergence_type": "BTC_LEADS_UP",
     "supertrend_hold_minutes_elapsed": 25.8
+  },
+  {
+    "timestamp": "2026-06-27T06:28:23.895716+00:00",
+    "action": "SIGNAL",
+    "signal": "LONG_BTC",
+    "btc_dir": "up",
+    "eb_dir": "dn",
+    "signal_strength": 2,
+    "convergence_type": "BTC_LEADS_UP",
+    "btc_price": 60136.9,
+    "position_open": false,
+    "supertrend_5m": "green"
   }
 ]
