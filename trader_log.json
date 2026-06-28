@@ -93854,5 +93854,18 @@
     "position_open": true,
     "supertrend_5m": "green",
     "atr_5m_ethbtc": 9.66e-06
+  },
+  {
+    "timestamp": "2026-06-28T05:40:21.977493+00:00",
+    "action": "SIGNAL",
+    "signal": "NEUTRAL",
+    "btc_dir": "dn",
+    "eb_dir": "dn",
+    "signal_strength": 2,
+    "convergence_type": "BROAD_SELLOFF",
+    "btc_price": 59832.5,
+    "position_open": true,
+    "supertrend_5m": "green",
+    "atr_5m_ethbtc": 8.7e-06
   }
 ]
