@@ -95548,5 +95548,18 @@
     "position_open": false,
     "supertrend_5m": "green",
     "atr_5m_ethbtc": 5.8e-06
+  },
+  {
+    "timestamp": "2026-06-28T09:58:19.401587+00:00",
+    "action": "SIGNAL",
+    "signal": "LONG_ETH",
+    "btc_dir": "dn",
+    "eb_dir": "up",
+    "signal_strength": 1,
+    "convergence_type": "BTC_LEADS_DOWN",
+    "btc_price": 60171.4,
+    "position_open": false,
+    "supertrend_5m": "green",
+    "atr_5m_ethbtc": 5.8e-06
   }
 ]
