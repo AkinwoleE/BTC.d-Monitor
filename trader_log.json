@@ -100197,5 +100197,18 @@
     "peak_pnl": 0.0,
     "convergence_type": "BTC_LEADS_DOWN",
     "supertrend_hold_minutes_elapsed": 16.0
+  },
+  {
+    "timestamp": "2026-06-28T21:18:23.704128+00:00",
+    "action": "SIGNAL",
+    "signal": "LONG_ETH",
+    "btc_dir": "dn",
+    "eb_dir": "up",
+    "signal_strength": 3,
+    "convergence_type": "BTC_LEADS_DOWN",
+    "btc_price": 59565.7,
+    "position_open": false,
+    "supertrend_5m": "red",
+    "atr_5m_ethbtc": 1.493e-05
   }
 ]
