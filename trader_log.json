@@ -105710,5 +105710,36 @@
     "position_open": true,
     "supertrend_5m": "red",
     "atr_5m_ethbtc": 8.92e-06
+  },
+  {
+    "timestamp": "2026-06-29T10:40:22.638255+00:00",
+    "action": "SIGNAL",
+    "signal": "LONG_BTC",
+    "btc_dir": "up",
+    "eb_dir": "dn",
+    "signal_strength": 2,
+    "convergence_type": "BTC_LEADS_UP",
+    "btc_price": 60048.8,
+    "position_open": true,
+    "supertrend_5m": "green",
+    "atr_5m_ethbtc": 1.004e-05
+  },
+  {
+    "timestamp": "2026-06-29T10:40:39.225667+00:00",
+    "action": "CLOSE",
+    "signal": "LONG_BTC",
+    "btc_side": "long",
+    "eth_side": "short",
+    "btc_size": 0.00167,
+    "eth_size": 0.0635,
+    "btc_entry_price": 59928.9,
+    "eth_entry_price": 1574.15,
+    "pnl": -0.02,
+    "trade_duration_minutes": 83.9,
+    "signal_strength": 2,
+    "exit_reason": "SUPERTREND_FLIP",
+    "peak_pnl": 0.0,
+    "convergence_type": "BTC_LEADS_UP",
+    "supertrend_hold_minutes_elapsed": 83.9
   }
 ]
