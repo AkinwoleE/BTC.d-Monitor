@@ -107909,73 +107909,14 @@
     "atr_5m_ethbtc": 2.313e-05
   },
   {
-    "timestamp": "2026-06-29T15:52:23.644449+00:00",
+    "timestamp": "2026-06-29T15:55:23.703172+00:00",
     "action": "SIGNAL",
     "signal": "LONG_BTC",
     "btc_dir": "up",
     "eb_dir": "dn",
     "signal_strength": 2,
     "convergence_type": "BTC_LEADS_UP",
-    "btc_price": 59802.6,
-    "position_open": true,
-    "supertrend_5m": "red",
-    "atr_5m_ethbtc": 2.313e-05
-  },
-  {
-    "timestamp": "2026-06-29T15:54:22.004330+00:00",
-    "action": "SIGNAL",
-    "signal": "LONG_BTC",
-    "btc_dir": "up",
-    "eb_dir": "dn",
-    "signal_strength": 2,
-    "convergence_type": "BTC_LEADS_UP",
-    "btc_price": 59770.4,
-    "position_open": true,
-    "supertrend_5m": "red",
-    "atr_5m_ethbtc": 2.313e-05
-  },
-  {
-    "timestamp": "2026-06-29T15:56:19.862189+00:00",
-    "action": "SIGNAL",
-    "signal": "LONG_BTC",
-    "btc_dir": "up",
-    "eb_dir": "dn",
-    "signal_strength": 2,
-    "convergence_type": "BTC_LEADS_UP",
-    "btc_price": 59795.1,
-    "position_open": true,
-    "supertrend_5m": "green",
-    "atr_5m_ethbtc": 2.946e-05
-  },
-  {
-    "timestamp": "2026-06-29T15:56:38.223324+00:00",
-    "action": "CLOSE",
-    "signal": "LONG_BTC",
-    "btc_side": "long",
-    "eth_side": "short",
-    "btc_size": 0.00167,
-    "eth_size": 0.0635,
-    "btc_entry_price": 59701.7,
-    "eth_entry_price": 1575.83,
-    "pnl": -0.21,
-    "trade_duration_minutes": 9.9,
-    "signal_strength": 2,
-    "exit_reason": "SUPERTREND_FLIP",
-    "peak_pnl": 0.0,
-    "convergence_type": "BTC_LEADS_UP",
-    "supertrend_hold_minutes_elapsed": 9.9
-  },
-  {
-    "timestamp": "2026-06-29T15:58:21.273207+00:00",
-    "action": "SIGNAL",
-    "signal": "LONG_BTC",
-    "btc_dir": "up",
-    "eb_dir": "dn",
-    "signal_strength": 2,
-    "convergence_type": "BTC_LEADS_UP",
-    "btc_price": 59756.8,
-    "position_open": false,
-    "supertrend_5m": "green",
-    "atr_5m_ethbtc": 2.946e-05
+    "btc_price": 59795.0,
+    "position_open": true
   }
 ]

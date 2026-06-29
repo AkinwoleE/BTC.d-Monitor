@@ -62,7 +62,6 @@ jobs:
           STOP_LOSS_USD:               ${{ secrets.STOP_LOSS_USD }}
           TRAIL_ACTIVATE_USD:          ${{ secrets.TRAIL_ACTIVATE_USD }}
           TRAIL_GIVEBACK_USD:          ${{ secrets.TRAIL_GIVEBACK_USD }}
-          MIN_ATR_THRESHOLD:           ${{ secrets.MIN_ATR_THRESHOLD }}
         run: python btcd_trader.py
 
       - name: Save state to repo
