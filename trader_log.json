@@ -116063,5 +116063,16 @@
     "convergence_type": "BROAD_RALLY",
     "btc_price": 58904.4,
     "position_open": false
+  },
+  {
+    "timestamp": "2026-06-30T14:10:22.832437+00:00",
+    "action": "SIGNAL",
+    "signal": "NEUTRAL",
+    "btc_dir": "up",
+    "eb_dir": "up",
+    "signal_strength": 2,
+    "convergence_type": "BROAD_RALLY",
+    "btc_price": 58853.9,
+    "position_open": false
   }
 ]
