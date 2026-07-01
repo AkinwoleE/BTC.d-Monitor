@@ -36,7 +36,8 @@ LEVERAGE           = int(os.environ.get("LEVERAGE")           or "3")
 SLIPPAGE           = float(os.environ.get("SLIPPAGE")         or "1")
 STOP_LOSS_USD      = float(os.environ.get("STOP_LOSS_USD")    or "-0.10")
 TRAIL_ACTIVATE_USD = float(os.environ.get("TRAIL_ACTIVATE_USD") or "0.10")
-TRAIL_GIVEBACK_USD = float(os.environ.get("TRAIL_GIVEBACK_USD") or "0.05")
+TRAIL_GIVEBACK_USD      = float(os.environ.get("TRAIL_GIVEBACK_USD")      or "0.05")
+TRAIL_FLIP_GIVEBACK_USD = float(os.environ.get("TRAIL_FLIP_GIVEBACK_USD") or "0.03")
 MAX_LEV            = {"BTC/USD": 40, "ETH/USD": 20}
 
 # ── Data sources ─────────────────────────────────────────────────────────────
@@ -61,9 +62,11 @@ def load_state():
         "entry_btc_price": 0.0,
         "entry_eth_price": 0.0,
         "entry_equity":    0.0,
-        "peak_pnl":           0.0,
-        "trail_active":       False,
-        "last_lag_alert_utc":           "",
+        "peak_pnl":                    0.0,
+        "trail_active":                False,
+        "trail_flip_active":           False,
+        "last_btcleads_hold_signal":   "",
+        "last_lag_alert_utc":          "",
         "open_signal":                  "",
         "last_equity":          0.0,
         "last_avail":           0.0,
@@ -464,77 +467,110 @@ def run():
     if curr != old:
         print(f"\n  Signal changed: {old} -> {curr}")
 
-        need_close = live["any_open"] or (state["position_open"] and old != "NEUTRAL")
-        if need_close:
-            print(f"  Closing (live={live['any_open']} state={state['position_open']})...")
-            if has_dec:
-                close_all()
-                time.sleep(2)
-            acct = get_balances() if has_dec else None
-            if old != "NEUTRAL":
-                open_sig = state.get("open_signal") or old
-                append_log({
-                    "timestamp":              datetime.now(timezone.utc).isoformat(),
-                    "action":                 "CLOSE",
-                    "signal":                 open_sig,
-                    "btc_side":               "long"  if open_sig == "LONG_BTC" else "short",
-                    "eth_side":               "short" if open_sig == "LONG_BTC" else "long",
-                    "btc_size":               state.get("entry_btc_size", 0),
-                    "eth_size":               state.get("entry_eth_size", 0),
-                    "btc_entry_price":        state.get("entry_btc_price", 0),
-                    "eth_entry_price":        state.get("entry_eth_price", 0),
-                    "pnl":                    (round(acct["equity"] -
-                                              state.get("entry_equity", acct["equity"]), 2)
-                                              if acct else None),
-                    "trade_duration_minutes": trade_duration_min(state.get("entry_time_utc", "")),
-                    "signal_strength":        sig["strength"],
-                    "exit_reason":            "SIGNAL_FLIP",
-                    "peak_pnl":               state.get("peak_pnl", None),
-                    "convergence_type":       ct,
-                })
-            tg(msg_close(f"Signal flipped to {curr}", old, curr, acct))
-            state["position_open"] = False
-            state["open_signal"]   = ""
+        # Change 1: BTC_LEADS_DOWN hold — skip close when LONG_ETH profitable under BTC_LEADS_DOWN
+        open_sig_chk  = state.get("open_signal") or old
+        current_pnl_s = acct.get("pnl", 0.0) if acct else 0.0
+        is_profitable = current_pnl_s > 0 or state.get("trail_active", False)
+        if (open_sig_chk == "LONG_ETH" and ct == "BTC_LEADS_DOWN"
+                and is_profitable and state["position_open"]):
+            print(f"  BTC_LEADS_DOWN hold — LONG_ETH position profitable, skipping signal flip to {curr}")
+            if curr != state.get("last_btcleads_hold_signal", ""):
+                tg(f"⚡ BTC_LEADS_DOWN — holding LONG_ETH, signal flip to {curr} skipped"
+                   f" · PnL: ${fmt(current_pnl_s, 3)}")
+            state["last_btcleads_hold_signal"] = curr
+            acted = True
+        else:
+            state["last_btcleads_hold_signal"] = ""
 
-        if curr != "NEUTRAL":
-            if has_dec:
-                sizes   = execute_trade(curr, btc_px, eth_px_usd)
-                acct    = get_balances()
-                now_iso = datetime.now(timezone.utc).isoformat()
-                append_log({
-                    "timestamp":              now_iso,
-                    "action":                 "OPEN",
-                    "signal":                 curr,
-                    "btc_side":               "long"  if curr == "LONG_BTC" else "short",
-                    "eth_side":               "short" if curr == "LONG_BTC" else "long",
-                    "btc_size":               sizes["btc_size"],
-                    "eth_size":               sizes["eth_size"],
-                    "btc_entry_price":        round(btc_px, 2),
-                    "eth_entry_price":        round(eth_px_usd, 2),
-                    "pnl":                    None,
-                    "trade_duration_minutes": None,
-                    "signal_strength":        sig["strength"],
-                    "convergence_type":       ct,
-                })
-                state["position_open"]   = True
-                state["entry_btc_size"]  = sizes["btc_size"]
-                state["entry_eth_size"]  = sizes["eth_size"]
-                state["entry_time_utc"]  = now_iso
-                state["entry_btc_price"] = round(btc_px, 2)
-                state["entry_eth_price"] = round(eth_px_usd, 2)
-                state["entry_equity"]    = acct["equity"] if acct else 0.0
-                state["trade_count"]    += 1
-                state["peak_pnl"]        = 0.0
-                state["trail_active"]    = False
-                state["open_signal"]     = curr
-                tg(msg_open(curr, sig, bd, btc_px, eth_px_usd, sizes, acct))
-            else:
-                bias = "Long BTC/Short ETH" if curr == "LONG_BTC" else "Long ETH/Short BTC"
-                tg(f"<b>SIGNAL: {bias}</b> (signal-only -- add Decibel keys to trade)\n"
-                   f"Strength: {chr(9608)*sig['strength']}{chr(9617)*(5-sig['strength'])}"
-                   f" {sig['strength']}/5\n<i>{ts_s()}</i>")
-        state["current_signal"] = curr
-        acted = True
+            need_close = live["any_open"] or (state["position_open"] and old != "NEUTRAL")
+            if need_close:
+                # Change 2: tighten trail instead of closing when position is winning and trail active
+                trail_flip_ok = (state.get("trail_active", False)
+                                 and state.get("peak_pnl", 0.0) > TRAIL_ACTIVATE_USD
+                                 and not state.get("trail_flip_active", False))
+                if trail_flip_ok:
+                    stop_at = state["peak_pnl"] - TRAIL_FLIP_GIVEBACK_USD
+                    print(f"  Signal flipped to {curr} but position profitable"
+                          f" — tightening trail to ${fmt(stop_at, 3)}")
+                    tg(f"📈 Signal flipped to {curr} but trail active"
+                       f" — tightening giveback to ${fmt(TRAIL_FLIP_GIVEBACK_USD, 2)},"
+                       f" letting winner run")
+                    state["trail_flip_active"] = True
+                    acted = True
+                else:
+                    print(f"  Closing (live={live['any_open']} state={state['position_open']})...")
+                    if has_dec:
+                        close_all()
+                        time.sleep(2)
+                    acct = get_balances() if has_dec else None
+                    if old != "NEUTRAL":
+                        open_sig = state.get("open_signal") or old
+                        append_log({
+                            "timestamp":              datetime.now(timezone.utc).isoformat(),
+                            "action":                 "CLOSE",
+                            "signal":                 open_sig,
+                            "btc_side":               "long"  if open_sig == "LONG_BTC" else "short",
+                            "eth_side":               "short" if open_sig == "LONG_BTC" else "long",
+                            "btc_size":               state.get("entry_btc_size", 0),
+                            "eth_size":               state.get("entry_eth_size", 0),
+                            "btc_entry_price":        state.get("entry_btc_price", 0),
+                            "eth_entry_price":        state.get("entry_eth_price", 0),
+                            "pnl":                    (round(acct["equity"] -
+                                                      state.get("entry_equity", acct["equity"]), 2)
+                                                      if acct else None),
+                            "trade_duration_minutes": trade_duration_min(state.get("entry_time_utc", "")),
+                            "signal_strength":        sig["strength"],
+                            "exit_reason":            "SIGNAL_FLIP",
+                            "peak_pnl":               state.get("peak_pnl", None),
+                            "convergence_type":       ct,
+                        })
+                    tg(msg_close(f"Signal flipped to {curr}", old, curr, acct))
+                    state["position_open"]            = False
+                    state["open_signal"]              = ""
+                    state["trail_flip_active"]        = False
+                    state["last_btcleads_hold_signal"] = ""
+
+            if not state.get("trail_flip_active", False):
+                if curr != "NEUTRAL":
+                    if has_dec:
+                        sizes   = execute_trade(curr, btc_px, eth_px_usd)
+                        acct    = get_balances()
+                        now_iso = datetime.now(timezone.utc).isoformat()
+                        append_log({
+                            "timestamp":              now_iso,
+                            "action":                 "OPEN",
+                            "signal":                 curr,
+                            "btc_side":               "long"  if curr == "LONG_BTC" else "short",
+                            "eth_side":               "short" if curr == "LONG_BTC" else "long",
+                            "btc_size":               sizes["btc_size"],
+                            "eth_size":               sizes["eth_size"],
+                            "btc_entry_price":        round(btc_px, 2),
+                            "eth_entry_price":        round(eth_px_usd, 2),
+                            "pnl":                    None,
+                            "trade_duration_minutes": None,
+                            "signal_strength":        sig["strength"],
+                            "convergence_type":       ct,
+                        })
+                        state["position_open"]   = True
+                        state["entry_btc_size"]  = sizes["btc_size"]
+                        state["entry_eth_size"]  = sizes["eth_size"]
+                        state["entry_time_utc"]  = now_iso
+                        state["entry_btc_price"] = round(btc_px, 2)
+                        state["entry_eth_price"] = round(eth_px_usd, 2)
+                        state["entry_equity"]    = acct["equity"] if acct else 0.0
+                        state["trade_count"]    += 1
+                        state["peak_pnl"]        = 0.0
+                        state["trail_active"]    = False
+                        state["trail_flip_active"] = False
+                        state["open_signal"]     = curr
+                        tg(msg_open(curr, sig, bd, btc_px, eth_px_usd, sizes, acct))
+                    else:
+                        bias = "Long BTC/Short ETH" if curr == "LONG_BTC" else "Long ETH/Short BTC"
+                        tg(f"<b>SIGNAL: {bias}</b> (signal-only -- add Decibel keys to trade)\n"
+                           f"Strength: {chr(9608)*sig['strength']}{chr(9617)*(5-sig['strength'])}"
+                           f" {sig['strength']}/5\n<i>{ts_s()}</i>")
+                state["current_signal"] = curr
+                acted = True
     else:
         print(f"  Unchanged ({curr}) -- holding.")
         trail_stopped = False
@@ -571,10 +607,12 @@ def run():
                 })
                 tg(f"\U0001f6d1 <b>STOP LOSS HIT</b>\n\nPnL: <b>${fmt(current_pnl,3)}</b> reached floor "
                    f"<b>${fmt(STOP_LOSS_USD,3)}</b>\n\n<i>{ts_s()} · GitHub Actions</i>")
-                state["position_open"] = False
-                state["peak_pnl"]      = 0.0
-                state["trail_active"]  = False
-                state["open_signal"]   = ""
+                state["position_open"]            = False
+                state["peak_pnl"]                 = 0.0
+                state["trail_active"]             = False
+                state["trail_flip_active"]        = False
+                state["open_signal"]              = ""
+                state["last_btcleads_hold_signal"] = ""
                 trail_stopped = True
                 acted = True
             else:
@@ -589,8 +627,10 @@ def run():
                         peak = current_pnl
                         print(f"  New peak PnL: ${fmt(peak,3)}")
 
-                    stop_level = peak - TRAIL_GIVEBACK_USD
-                    print(f"  Trail: PnL=${fmt(current_pnl,3)}  peak=${fmt(peak,3)}  stop=${fmt(stop_level,3)}")
+                    giveback   = TRAIL_FLIP_GIVEBACK_USD if state.get("trail_flip_active") else TRAIL_GIVEBACK_USD
+                    stop_level = peak - giveback
+                    flip_tag   = "  [flip-tightened]" if state.get("trail_flip_active") else ""
+                    print(f"  Trail: PnL=${fmt(current_pnl,3)}  peak=${fmt(peak,3)}  stop=${fmt(stop_level,3)}  giveback=${fmt(giveback,2)}{flip_tag}")
 
                     if current_pnl <= stop_level:
                         print(f"  TRAIL STOP: ${fmt(current_pnl,3)} <= stop ${fmt(stop_level,3)}")
@@ -618,10 +658,12 @@ def run():
                             "convergence_type":        ct,
                         })
                         tg(msg_trail_stop(acct["pnl"] if acct else current_pnl, peak, acct))
-                        state["position_open"] = False
-                        state["peak_pnl"]      = 0.0
-                        state["trail_active"]  = False
-                        state["open_signal"]   = ""
+                        state["position_open"]            = False
+                        state["peak_pnl"]                 = 0.0
+                        state["trail_active"]             = False
+                        state["trail_flip_active"]        = False
+                        state["open_signal"]              = ""
+                        state["last_btcleads_hold_signal"] = ""
                         trail_stopped = True
                         acted = True
                 else:
@@ -655,8 +697,10 @@ def run():
                     "convergence_type":        ct,
                 })
             tg(msg_close("Orphaned position cleanup (state reset detected)", old, curr, acct))
-            state["position_open"] = False
-            state["open_signal"]   = ""
+            state["position_open"]            = False
+            state["open_signal"]              = ""
+            state["trail_flip_active"]        = False
+            state["last_btcleads_hold_signal"] = ""
             acted = True
         elif not trail_stopped and live["any_open"] and not state["position_open"]:
             print("  Syncing state -- live positions detected but state said closed.")
