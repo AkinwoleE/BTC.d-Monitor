@@ -129754,5 +129754,16 @@
     "convergence_type": "BROAD_SELLOFF",
     "btc_price": 60745.3,
     "position_open": true
+  },
+  {
+    "timestamp": "2026-07-02T04:42:17.788780+00:00",
+    "action": "SIGNAL",
+    "signal": "NEUTRAL",
+    "btc_dir": "dn",
+    "eb_dir": "dn",
+    "signal_strength": 2,
+    "convergence_type": "BROAD_SELLOFF",
+    "btc_price": 60704.6,
+    "position_open": true
   }
 ]
