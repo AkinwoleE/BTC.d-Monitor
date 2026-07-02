@@ -470,7 +470,7 @@ def run():
     # ── Stop loss and trail — run every cycle when position is open ──────────────
     trail_stopped = False
 
-    if state["position_open"] and has_dec and acct and curr != "NEUTRAL":
+    if state["position_open"] and has_dec and acct:
         current_pnl = acct.get("pnl", 0.0)
         peak        = state.get("peak_pnl", 0.0)
         active      = state.get("trail_active", False)
