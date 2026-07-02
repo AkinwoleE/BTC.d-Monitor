@@ -29,6 +29,7 @@ DEC_PRIVATE_KEY = os.environ.get("DECIBEL_PRIVATE_KEY", "")
 DEC_SUB         = os.environ.get("DECIBEL_SUBACCOUNT", "")
 DEC_NODE_KEY    = os.environ.get("DECIBEL_NODE_API_KEY", "")
 DEC_GAS_KEY     = os.environ.get("DECIBEL_GAS_STATION_API_KEY", "")
+CMC_API_KEY     = os.environ.get("COINMARKETCAP_API_KEY", "")
 
 # ── Parameters ───────────────────────────────────────────────────────────────
 POSITION_SIZE      = float(os.environ.get("POSITION_SIZE_USD")  or "100")

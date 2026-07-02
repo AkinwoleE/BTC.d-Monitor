@@ -63,6 +63,7 @@ jobs:
           TRAIL_ACTIVATE_USD:          ${{ secrets.TRAIL_ACTIVATE_USD }}
           TRAIL_GIVEBACK_USD:          ${{ secrets.TRAIL_GIVEBACK_USD }}
           TRAIL_FLIP_GIVEBACK_USD:     ${{ secrets.TRAIL_FLIP_GIVEBACK_USD }}
+          COINMARKETCAP_API_KEY:       ${{ secrets.COINMARKETCAP_API_KEY }}
         run: python btcd_trader.py
 
       - name: Save state to repo
