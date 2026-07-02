@@ -63,6 +63,7 @@ def load_state():
         "entry_eth_price": 0.0,
         "entry_equity":    0.0,
         "peak_pnl":                    0.0,
+        "peak_pnl_time":               "",
         "trail_active":                False,
         "trail_flip_active":           False,
         "last_flip_signal":            "",
@@ -386,11 +387,12 @@ def msg_lag(lag):
             f"<i>Alert only — no trade placed</i>\n\n"
             f"<i>{ts_s()}</i>")
 
-def msg_trail_stop(current_pnl, peak_pnl, acct):
-    acc_l = (f"\n\U0001f4b0 Equity: <b>${fmt(acct['equity'],2)}</b>" if acct else "")
+def msg_trail_stop(current_pnl, peak_pnl, acct, peak_pnl_time=""):
+    acc_l  = (f"\n\U0001f4b0 Equity: <b>${fmt(acct['equity'],2)}</b>" if acct else "")
+    peak_t = f" @ <i>{peak_pnl_time}</i>" if peak_pnl_time else ""
     return (f"📈 <b>TRAILING STOP TRIGGERED</b>\n\n"
             f"Locked: <b>{'+' if current_pnl >= 0 else ''}${fmt(current_pnl,2)}</b>\n"
-            f"Peak was: <b>${fmt(peak_pnl,2)}</b>{acc_l}\n\n"
+            f"Peak was: <b>${fmt(peak_pnl,2)}</b>{peak_t}{acc_l}\n\n"
             f"<i>{ts_s()} · GitHub Actions</i>")
 
 # ── Main ──────────────────────────────────────────────────────────────────────
@@ -498,12 +500,14 @@ def run():
                 "signal_strength":        sig["strength"],
                 "exit_reason":            "STOP_LOSS",
                 "peak_pnl":               state.get("peak_pnl", None),
+                "peak_pnl_time":          state.get("peak_pnl_time", ""),
                 "convergence_type":        ct,
             })
             tg(f"\U0001f6d1 <b>STOP LOSS HIT</b>\n\nPnL: <b>${fmt(current_pnl,3)}</b> reached floor "
                f"<b>${fmt(STOP_LOSS_USD,3)}</b>\n\n<i>{ts_s()} · GitHub Actions</i>")
             state["position_open"]     = False
             state["peak_pnl"]          = 0.0
+            state["peak_pnl_time"]     = ""
             state["trail_active"]      = False
             state["trail_flip_active"] = False
             state["open_signal"]       = ""
@@ -519,7 +523,8 @@ def run():
 
             if active:
                 if current_pnl > peak:
-                    state["peak_pnl"] = current_pnl
+                    state["peak_pnl"]      = current_pnl
+                    state["peak_pnl_time"] = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
                     peak = current_pnl
                     print(f"  New peak PnL: ${fmt(peak,3)}")
 
@@ -551,11 +556,14 @@ def run():
                         "signal_strength":        sig["strength"],
                         "exit_reason":            "TRAIL_STOP",
                         "peak_pnl":               peak,
+                        "peak_pnl_time":          state.get("peak_pnl_time", ""),
                         "convergence_type":        ct,
                     })
-                    tg(msg_trail_stop(acct["pnl"] if acct else current_pnl, peak, acct))
+                    tg(msg_trail_stop(acct["pnl"] if acct else current_pnl, peak, acct,
+                                      state.get("peak_pnl_time", "")))
                     state["position_open"]     = False
                     state["peak_pnl"]          = 0.0
+                    state["peak_pnl_time"]     = ""
                     state["trail_active"]      = False
                     state["trail_flip_active"] = False
                     state["open_signal"]       = ""
@@ -577,6 +585,7 @@ def run():
                 state["trail_active"] = True
                 if not state.get("trail_flip_active", False):
                     state["peak_pnl"]          = current_pnl_now
+                    state["peak_pnl_time"]     = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
                     state["trail_flip_active"]  = True
                     stop_level = current_pnl_now - TRAIL_FLIP_GIVEBACK_USD
                     print(f"  Signal flipped {old} → {curr} — arming trail at current PnL"
@@ -622,6 +631,7 @@ def run():
                         state["entry_equity"]      = acct["equity"] if acct else 0.0
                         state["trade_count"]      += 1
                         state["peak_pnl"]          = 0.0
+                        state["peak_pnl_time"]     = ""
                         state["trail_active"]      = False
                         state["trail_flip_active"] = False
                         state["open_signal"]       = curr
@@ -661,6 +671,7 @@ def run():
                         "signal_strength":        sig["strength"],
                         "exit_reason":            "ORPHAN_CLEANUP",
                         "peak_pnl":               state.get("peak_pnl", None),
+                        "peak_pnl_time":          state.get("peak_pnl_time", ""),
                         "convergence_type":        ct,
                     })
                 tg(msg_close("Orphaned position cleanup (state reset detected)", old, curr, acct))
