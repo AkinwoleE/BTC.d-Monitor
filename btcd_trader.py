@@ -43,7 +43,7 @@ MAX_LEV            = {"BTC/USD": 40, "ETH/USD": 20}
 
 # ── Data sources ─────────────────────────────────────────────────────────────
 KRAKEN   = "https://api.kraken.com/0/public"
-COINLORE = "https://api.coinlore.net/api/global/"
+CMC_GLOBAL = "https://pro-api.coinmarketcap.com/v1/global-metrics/quotes/latest"
 KR_KEY   = {"XBTUSD": "XXBTZUSD", "ETHXBT": "XETHXXBT"}
 KR_IV    = {"15m": 15, "1h": 60}
 
@@ -154,12 +154,14 @@ def ticker(pair):
 
 def btcdom():
     try:
-        r = requests.get(COINLORE, timeout=10)
+        r = requests.get(CMC_GLOBAL,
+                         headers={"X-CMC_PRO_API_KEY": CMC_API_KEY},
+                         timeout=10)
         r.raise_for_status()
-        d = r.json(); v = d[0] if isinstance(d, list) else d
-        return {"btc_d": float(v["btc_d"]), "eth_d": float(v["eth_d"])}
+        d = r.json()["data"]
+        return {"btc_d": float(d["btc_dominance"]), "eth_d": float(d["eth_dominance"])}
     except Exception as e:
-        print(f"  CoinLore failed: {e}")
+        print(f"  CoinMarketCap dominance failed: {e}")
         return None
 
 # ── Signal engines ────────────────────────────────────────────────────────────
