@@ -521,13 +521,13 @@ def run():
                 state["trail_active"] = True
                 active = True
 
-            if active:
-                if current_pnl > peak:
-                    state["peak_pnl"]      = current_pnl
-                    state["peak_pnl_time"] = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
-                    peak = current_pnl
-                    print(f"  New peak PnL: ${fmt(peak,3)}")
+            if current_pnl > peak:
+                state["peak_pnl"]      = current_pnl
+                state["peak_pnl_time"] = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+                peak = current_pnl
+                print(f"  New peak PnL: ${fmt(peak,3)}")
 
+            if active:
                 giveback   = TRAIL_FLIP_GIVEBACK_USD if state.get("trail_flip_active") else TRAIL_GIVEBACK_USD
                 stop_level = peak - giveback
                 flip_tag   = "  [flip-tightened]" if state.get("trail_flip_active") else ""
