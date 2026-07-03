@@ -139549,5 +139549,31 @@
     "peak_pnl": 0.014212000000000294,
     "peak_pnl_time": "2026-07-03 07:36 UTC",
     "convergence_type": "BTC_LEADS_UP"
+  },
+  {
+    "timestamp": "2026-07-03T07:40:28.079656+00:00",
+    "action": "SIGNAL",
+    "signal": "LONG_BTC",
+    "btc_dir": "up",
+    "eb_dir": "dn",
+    "signal_strength": 2,
+    "convergence_type": "BTC_LEADS_UP",
+    "btc_price": 61688.3,
+    "position_open": false
+  },
+  {
+    "timestamp": "2026-07-03T07:40:47.324356+00:00",
+    "action": "OPEN",
+    "signal": "LONG_BTC",
+    "btc_side": "long",
+    "eth_side": "short",
+    "btc_size": 0.00162,
+    "eth_size": 0.0583,
+    "btc_entry_price": 61688.3,
+    "eth_entry_price": 1715.49,
+    "pnl": null,
+    "trade_duration_minutes": null,
+    "signal_strength": 2,
+    "convergence_type": "BTC_LEADS_UP"
   }
 ]
