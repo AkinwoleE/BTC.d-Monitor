@@ -224,16 +224,28 @@ def run_cli(action, params):
         "jsonrpc": "2.0", "id": 1, "method": "tools/call",
         "params": {"name": action, "arguments": params},
     }) + "\n"
-    result = subprocess.run(
-        ["npx", "-y", "--package", "@decibeltrade/cli", "decibel-mcp"],
-        input=rpc_call, capture_output=True, text=True, timeout=60, env=cli_env(),
-    )
+    try:
+        result = subprocess.run(
+            ["npx", "-y", "--package", "@decibeltrade/cli", "decibel-mcp"],
+            input=rpc_call, capture_output=True, text=True, timeout=60, env=cli_env(),
+        )
+    except subprocess.TimeoutExpired:
+        raise RuntimeError(f"MCP timeout after 60s on {action}")
+    except Exception as e:
+        raise RuntimeError(f"MCP subprocess failed: {e}")
+
+    if result.returncode != 0:
+        stderr = result.stderr.strip()[:500]
+        print(f"  MCP warning: exit code {result.returncode}, stderr: {stderr}")
+
     stdout = result.stdout.strip()
     if not stdout:
         raise RuntimeError(f"MCP no output. stderr: {result.stderr[:200]}")
+
     for line in stdout.split("\n"):
         line = line.strip()
-        if not line: continue
+        if not line or line.startswith("(node:") or "MaxListenersExceeded" in line:
+            continue
         try:
             msg = json.loads(line)
             if msg.get("id") == 1:
