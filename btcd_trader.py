@@ -484,6 +484,44 @@ def run():
     live = get_open_bot_positions() if has_dec else {"any_open": state["position_open"]}
     print(f"  Live open: {live['any_open']}  State open: {state['position_open']}")
 
+    # ── Reconcile: state says open but nothing is actually open on Decibel ───────
+    # Catches partial fills / delayed fills / silent order failures that the
+    # signal-dependent orphan-cleanup below would otherwise never detect
+    # (that logic only fires on curr=="NEUTRAL" or live-open-but-state-closed).
+    if has_dec and state["position_open"] and not live["any_open"]:
+        print("  MISMATCH: state says position open but Decibel shows none — reconciling...")
+        open_sig = state.get("open_signal") or old
+        append_log({
+            "timestamp":              datetime.now(timezone.utc).isoformat(),
+            "action":                 "CLOSE",
+            "signal":                 open_sig,
+            "btc_side":               "long"  if open_sig == "LONG_BTC" else "short",
+            "eth_side":               "short" if open_sig == "LONG_BTC" else "long",
+            "btc_size":               state.get("entry_btc_size", 0),
+            "eth_size":               state.get("entry_eth_size", 0),
+            "btc_entry_price":        state.get("entry_btc_price", 0),
+            "eth_entry_price":        state.get("entry_eth_price", 0),
+            "pnl":                    (round(acct["equity"] - state.get("entry_equity", acct["equity"]), 2)
+                                        if acct else None),
+            "trade_duration_minutes": trade_duration_min(state.get("entry_time_utc", "")),
+            "signal_strength":        sig["strength"],
+            "exit_reason":            "POSITION_SYNC_MISMATCH",
+            "peak_pnl":               state.get("peak_pnl", None),
+            "peak_pnl_time":          state.get("peak_pnl_time", ""),
+            "convergence_type":       ct,
+        })
+        tg(f"⚠️ Position sync mismatch detected — state showed {open_sig} open but "
+           f"Decibel has no position. Reconciled state.\n<i>{ts_s()}</i>")
+        state["position_open"]     = False
+        state["peak_pnl"]          = 0.0
+        state["peak_pnl_time"]     = ""
+        state["trail_active"]      = False
+        state["trail_flip_active"] = False
+        state["open_signal"]       = ""
+        state["last_flip_signal"]  = ""
+        state["last_known_pnl"]    = 0.0
+        acted = True
+
     # ── Stop loss and trail — run every cycle when position is open ──────────────
     trail_stopped = False
 

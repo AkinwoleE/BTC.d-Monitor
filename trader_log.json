@@ -144509,6 +144509,25 @@
     "convergence_type": "BTC_LEADS_DOWN"
   },
   {
+    "timestamp": "2026-07-03T22:16:38.728000+00:00",
+    "action": "CLOSE",
+    "signal": "LONG_ETH",
+    "btc_side": "short",
+    "eth_side": "long",
+    "btc_size": 0.0016,
+    "eth_size": 0.057,
+    "btc_entry_price": 62581.7,
+    "eth_entry_price": 1756.1,
+    "pnl": -0.0909,
+    "trade_duration_minutes": 7.87,
+    "signal_strength": 2,
+    "exit_reason": "PARTIAL_FILL_ANOMALY",
+    "peak_pnl": 0.0,
+    "peak_pnl_time": "",
+    "convergence_type": "BTC_LEADS_DOWN",
+    "note": "BTC leg never filled on Decibel \u2014 only ETH leg filled (delayed, ~8min) then closed 11s later. Naked/unhedged exposure. See conversation 2026-07-03 for investigation."
+  },
+  {
     "timestamp": "2026-07-03T22:10:27.730252+00:00",
     "action": "SIGNAL",
     "signal": "LONG_ETH",
