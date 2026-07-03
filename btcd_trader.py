@@ -20,7 +20,7 @@ Optional:
 """
 
 import os, sys, json, time, subprocess, requests
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 # ── Credentials ──────────────────────────────────────────────────────────────
 BOT_TOKEN       = os.environ.get("TELEGRAM_BOT_TOKEN", "")
@@ -526,7 +526,7 @@ def run():
 
             if current_pnl > peak:
                 state["peak_pnl"]      = current_pnl
-                state["peak_pnl_time"] = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+                state["peak_pnl_time"] = datetime.now(timezone(timedelta(hours=1))).strftime("%Y-%m-%d %H:%M WAT")
                 peak = current_pnl
                 print(f"  New peak PnL: ${fmt(peak,3)}")
 
@@ -588,7 +588,7 @@ def run():
                 state["trail_active"] = True
                 if not state.get("trail_flip_active", False):
                     state["peak_pnl"]          = current_pnl_now
-                    state["peak_pnl_time"]     = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+                    state["peak_pnl_time"]     = datetime.now(timezone(timedelta(hours=1))).strftime("%Y-%m-%d %H:%M WAT")
                     state["trail_flip_active"]  = True
                     stop_level = current_pnl_now - TRAIL_FLIP_GIVEBACK_USD
                     print(f"  Signal flipped {old} → {curr} — arming trail at current PnL"
