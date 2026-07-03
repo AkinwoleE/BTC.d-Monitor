@@ -131033,7 +131033,7 @@
     "signal_strength": 3,
     "exit_reason": "TRAIL_STOP",
     "peak_pnl": -0.15054700083999847,
-    "peak_pnl_time": "2026-07-02 08:16 UTC",
+    "peak_pnl_time": "2026-07-02 09:16 WAT",
     "convergence_type": "BTC_LEADS_UP"
   },
   {
@@ -131242,7 +131242,7 @@
     "signal_strength": 2,
     "exit_reason": "TRAIL_STOP",
     "peak_pnl": -0.0003299999999971659,
-    "peak_pnl_time": "2026-07-02 08:48 UTC",
+    "peak_pnl_time": "2026-07-02 09:48 WAT",
     "convergence_type": "BROAD_RALLY"
   },
   {
@@ -132254,7 +132254,7 @@
     "signal_strength": 2,
     "exit_reason": "TRAIL_STOP",
     "peak_pnl": 0.2030799999999917,
-    "peak_pnl_time": "2026-07-02 11:38 UTC",
+    "peak_pnl_time": "2026-07-02 12:38 WAT",
     "convergence_type": "BROAD_RALLY"
   },
   {
@@ -132771,7 +132771,7 @@
     "signal_strength": 3,
     "exit_reason": "TRAIL_STOP",
     "peak_pnl": -0.1618360000000153,
-    "peak_pnl_time": "2026-07-02 13:00 UTC",
+    "peak_pnl_time": "2026-07-02 14:00 WAT",
     "convergence_type": "BTC_LEADS_UP"
   },
   {
@@ -133365,7 +133365,7 @@
     "signal_strength": 2,
     "exit_reason": "TRAIL_STOP",
     "peak_pnl": 0.15492600000000473,
-    "peak_pnl_time": "2026-07-02 14:32 UTC",
+    "peak_pnl_time": "2026-07-02 15:32 WAT",
     "convergence_type": "BTC_LEADS_DOWN"
   },
   {
@@ -133860,7 +133860,7 @@
     "signal_strength": 2,
     "exit_reason": "TRAIL_STOP",
     "peak_pnl": -0.030702000000008334,
-    "peak_pnl_time": "2026-07-02 15:56 UTC",
+    "peak_pnl_time": "2026-07-02 16:56 WAT",
     "convergence_type": "BROAD_RALLY"
   },
   {
@@ -134124,7 +134124,7 @@
     "signal_strength": 2,
     "exit_reason": "TRAIL_STOP",
     "peak_pnl": 0.005108998540008403,
-    "peak_pnl_time": "2026-07-02 16:38 UTC",
+    "peak_pnl_time": "2026-07-02 17:38 WAT",
     "convergence_type": "BROAD_SELLOFF"
   },
   {
@@ -134619,7 +134619,7 @@
     "signal_strength": 2,
     "exit_reason": "TRAIL_STOP",
     "peak_pnl": 0.004725999999996705,
-    "peak_pnl_time": "2026-07-02 18:00 UTC",
+    "peak_pnl_time": "2026-07-02 19:00 WAT",
     "convergence_type": "BROAD_SELLOFF"
   },
   {
@@ -135070,7 +135070,7 @@
     "signal_strength": 2,
     "exit_reason": "TRAIL_STOP",
     "peak_pnl": 0.18012600000000203,
-    "peak_pnl_time": "2026-07-02 19:14 UTC",
+    "peak_pnl_time": "2026-07-02 20:14 WAT",
     "convergence_type": "BTC_LEADS_DOWN"
   },
   {
@@ -135334,7 +135334,7 @@
     "signal_strength": 2,
     "exit_reason": "TRAIL_STOP",
     "peak_pnl": 0.15791600000001516,
-    "peak_pnl_time": "2026-07-02 19:58 UTC",
+    "peak_pnl_time": "2026-07-02 20:58 WAT",
     "convergence_type": "BTC_LEADS_DOWN"
   },
   {
@@ -135884,7 +135884,7 @@
     "signal_strength": 2,
     "exit_reason": "TRAIL_STOP",
     "peak_pnl": -0.019494001160012736,
-    "peak_pnl_time": "2026-07-02 21:30 UTC",
+    "peak_pnl_time": "2026-07-02 22:30 WAT",
     "convergence_type": "BTC_LEADS_UP"
   },
   {
@@ -136170,7 +136170,7 @@
     "signal_strength": 2,
     "exit_reason": "TRAIL_STOP",
     "peak_pnl": 0.15581400000001008,
-    "peak_pnl_time": "2026-07-02 22:12 UTC",
+    "peak_pnl_time": "2026-07-02 23:12 WAT",
     "convergence_type": "BTC_LEADS_UP"
   },
   {
@@ -136918,7 +136918,7 @@
     "signal_strength": 3,
     "exit_reason": "TRAIL_STOP",
     "peak_pnl": 0.34426400000000473,
-    "peak_pnl_time": "2026-07-03 00:22 UTC",
+    "peak_pnl_time": "2026-07-03 01:22 WAT",
     "convergence_type": "BTC_LEADS_DOWN"
   },
   {
@@ -137325,7 +137325,7 @@
     "signal_strength": 3,
     "exit_reason": "TRAIL_STOP",
     "peak_pnl": -0.07953099999998461,
-    "peak_pnl_time": "2026-07-03 01:30 UTC",
+    "peak_pnl_time": "2026-07-03 02:30 WAT",
     "convergence_type": "BTC_LEADS_DOWN"
   },
   {
@@ -137391,7 +137391,7 @@
     "signal_strength": 2,
     "exit_reason": "TRAIL_STOP",
     "peak_pnl": 0.19928399999999558,
-    "peak_pnl_time": "2026-07-03 01:36 UTC",
+    "peak_pnl_time": "2026-07-03 02:36 WAT",
     "convergence_type": "BTC_LEADS_DOWN"
   },
   {
@@ -137710,7 +137710,7 @@
     "signal_strength": 2,
     "exit_reason": "STOP_LOSS",
     "peak_pnl": -0.01801699999999709,
-    "peak_pnl_time": "2026-07-03 02:26 UTC",
+    "peak_pnl_time": "2026-07-03 03:26 WAT",
     "convergence_type": "BROAD_SELLOFF"
   },
   {
@@ -138106,7 +138106,7 @@
     "signal_strength": 2,
     "exit_reason": "TRAIL_STOP",
     "peak_pnl": 0.15152199999999705,
-    "peak_pnl_time": "2026-07-03 03:30 UTC",
+    "peak_pnl_time": "2026-07-03 04:30 WAT",
     "convergence_type": "BROAD_RALLY"
   },
   {
@@ -138304,7 +138304,7 @@
     "signal_strength": 2,
     "exit_reason": "TRAIL_STOP",
     "peak_pnl": 0.09801900000000209,
-    "peak_pnl_time": "2026-07-03 04:04 UTC",
+    "peak_pnl_time": "2026-07-03 05:04 WAT",
     "convergence_type": "BROAD_RALLY"
   },
   {
@@ -139316,7 +139316,7 @@
     "signal_strength": 1,
     "exit_reason": "TRAIL_STOP",
     "peak_pnl": -0.027500001320001285,
-    "peak_pnl_time": "2026-07-03 07:00 UTC",
+    "peak_pnl_time": "2026-07-03 08:00 WAT",
     "convergence_type": "BROAD_SELLOFF"
   },
   {
@@ -139547,7 +139547,7 @@
     "signal_strength": 2,
     "exit_reason": "TRAIL_STOP",
     "peak_pnl": 0.014212000000000294,
-    "peak_pnl_time": "2026-07-03 07:36 UTC",
+    "peak_pnl_time": "2026-07-03 08:36 WAT",
     "convergence_type": "BTC_LEADS_UP"
   },
   {
@@ -139646,7 +139646,7 @@
     "signal_strength": 2,
     "exit_reason": "TRAIL_STOP",
     "peak_pnl": -0.003693999999989997,
-    "peak_pnl_time": "2026-07-03 07:46 UTC",
+    "peak_pnl_time": "2026-07-03 08:46 WAT",
     "convergence_type": "BROAD_RALLY"
   },
   {
