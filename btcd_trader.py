@@ -622,35 +622,49 @@ def run():
                         sizes   = execute_trade(curr, btc_px, eth_px_usd)
                         acct    = get_balances()
                         now_iso = datetime.now(timezone.utc).isoformat()
-                        append_log({
-                            "timestamp":              now_iso,
-                            "action":                 "OPEN",
-                            "signal":                 curr,
-                            "btc_side":               "long"  if curr == "LONG_BTC" else "short",
-                            "eth_side":               "short" if curr == "LONG_BTC" else "long",
-                            "btc_size":               sizes["btc_size"],
-                            "eth_size":               sizes["eth_size"],
-                            "btc_entry_price":        round(btc_px, 2),
-                            "eth_entry_price":        round(eth_px_usd, 2),
-                            "pnl":                    None,
-                            "trade_duration_minutes": None,
-                            "signal_strength":        sig["strength"],
-                            "convergence_type":       ct,
-                        })
-                        state["position_open"]     = True
-                        state["entry_btc_size"]    = sizes["btc_size"]
-                        state["entry_eth_size"]    = sizes["eth_size"]
-                        state["entry_time_utc"]    = now_iso
-                        state["entry_btc_price"]   = round(btc_px, 2)
-                        state["entry_eth_price"]   = round(eth_px_usd, 2)
-                        state["entry_equity"]      = acct["equity"] if acct else 0.0
-                        state["trade_count"]      += 1
-                        state["peak_pnl"]          = 0.0
-                        state["peak_pnl_time"]     = ""
-                        state["trail_active"]      = False
-                        state["trail_flip_active"] = False
-                        state["open_signal"]       = curr
-                        tg(msg_open(curr, sig, bd, btc_px, eth_px_usd, sizes, acct))
+
+                        # Validate that both orders succeeded before opening position
+                        btc_order = sizes.get("results", {}).get("btc", {})
+                        eth_order = sizes.get("results", {}).get("eth", {})
+                        btc_success = btc_order.get("success", False) if isinstance(btc_order, dict) else True
+                        eth_success = eth_order.get("success", False) if isinstance(eth_order, dict) else True
+
+                        if not (btc_success and eth_success):
+                            btc_error = btc_order.get("error", "Unknown error") if not btc_success else None
+                            eth_error = eth_order.get("error", "Unknown error") if not eth_success else None
+                            error_msg = btc_error or eth_error or "Orders failed"
+                            print(f"  ⚠️  ORDER FAILED: {error_msg} — NOT opening position")
+                            tg(f"⚠️ Orders failed — not opening position.\nError: {error_msg}")
+                        else:
+                            append_log({
+                                "timestamp":              now_iso,
+                                "action":                 "OPEN",
+                                "signal":                 curr,
+                                "btc_side":               "long"  if curr == "LONG_BTC" else "short",
+                                "eth_side":               "short" if curr == "LONG_BTC" else "long",
+                                "btc_size":               sizes["btc_size"],
+                                "eth_size":               sizes["eth_size"],
+                                "btc_entry_price":        round(btc_px, 2),
+                                "eth_entry_price":        round(eth_px_usd, 2),
+                                "pnl":                    None,
+                                "trade_duration_minutes": None,
+                                "signal_strength":        sig["strength"],
+                                "convergence_type":       ct,
+                            })
+                            state["position_open"]     = True
+                            state["entry_btc_size"]    = sizes["btc_size"]
+                            state["entry_eth_size"]    = sizes["eth_size"]
+                            state["entry_time_utc"]    = now_iso
+                            state["entry_btc_price"]   = round(btc_px, 2)
+                            state["entry_eth_price"]   = round(eth_px_usd, 2)
+                            state["entry_equity"]      = acct["equity"] if acct else 0.0
+                            state["trade_count"]      += 1
+                            state["peak_pnl"]          = 0.0
+                            state["peak_pnl_time"]     = ""
+                            state["trail_active"]      = False
+                            state["trail_flip_active"] = False
+                            state["open_signal"]       = curr
+                            tg(msg_open(curr, sig, bd, btc_px, eth_px_usd, sizes, acct))
                     else:
                         bias = "Long BTC/Short ETH" if curr == "LONG_BTC" else "Long ETH/Short BTC"
                         tg(f"<b>SIGNAL: {bias}</b> (signal-only -- add Decibel keys to trade)\n"
