@@ -4,11 +4,7 @@
   "entry_btc_size": 0.0,
   "entry_eth_size": 0.0,
   "trade_count": 0,
-<<<<<<< Updated upstream
-  "last_run_utc": "2026-07-04T01:22:19.703766+00:00",
-=======
-  "last_run_utc": "2026-07-04T01:22:44.580335+00:00",
->>>>>>> Stashed changes
+  "last_run_utc": "2026-07-04T01:24:30.576298+00:00",
   "entry_time_utc": "",
   "entry_btc_price": 0.0,
   "entry_eth_price": 0.0,
@@ -24,9 +20,5 @@
   "last_equity": 15.022547,
   "last_avail": 15.022547,
   "last_unrealized_pnl": 0.0,
-<<<<<<< Updated upstream
-  "equity_updated_utc": "2026-07-04T01:22:19.703751+00:00"
-=======
-  "equity_updated_utc": "2026-07-04T01:22:44.580322+00:00"
->>>>>>> Stashed changes
+  "equity_updated_utc": "2026-07-04T01:24:30.576283+00:00"
 }
