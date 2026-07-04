@@ -1,18 +1,14 @@
 {
-  "current_signal": "LONG_BTC",
+  "current_signal": "NEUTRAL",
   "position_open": false,
-  "entry_btc_size": 0.00159,
-  "entry_eth_size": 0.056,
-  "trade_count": 1,
-<<<<<<< Updated upstream
-  "last_run_utc": "2026-07-04T17:06:51.169112+00:00",
-=======
-  "last_run_utc": "2026-07-04T17:07:17.580157+00:00",
->>>>>>> Stashed changes
-  "entry_time_utc": "2026-07-04T16:22:41.627506+00:00",
-  "entry_btc_price": 62795.7,
-  "entry_eth_price": 1784.97,
-  "entry_equity": 13.825803743526752,
+  "entry_btc_size": 0.0,
+  "entry_eth_size": 0.0,
+  "trade_count": 0,
+  "last_run_utc": "2026-07-04T17:08:25.204748+00:00",
+  "entry_time_utc": "",
+  "entry_btc_price": 0.0,
+  "entry_eth_price": 0.0,
+  "entry_equity": 0.0,
   "peak_pnl": 0.0,
   "peak_pnl_time": "",
   "trail_active": false,
@@ -24,10 +20,6 @@
   "last_equity": 13.710067,
   "last_avail": 13.710067,
   "last_unrealized_pnl": 0.0,
-<<<<<<< Updated upstream
-  "equity_updated_utc": "2026-07-04T17:06:51.169101+00:00",
-=======
-  "equity_updated_utc": "2026-07-04T17:07:17.580149+00:00",
->>>>>>> Stashed changes
+  "equity_updated_utc": "2026-07-04T17:08:25.204735+00:00",
   "last_api_fail_utc": ""
 }
