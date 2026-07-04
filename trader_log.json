@@ -517,14 +517,24 @@
     "position_open": false
   },
   {
+<<<<<<< Updated upstream
     "timestamp": "2026-07-04T01:22:13.977772+00:00",
+=======
+    "timestamp": "2026-07-04T01:22:39.849351+00:00",
+>>>>>>> Stashed changes
     "action": "SIGNAL",
     "signal": "NEUTRAL",
     "btc_dir": "dn",
     "eb_dir": "dn",
+<<<<<<< Updated upstream
     "signal_strength": 1,
     "convergence_type": "BROAD_SELLOFF",
     "btc_price": 62477.2,
+=======
+    "signal_strength": 2,
+    "convergence_type": "BROAD_SELLOFF",
+    "btc_price": 62456.2,
+>>>>>>> Stashed changes
     "position_open": false
   }
 ]
