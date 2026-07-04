@@ -68,12 +68,10 @@ jobs:
 
       - name: Save state to repo
         if: always()
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID:   ${{ secrets.TELEGRAM_CHAT_ID }}
         run: |
           git config user.name  "BTC.D Trader Bot"
           git config user.email "trader-bot@noreply.github.com"
-          git stash
-          git pull --rebase origin main || true
-          git stash pop || true
-          git add trader_state.json trader_log.json
-          git diff --staged --quiet || git commit -m "bot: update trader state [skip ci]"
-          git push
+          python3 save_state.py

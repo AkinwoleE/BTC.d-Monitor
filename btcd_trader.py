@@ -77,12 +77,22 @@ def load_state():
         "equity_updated_utc":   "",
         "last_api_fail_utc":    "",
     }
+    if not os.path.exists(STATE_FILE):
+        return defaults
     try:
         with open(STATE_FILE) as f:
             saved = json.load(f)
         defaults.update(saved)
-    except Exception:
-        pass
+    except Exception as e:
+        # File exists but won't parse (e.g. unresolved git conflict markers from
+        # a stash-pop collision) — this must NOT silently fall back to defaults,
+        # that's exactly what turned a narrow git conflict into a full state wipe
+        # on 2026-07-03/04. Fail loudly instead so a human sees it.
+        msg = f"CORRUPTED {STATE_FILE} — refusing to silently reset to defaults: {e}"
+        print(f"  FATAL: {msg}")
+        try: tg(f"🚨 {msg}\n<i>{ts_s()}</i>")
+        except Exception: pass
+        raise RuntimeError(msg)
     return defaults
 
 def save_state(s):
@@ -91,11 +101,20 @@ def save_state(s):
     print(f"  State: signal={s['current_signal']} open={s['position_open']}")
 
 def load_log():
+    if not os.path.exists(LOG_FILE):
+        return []
     try:
         with open(LOG_FILE) as f:
             return json.load(f)
-    except Exception:
-        return []
+    except Exception as e:
+        # Same reasoning as load_state(): a corrupted file must fail loudly,
+        # not be silently treated as an empty log (that's what deleted
+        # ~11,700 entries twice already).
+        msg = f"CORRUPTED {LOG_FILE} — refusing to silently reset to empty: {e}"
+        print(f"  FATAL: {msg}")
+        try: tg(f"🚨 {msg}\n<i>{ts_s()}</i>")
+        except Exception: pass
+        raise RuntimeError(msg)
 
 def append_log(entry):
     log = load_log()
