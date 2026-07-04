@@ -2312,5 +2312,34 @@
     "trade_duration_minutes": null,
     "signal_strength": 2,
     "convergence_type": "BTC_LEADS_DOWN"
+  },
+  {
+    "timestamp": "2026-07-04T08:18:23.119252+00:00",
+    "action": "SIGNAL",
+    "signal": "LONG_ETH",
+    "btc_dir": "dn",
+    "eb_dir": "up",
+    "signal_strength": 2,
+    "convergence_type": "BTC_LEADS_DOWN",
+    "btc_price": 62474.2,
+    "position_open": true
+  },
+  {
+    "timestamp": "2026-07-04T08:18:28.434980+00:00",
+    "action": "CLOSE",
+    "signal": "LONG_ETH",
+    "btc_side": "short",
+    "eth_side": "long",
+    "btc_size": 0.0016,
+    "eth_size": 0.0569,
+    "btc_entry_price": 62474.3,
+    "eth_entry_price": 1757.28,
+    "pnl": -0.06,
+    "trade_duration_minutes": 1.8,
+    "signal_strength": 2,
+    "exit_reason": "POSITION_SYNC_MISMATCH",
+    "peak_pnl": 0.0,
+    "peak_pnl_time": "",
+    "convergence_type": "BTC_LEADS_DOWN"
   }
 ]
