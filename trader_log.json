@@ -1078,14 +1078,22 @@
     "position_open": false
   },
   {
+<<<<<<< Updated upstream
     "timestamp": "2026-07-04T16:20:26.614391+00:00",
+=======
+    "timestamp": "2026-07-04T16:20:51.334721+00:00",
+>>>>>>> Stashed changes
     "action": "SIGNAL",
     "signal": "LONG_BTC",
     "btc_dir": "up",
     "eb_dir": "dn",
     "signal_strength": 2,
     "convergence_type": "BTC_LEADS_UP",
+<<<<<<< Updated upstream
     "btc_price": 62790.2,
+=======
+    "btc_price": 62790.1,
+>>>>>>> Stashed changes
     "position_open": false
   }
 ]
