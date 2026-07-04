@@ -488,7 +488,12 @@ def run():
     # Catches partial fills / delayed fills / silent order failures that the
     # signal-dependent orphan-cleanup below would otherwise never detect
     # (that logic only fires on curr=="NEUTRAL" or live-open-but-state-closed).
-    if has_dec and state["position_open"] and not live["any_open"]:
+    # Grace period: skip right after opening — Decibel's position-query API can
+    # lag a freshly-filled order by a cycle or two, which previously caused a
+    # false-positive "mismatch" that force-closed a genuinely still-open position.
+    entry_age_min = trade_duration_min(state.get("entry_time_utc", ""))
+    in_grace_period = entry_age_min is not None and entry_age_min < 5
+    if has_dec and state["position_open"] and not live["any_open"] and not in_grace_period:
         print("  MISMATCH: state says position open but Decibel shows none — reconciling...")
         open_sig = state.get("open_signal") or old
         append_log({
@@ -521,6 +526,9 @@ def run():
         state["last_flip_signal"]  = ""
         state["last_known_pnl"]    = 0.0
         acted = True
+    elif has_dec and state["position_open"] and not live["any_open"] and in_grace_period:
+        print(f"  Position shows not-live but entry is only {entry_age_min}min old — "
+              f"within grace period, skipping reconciliation (avoids indexing-lag false positive)")
 
     # ── Stop loss and trail — run every cycle when position is open ──────────────
     trail_stopped = False
@@ -656,6 +664,7 @@ def run():
             else:
                 # No position open — open normally
                 if curr != "NEUTRAL":
+                    order_succeeded = True  # signal-only mode has nothing to fail
                     if has_dec:
                         sizes   = execute_trade(curr, btc_px, eth_px_usd)
                         acct    = get_balances()
@@ -673,6 +682,7 @@ def run():
                             error_msg = btc_error or eth_error or "Orders failed"
                             print(f"  ⚠️  ORDER FAILED: {error_msg} — NOT opening position")
                             tg(f"⚠️ Orders failed — not opening position.\nError: {error_msg}")
+                            order_succeeded = False
                         else:
                             append_log({
                                 "timestamp":              now_iso,
@@ -708,8 +718,12 @@ def run():
                         tg(f"<b>SIGNAL: {bias}</b> (signal-only -- add Decibel keys to trade)\n"
                            f"Strength: {chr(9608)*sig['strength']}{chr(9617)*(5-sig['strength'])}"
                            f" {sig['strength']}/5\n<i>{ts_s()}</i>")
-                state["current_signal"] = curr
-                acted = True
+
+                    if order_succeeded:
+                        state["current_signal"] = curr
+                        acted = True
+                    else:
+                        print("  Order failed — leaving current_signal unchanged so the bot retries next cycle")
         else:
             print(f"  Unchanged ({curr}) -- holding.")
 
