@@ -75,6 +75,7 @@ def load_state():
         "last_avail":           0.0,
         "last_unrealized_pnl":  0.0,
         "equity_updated_utc":   "",
+        "last_api_fail_utc":    "",
     }
     try:
         with open(STATE_FILE) as f:
@@ -286,6 +287,9 @@ def get_open_bot_positions():
             try:
                 msg = json.loads(line)
                 if msg.get("id") == 1:
+                    if "error" in msg:
+                        print(f"  Position check MCP error: {msg['error']}")
+                        return {"any_open": False, "positions": [], "api_available": False}
                     content = msg.get("result", {}).get("content", [])
                     for item in content:
                         if item.get("type") == "text":
@@ -299,11 +303,11 @@ def get_open_bot_positions():
                                 "ETH" in str(p.get("market","")) and abs(float(p.get("size",0))) > 0
                                 for p in positions
                             )
-                            return {"any_open": btc_open or eth_open, "positions": positions}
+                            return {"any_open": btc_open or eth_open, "positions": positions, "api_available": True}
             except: continue
     except Exception as e:
         print(f"  Position check failed: {e}")
-    return {"any_open": False, "positions": []}
+    return {"any_open": False, "positions": [], "api_available": False}
 
 def get_balances():
     try:
@@ -483,6 +487,36 @@ def run():
 
     live = get_open_bot_positions() if has_dec else {"any_open": state["position_open"]}
     print(f"  Live open: {live['any_open']}  State open: {state['position_open']}")
+
+    # ── API-health gate: only when Decibel trading is actually configured ────────
+    # (has_dec guard) — an intentional signal-only setup with no Decibel keys
+    # also has acct=None, but that's not a failure and must not trip this alert.
+    # Protects against wiping real state when the API/credentials are down,
+    # rather than genuinely showing no position (the failure class behind
+    # yesterday's expired-key incident, just at a different call site).
+    if has_dec and (not live.get("api_available", True) or acct is None):
+        print("  ⚠️ Decibel API unavailable this cycle — skipping all position management")
+        last_fail = state.get("last_api_fail_utc", "")
+        fail_elapsed = None
+        if last_fail:
+            try:
+                fail_elapsed = (datetime.now(timezone.utc) -
+                                datetime.fromisoformat(last_fail)).total_seconds() / 60
+            except Exception:
+                pass
+        if fail_elapsed is None or fail_elapsed >= 30:
+            tg("⚠️ Decibel API unreachable — trades paused until API recovers")
+            state["last_api_fail_utc"] = datetime.now(timezone.utc).isoformat()
+        else:
+            print(f"  API-fail alert suppressed — {fmt(fail_elapsed,1)}m since last (cooldown 30m)")
+        state["last_equity"]         = acct["equity"] if acct else state.get("last_equity", 0.0)
+        state["last_avail"]          = acct["avail"]  if acct else state.get("last_avail", 0.0)
+        state["last_unrealized_pnl"] = acct["pnl"]    if acct else state.get("last_unrealized_pnl", 0.0)
+        state["equity_updated_utc"]  = datetime.now(timezone.utc).isoformat() if acct else state.get("equity_updated_utc", "")
+        state["last_run_utc"] = datetime.now(timezone.utc).isoformat()
+        save_state(state)
+        print(f"\n  Done. Acted: False (API unavailable)")
+        return 0
 
     # ── Reconcile: state says open but nothing is actually open on Decibel ───────
     # Catches partial fills / delayed fills / silent order failures that the
@@ -765,6 +799,34 @@ def run():
                 print("  Syncing state -- live positions detected but state said closed.")
                 state["position_open"]  = True
                 state["current_signal"] = curr
+
+                # Reconstruct entry data from the live positions so PnL/trail math
+                # isn't based on stale or zeroed entry fields (acct["equity"] minus
+                # a meaningless entry_equity was producing garbage PnL previously).
+                reconstructed = False
+                try:
+                    positions   = live.get("positions", [])
+                    btc_pos = next((p for p in positions if "BTC" in str(p.get("market", ""))), None)
+                    eth_pos = next((p for p in positions
+                                    if "ETH" in str(p.get("market", "")) and "BTC" not in str(p.get("market", ""))), None)
+                    if btc_pos and eth_pos and acct:
+                        state["entry_btc_price"] = float(btc_pos["entry_price"])
+                        state["entry_eth_price"] = float(eth_pos["entry_price"])
+                        state["entry_btc_size"]  = abs(float(btc_pos["size"]))
+                        state["entry_eth_size"]  = abs(float(eth_pos["size"]))
+                        state["open_signal"]     = curr
+                        state["entry_equity"]    = acct["equity"] - acct["pnl"]
+                        state["entry_time_utc"]  = ""
+                        reconstructed = True
+                        tg(f"🔄 Orphaned position recovered — {curr}\n"
+                           f"Entry BTC: ${fmt(state['entry_btc_price'],2)} | "
+                           f"Entry ETH: ${fmt(state['entry_eth_price'],2)}\n"
+                           f"Reconstructed entry equity: ${state['entry_equity']:.2f}")
+                except Exception as e:
+                    print(f"  Orphan recovery reconstruction failed: {e}")
+                if not reconstructed:
+                    print("  Could not reconstruct entry data from live positions — "
+                          "falling back to position_open=True only (PnL will be inaccurate until next full cycle)")
 
     state["last_equity"]         = acct["equity"] if acct else state.get("last_equity", 0.0)
     state["last_avail"]          = acct["avail"]  if acct else state.get("last_avail", 0.0)

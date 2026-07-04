@@ -1,0 +1,82 @@
+name: Daily API Health Check
+on:
+  schedule:
+    - cron: '0 8 * * *'  # 8am UTC daily
+  workflow_dispatch:
+
+jobs:
+  health:
+    name: Check Decibel API
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: npx-decibel-cli-${{ runner.os }}-v1
+      - run: pip install requests
+      - name: Health check
+        env:
+          TELEGRAM_BOT_TOKEN:          ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID:            ${{ secrets.TELEGRAM_CHAT_ID }}
+          DECIBEL_PRIVATE_KEY:         ${{ secrets.DECIBEL_PRIVATE_KEY }}
+          DECIBEL_SUBACCOUNT:          ${{ secrets.DECIBEL_SUBACCOUNT }}
+          DECIBEL_NODE_API_KEY:        ${{ secrets.DECIBEL_NODE_API_KEY }}
+          DECIBEL_GAS_STATION_API_KEY: ${{ secrets.DECIBEL_GAS_STATION_API_KEY }}
+        run: |
+          python3 -c "
+          import subprocess, json, os, requests
+
+          BOT_TOKEN = os.environ.get('TELEGRAM_BOT_TOKEN','')
+          CHAT_ID   = os.environ.get('TELEGRAM_CHAT_ID','')
+          DEC_SUB   = os.environ.get('DECIBEL_SUBACCOUNT','')
+
+          def tg(msg):
+              if BOT_TOKEN and CHAT_ID:
+                  requests.post(
+                      f'https://api.telegram.org/bot{BOT_TOKEN}/sendMessage',
+                      json={'chat_id': CHAT_ID, 'text': msg,
+                            'parse_mode': 'HTML'}, timeout=10)
+
+          env = os.environ.copy()
+          env['DECIBEL_NETWORK'] = 'mainnet'
+          env['DECIBEL_SUBACCOUNT_ADDRESS'] = DEC_SUB
+
+          rpc = json.dumps({'jsonrpc':'2.0','id':1,'method':'tools/call',
+              'params':{'name':'get_balances',
+                        'arguments':{'subaccountAddress': DEC_SUB}}}) + '\n'
+
+          try:
+              r = subprocess.run(
+                  ['npx','-y','--package','@decibeltrade/cli','decibel-mcp'],
+                  input=rpc, capture_output=True, text=True,
+                  timeout=30, env=env)
+              for line in r.stdout.split('\n'):
+                  if not line.strip(): continue
+                  try:
+                      msg = json.loads(line)
+                      if msg.get('id')==1:
+                          content = msg.get('result',{}).get('content',[])
+                          for item in content:
+                              if item.get('type')=='text':
+                                  data = json.loads(item['text'])
+                                  equity = float(data.get('perpEquityBalance',0))
+                                  tg(f'✅ Daily health check passed\n'
+                                     f'Decibel API active\n'
+                                     f'Equity: <b>\${equity:.2f}</b>')
+                                  exit(0)
+                  except: continue
+              tg('🚨 Daily health check FAILED — Decibel API unreachable. '
+                 'Check app.decibel.trade/api — credentials may have expired.')
+              exit(1)
+          except Exception as e:
+              tg(f'🚨 Daily health check FAILED — {str(e)[:200]}')
+              exit(1)
+          "
