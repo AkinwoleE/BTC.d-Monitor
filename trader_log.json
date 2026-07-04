@@ -147781,7 +147781,11 @@
     "position_open": false
   },
   {
+<<<<<<< Updated upstream
     "timestamp": "2026-07-04T10:23:58.593500+00:00",
+=======
+    "timestamp": "2026-07-04T10:24:29.064013+00:00",
+>>>>>>> Stashed changes
     "action": "SIGNAL",
     "signal": "NEUTRAL",
     "btc_dir": "dn",
