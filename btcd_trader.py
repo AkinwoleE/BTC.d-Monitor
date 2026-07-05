@@ -290,6 +290,45 @@ def cli_env():
     if DEC_GAS_KEY: e["DECIBEL_GAS_STATION_API_KEY"] = DEC_GAS_KEY
     return e
 
+_MARKETS = {}
+
+def _load_markets():
+    # Position/trade objects identify markets by on-chain address, not by a
+    # human-readable symbol — resolve via get_markets() rather than assuming
+    # any particular string format in the market field. Also carries each
+    # market's minSize so dust below the exchange's own tradeable floor
+    # (e.g. leftover sub-lot residue from a close) doesn't register as an
+    # open position. Cached per process since market config doesn't change
+    # within a run.
+    if not _MARKETS:
+        try:
+            result = run_cli("get_markets", {})
+            for m in result.get("markets", []):
+                _MARKETS[m["name"]] = {
+                    "address":  m["address"],
+                    "min_size": m["minSize"] / (10 ** m["sizeDecimals"]),
+                }
+        except Exception as e:
+            print(f"  get_markets failed: {e}")
+
+def market_address(symbol):
+    _load_markets()
+    info = _MARKETS.get(symbol)
+    return info["address"] if info else None
+
+def market_min_size(symbol):
+    _load_markets()
+    info = _MARKETS.get(symbol)
+    return info["min_size"] if info else None
+
+def is_meaningful_size(size, min_size):
+    size = abs(size)
+    if size <= 0:
+        return False
+    if min_size is None:
+        return True  # couldn't resolve the market's floor — fail safe as "open", not silently ignored
+    return size >= min_size
+
 def get_open_bot_positions():
     try:
         rpc_call = json.dumps({
@@ -314,12 +353,16 @@ def get_open_bot_positions():
                         if item.get("type") == "text":
                             data = json.loads(item["text"])
                             positions = data.get("positions", data if isinstance(data, list) else [])
+                            btc_addr = market_address("BTC/USD")
+                            eth_addr = market_address("ETH/USD")
+                            btc_min  = market_min_size("BTC/USD")
+                            eth_min  = market_min_size("ETH/USD")
                             btc_open = any(
-                                "BTC" in str(p.get("market","")) and abs(float(p.get("size",0))) > 0
+                                p.get("market") == btc_addr and is_meaningful_size(float(p.get("size",0)), btc_min)
                                 for p in positions
                             )
                             eth_open = any(
-                                "ETH" in str(p.get("market","")) and abs(float(p.get("size",0))) > 0
+                                p.get("market") == eth_addr and is_meaningful_size(float(p.get("size",0)), eth_min)
                                 for p in positions
                             )
                             return {"any_open": btc_open or eth_open, "positions": positions, "api_available": True}
@@ -824,10 +867,11 @@ def run():
                 # a meaningless entry_equity was producing garbage PnL previously).
                 reconstructed = False
                 try:
-                    positions   = live.get("positions", [])
-                    btc_pos = next((p for p in positions if "BTC" in str(p.get("market", ""))), None)
-                    eth_pos = next((p for p in positions
-                                    if "ETH" in str(p.get("market", "")) and "BTC" not in str(p.get("market", ""))), None)
+                    positions = live.get("positions", [])
+                    btc_addr  = market_address("BTC/USD")
+                    eth_addr  = market_address("ETH/USD")
+                    btc_pos = next((p for p in positions if p.get("market") == btc_addr), None)
+                    eth_pos = next((p for p in positions if p.get("market") == eth_addr), None)
                     if btc_pos and eth_pos and acct:
                         state["entry_btc_price"] = float(btc_pos["entry_price"])
                         state["entry_eth_price"] = float(eth_pos["entry_price"])
