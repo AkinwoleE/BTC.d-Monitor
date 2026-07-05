@@ -152094,5 +152094,16 @@
     "peak_pnl": 0.1295889992599901,
     "peak_pnl_time": "2026-07-05 02:20 WAT",
     "convergence_type": "BTC_LEADS_UP"
+  },
+  {
+    "timestamp": "2026-07-05T01:24:19.031171+00:00",
+    "action": "SIGNAL",
+    "signal": "LONG_BTC",
+    "btc_dir": "up",
+    "eb_dir": "dn",
+    "signal_strength": 2,
+    "convergence_type": "BTC_LEADS_UP",
+    "btc_price": 62802.5,
+    "position_open": false
   }
 ]
