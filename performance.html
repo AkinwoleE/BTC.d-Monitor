@@ -155,15 +155,25 @@ const pc=n=>n>0?'g':n<0?'r':'';
 const bars=n=>'\u2588'.repeat(n)+'\u2591'.repeat(5-n);
 
 function pairTrades(log){
-  const out=[],opens={};
+  // Chronological pairing: match each CLOSE with whatever OPEN is currently
+  // pending, regardless of the `signal` field. A handful of historical CLOSE
+  // entries logged a stale/incorrect signal (from a since-removed code path
+  // that derived it from a drifting state field rather than the actual open
+  // position) — pairing by signal broke on those. Position is exclusive
+  // (BTC/ETH pairs trade as one unit), so there's never more than one
+  // pending OPEN at a time.
+  const out=[];
+  let pending=null;
   for(const e of log){
-    if(e.action==='OPEN') opens[e.signal]=e;
-    else if(e.action==='CLOSE'){
-      out.push({open:opens[e.signal]||null,close:e});
-      delete opens[e.signal];
+    if(e.action==='OPEN'){
+      if(pending) out.push({open:pending,close:null});
+      pending=e;
+    } else if(e.action==='CLOSE'){
+      out.push({open:pending,close:e});
+      pending=null;
     }
   }
-  for(const o of Object.values(opens)) out.push({open:o,close:null});
+  if(pending) out.push({open:pending,close:null});
   return out;
 }
 function stats(trades){
