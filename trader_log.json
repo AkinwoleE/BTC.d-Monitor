@@ -164634,5 +164634,16 @@
     "peak_pnl": 0.03234600000001517,
     "peak_pnl_time": "2026-07-06 14:24 WAT",
     "convergence_type": "BROAD_SELLOFF"
+  },
+  {
+    "timestamp": "2026-07-06T13:28:23.921813+00:00",
+    "action": "SIGNAL",
+    "signal": "NEUTRAL",
+    "btc_dir": "dn",
+    "eb_dir": "dn",
+    "signal_strength": 2,
+    "convergence_type": "BROAD_SELLOFF",
+    "btc_price": 61387.8,
+    "position_open": false
   }
 ]
