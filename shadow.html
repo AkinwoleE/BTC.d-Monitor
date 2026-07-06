@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="cream">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>BTC.D Trader · Shadow Mode</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#E7DECF;--surface:#FAF6EE;--s2:#F0E8DA;--border:#DCD2C0;
+  --purple:#C15F3C;--cyan:#3F6F73;--green:#2E7D52;--red:#BC4A3C;--yellow:#B07D2B;
+  --text:#2B2722;--text2:#7C7466;--text3:#A89E8B;
+  --font:"Inter",sans-serif;--mono:"JetBrains Mono",monospace;
+}
+[data-theme=dark]{
+  --bg:#1A1714;--surface:#231F1A;--s2:#2A251F;--border:#39322A;
+  --text:#EDE6D8;--text2:#A39A88;--text3:#6E6557;
+}
+body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:100vh;font-size:14px}
+a{color:var(--cyan);text-decoration:none}a:hover{text-decoration:underline}
+.wrap{max-width:1280px;margin:0 auto;padding:24px 20px}
+header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:12px}
+header h1{font-size:1.35rem;font-weight:700;letter-spacing:-.02em}
+header h1 span{color:var(--purple)}
+.btn{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:7px 14px;cursor:pointer;font-size:13px;color:var(--text);transition:border-color .15s;font-family:var(--font)}
+.btn:hover{border-color:var(--purple)}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
+@media(max-width:900px){.stats{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:400px){.stats{grid-template-columns:1fr}}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 20px}
+.card.lp{border-left:3px solid var(--purple)}
+.card.lc{border-left:3px solid var(--cyan)}
+.card.lg{border-left:3px solid var(--green)}
+.card.lr{border-left:3px solid var(--red)}
+.lbl{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--text2);margin-bottom:7px}
+.val{font-family:var(--mono);font-size:1.55rem;font-weight:600;line-height:1}
+.sub{font-size:12px;color:var(--text2);margin-top:5px;font-family:var(--mono)}
+.g{color:var(--green)}.r{color:var(--red)}.y{color:var(--yellow)}.c{color:var(--cyan)}.m{color:var(--text2)}
+section{margin-bottom:20px}
+.chart-wrap{position:relative;height:240px}
+.badge{display:inline-block;padding:2px 9px;border-radius:99px;font-size:11px;font-weight:600}
+.b-conf{background:rgba(34,197,94,.12);color:var(--green)}
+.b-unconf{background:rgba(100,116,139,.12);color:var(--text2)}
+.b-btc{background:rgba(245,158,11,.12);color:var(--yellow)}
+.b-eth{background:rgba(56,189,248,.12);color:var(--cyan)}
+.b-open{background:rgba(34,197,94,.12);color:var(--green)}
+.tbl-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;padding:7px 10px;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--text2);border-bottom:1px solid var(--border);white-space:nowrap}
+td{padding:9px 10px;border-bottom:1px solid var(--border);font-family:var(--mono);white-space:nowrap}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:var(--s2)}
+.sl-btc{color:var(--yellow)}.sl-eth{color:var(--cyan)}
+.empty{text-align:center;padding:40px;color:var(--text2)}
+.note{font-size:12px;color:var(--text2);line-height:1.5;margin-top:8px}
+.topnav{position:sticky;top:0;z-index:50;background:color-mix(in srgb,var(--surface) 86%,transparent);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid var(--border)}
+.topnav-inner{max-width:1280px;margin:0 auto;padding:11px 20px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.nav-brand{display:flex;align-items:center;gap:9px;font-weight:700;font-size:15px;letter-spacing:-.01em;color:var(--text);text-decoration:none;white-space:nowrap}
+.nav-brand:hover{text-decoration:none}
+.nav-brand .mark{width:10px;height:10px;border-radius:2px;background:var(--purple);transform:rotate(45deg);flex-shrink:0}
+.nav-links{display:flex;gap:3px;background:var(--s2);border:1px solid var(--border);border-radius:11px;padding:3px}
+.nav-links a{padding:7px 15px;border-radius:8px;font-size:13px;font-weight:500;color:var(--text2);transition:color .15s,background .15s;text-decoration:none;white-space:nowrap}
+.nav-links a:hover{color:var(--text);text-decoration:none}
+.nav-links a.active{background:var(--surface);color:var(--text);box-shadow:0 1px 2px rgba(0,0,0,.05);font-weight:600}
+.nav-right{display:flex;align-items:center;gap:9px}
+@media(max-width:560px){.nav-links a{padding:6px 11px;font-size:12px}.nav-brand span.bn{display:none}}
+</style>
+</head>
+<body>
+<nav class="topnav"><div class="topnav-inner">
+  <a class="nav-brand" href="unified.html"><span class="mark"></span><span class="bn">BTC.D Trader</span></a>
+  <div class="nav-links">
+    <a href="unified.html">Live Monitor</a>
+    <a href="btcd-monitor-15m-binance_8.html">Signal Analysis</a>
+    <a href="performance.html">Performance</a>
+    <a href="shadow.html" class="active">Shadow</a>
+  </div>
+  <div class="nav-right">
+    <button class="btn" id="tbtn">&#9728;&#65039;</button>
+  </div>
+</div></nav>
+<div class="wrap">
+<header>
+  <div>
+    <h1>Dominance Filter &middot; <span>Shadow Mode</span></h1>
+    <div class="note">Hypothesis under test: LONG_BTC entries taken while BTC is also gaining &ge;1&sigma; vs an alt basket (SOL/XRP/DOGE/ADA)
+    outperform unconfirmed entries. The bot logs the rotation z-score at every entry but <b>does not act on it</b>.
+    PnL shown is equity-based &mdash; net of fees, funding and slippage.</div>
+  </div>
+  <div id="last-upd" style="font-size:12px;color:var(--text2)"></div>
+</header>
+
+<div class="stats" id="cards-btc">
+  <div class="card lg"><div class="lbl">LB Confirmed &middot; Net PnL</div><div class="val" id="c-pnl">—</div><div class="sub" id="c-n">—</div></div>
+  <div class="card lr"><div class="lbl">LB Unconfirmed &middot; Net PnL</div><div class="val" id="u-pnl">—</div><div class="sub" id="u-n">—</div></div>
+  <div class="card lp"><div class="lbl">Edge (conf &minus; unconf, avg/trade)</div><div class="val" id="edge">—</div><div class="sub" id="edge-sub">—</div></div>
+  <div class="card lc"><div class="lbl">Shadow Coverage</div><div class="val" id="cov">—</div><div class="sub" id="cov-sub">entries with shadow data</div></div>
+</div>
+
+<section>
+  <div class="card lp" style="padding:20px 24px">
+    <div class="lbl">Cumulative Net PnL — LONG_BTC confirmed vs unconfirmed</div>
+    <div class="chart-wrap" style="margin-top:14px"><canvas id="ch"></canvas></div>
+  </div>
+</section>
+
+<section>
+  <div class="card lc" style="padding:18px 20px">
+    <div class="lbl" style="margin-bottom:10px">LONG_ETH (control — filter not expected to help)</div>
+    <div id="eth-body" class="sub">—</div>
+  </div>
+</section>
+
+<section>
+  <div class="card">
+    <div class="lbl" style="margin-bottom:14px">Shadow-Logged Trades</div>
+    <div class="tbl-wrap" id="tbl">
+      <div class="empty">No shadow data yet — the z-score is logged on each new trade opened after shadow mode deployed.</div>
+    </div>
+  </div>
+</section>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+const $=id=>document.getElementById(id);
+let dark=localStorage.getItem('theme')==='dark';
+const tbtn=$("tbtn");
+function applyTheme(){
+  document.documentElement.setAttribute('data-theme',dark?'dark':'cream');
+  tbtn.textContent=dark?'☀️':'🌙';
+  localStorage.setItem('theme',dark?'dark':'cream');
+}
+tbtn.onclick=()=>{dark=!dark;applyTheme();rebuildChart()};
+applyTheme();
+
+const fmt=(n,d=2)=>n==null?'—':(+n).toFixed(d);
+const fmtDate=ts=>{
+  const d=new Date(ts);
+  return d.toLocaleDateString('en-GB',{month:'short',day:'numeric'})
+    +' '+d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+};
+const pc=n=>n>0?'g':n<0?'r':'';
+
+function pairTrades(log){
+  const out=[];
+  let pending=null;
+  for(const e of log){
+    if(e.action==='OPEN'){
+      if(pending) out.push({open:pending,close:null});
+      pending=e;
+    } else if(e.action==='CLOSE'){
+      out.push({open:pending,close:e});
+      pending=null;
+    }
+  }
+  if(pending) out.push({open:pending,close:null});
+  return out;
+}
+
+function agg(ts){
+  const cl=ts.filter(t=>t.close&&t.close.pnl!=null);
+  const ps=cl.map(t=>t.close.pnl);
+  const tot=ps.reduce((a,b)=>a+b,0);
+  return {n:ts.length, closed:cl.length, total:tot,
+    avg:cl.length?tot/cl.length:null,
+    win:cl.length?ps.filter(p=>p>0).length/cl.length:null};
+}
+
+let chartData={conf:[],unconf:[]},chart=null;
+function rebuildChart(){
+  const gridClr=dark?'rgba(255,255,255,.06)':'rgba(60,50,35,.10)';
+  const tickClr=dark?'#A39A88':'#7C7466';
+  const mk=(pts,color)=>({data:pts.map(p=>p.y),borderColor:color,pointBackgroundColor:color,
+    fill:false,tension:.3,pointRadius:pts.length<20?4:2,borderWidth:2});
+  const L=Math.max(chartData.conf.length,chartData.unconf.length);
+  const labels=['Start'];
+  for(let i=1;i<=L;i++) labels.push('#'+i);
+  const pad=(pts)=>{const out=[0];for(const p of pts)out.push(p.y);while(out.length<=L)out.push(out[out.length-1]);return out};
+  if(chart)chart.destroy();
+  if(L===0)return;
+  chart=new Chart($("ch"),{
+    type:'line',
+    data:{labels,datasets:[
+      {label:'Confirmed',data:pad(chartData.conf),borderColor:'#2E7D52',pointBackgroundColor:'#2E7D52',fill:false,tension:.3,pointRadius:3,borderWidth:2},
+      {label:'Unconfirmed',data:pad(chartData.unconf),borderColor:'#BC4A3C',pointBackgroundColor:'#BC4A3C',fill:false,tension:.3,pointRadius:3,borderWidth:2},
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:true,labels:{color:tickClr,font:{size:12}}},
+        tooltip:{callbacks:{label:c=>` ${c.dataset.label}: $${c.raw.toFixed(2)}`}}},
+      scales:{
+        x:{ticks:{color:tickClr,font:{size:11},maxTicksLimit:10},grid:{color:gridClr}},
+        y:{ticks:{color:tickClr,font:{family:'JetBrains Mono',size:11},callback:v=>`$${v.toFixed(2)}`},grid:{color:gridClr}}
+      }}
+  });
+}
+
+function renderTable(shadowTrades){
+  if(!shadowTrades.length)return;
+  const rows=shadowTrades.slice().reverse().map((t,i)=>{
+    const s=t.open.shadow_dom;
+    const sig=t.open.signal||'';
+    const sc=sig==='LONG_BTC'?'sl-btc':'sl-eth';
+    const conf=s.confirmed?'<span class="badge b-conf">CONFIRMED</span>':'<span class="badge b-unconf">unconfirmed</span>';
+    const closed=t.close?fmtDate(t.close.timestamp):'<span class="badge b-open">OPEN</span>';
+    const dur=t.close&&t.close.trade_duration_minutes!=null?`${t.close.trade_duration_minutes}m`:'—';
+    const pnl=t.close&&t.close.pnl!=null?`<span class="${pc(t.close.pnl)}">$${fmt(t.close.pnl)}</span>`:'—';
+    const reason=t.close&&t.close.exit_reason?t.close.exit_reason:'—';
+    return`<tr><td class="m">${shadowTrades.length-i}</td>
+      <td class="${sc}">${sig.replace('LONG_','')}</td>
+      <td>${fmtDate(t.open.timestamp)}</td><td>${closed}</td>
+      <td>${fmt(s.z,2)}σ</td><td>${conf}</td>
+      <td>${dur}</td><td>${pnl}</td><td class="m">${reason}</td></tr>`;
+  }).join('');
+  $("tbl").innerHTML=`<table><thead><tr>
+    <th>#</th><th>Signal</th><th>Opened</th><th>Closed</th>
+    <th>Rotation z</th><th>Filter</th><th>Duration</th><th>Net PnL</th><th>Exit</th>
+  </tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+async function load(){
+  const lr=await fetch('./trader_log.json?t='+Date.now()).then(r=>r.ok?r.json():[]).catch(()=>[]);
+  const trades=pairTrades(lr);
+  const shadow=trades.filter(t=>t.open&&t.open.shadow_dom);
+  const opensSinceFirstShadow=(()=>{
+    const first=shadow.length?shadow[0].open.timestamp:null;
+    if(!first)return 0;
+    return trades.filter(t=>t.open&&t.open.timestamp>=first).length;
+  })();
+
+  const lb=shadow.filter(t=>t.open.signal==='LONG_BTC');
+  const le=shadow.filter(t=>t.open.signal==='LONG_ETH');
+  const lbC=agg(lb.filter(t=>t.open.shadow_dom.confirmed));
+  const lbU=agg(lb.filter(t=>!t.open.shadow_dom.confirmed));
+
+  $("c-pnl").innerHTML=lbC.closed?`<span class="${pc(lbC.total)}">$${fmt(lbC.total)}</span>`:'—';
+  $("c-n").textContent=`${lbC.n} trades (${lbC.closed} closed) · win ${lbC.win!=null?(lbC.win*100).toFixed(0)+'%':'—'} · avg $${fmt(lbC.avg)}`;
+  $("u-pnl").innerHTML=lbU.closed?`<span class="${pc(lbU.total)}">$${fmt(lbU.total)}</span>`:'—';
+  $("u-n").textContent=`${lbU.n} trades (${lbU.closed} closed) · win ${lbU.win!=null?(lbU.win*100).toFixed(0)+'%':'—'} · avg $${fmt(lbU.avg)}`;
+  if(lbC.closed&&lbU.closed){
+    const e=lbC.avg-lbU.avg;
+    $("edge").innerHTML=`<span class="${pc(e)}">$${fmt(e)}</span>`;
+    $("edge-sub").textContent=(lbC.closed+lbU.closed)<20?'small sample — needs more trades':'per closed trade';
+  }
+  $("cov").textContent=opensSinceFirstShadow?`${shadow.length}/${opensSinceFirstShadow}`:'0';
+
+  const leC=agg(le.filter(t=>t.open.shadow_dom.confirmed));
+  const leU=agg(le.filter(t=>!t.open.shadow_dom.confirmed));
+  $("eth-body").innerHTML=le.length
+    ?`confirmed: ${leC.closed} closed, total $${fmt(leC.total)}, avg $${fmt(leC.avg)} &nbsp;·&nbsp; unconfirmed: ${leU.closed} closed, total $${fmt(leU.total)}, avg $${fmt(leU.avg)}`
+    :'no LONG_ETH shadow trades yet';
+
+  let cc=0,cu=0;
+  chartData.conf=lb.filter(t=>t.open.shadow_dom.confirmed&&t.close&&t.close.pnl!=null).map(t=>({y:+(cc+=t.close.pnl).toFixed(2)}));
+  chartData.unconf=lb.filter(t=>!t.open.shadow_dom.confirmed&&t.close&&t.close.pnl!=null).map(t=>({y:+(cu+=t.close.pnl).toFixed(2)}));
+  rebuildChart();
+  renderTable(shadow);
+}
+async function loadAndStamp(){await load();$("last-upd").textContent="Updated "+new Date().toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit",second:"2-digit"});}
+loadAndStamp();
+setInterval(loadAndStamp,60000);
+</script>
+</body></html>

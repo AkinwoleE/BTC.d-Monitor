@@ -19,7 +19,7 @@ Optional:
   TRAIL_GIVEBACK_USD   (default  0.05) — trail fires if PnL drops this far from peak
 """
 
-import os, sys, json, time, subprocess, requests
+import os, sys, json, time, math, subprocess, requests
 from datetime import datetime, timezone, timedelta
 
 # ── Credentials ──────────────────────────────────────────────────────────────
@@ -182,6 +182,58 @@ def btcdom():
         return {"btc_d": float(d["btc_dominance"]), "eth_d": float(d["eth_dominance"])}
     except Exception as e:
         print(f"  CoinMarketCap dominance failed: {e}")
+        return None
+
+# ── Dominance-rotation shadow signal (LOGGING ONLY — never gates trades) ──────
+# Research (60d of 15m data, 2026-07-06): LONG_BTC entries taken while BTC was
+# also gaining >1σ vs an alt basket (ex-ETH) averaged +18bp/4h forward pair
+# PnL vs -5bp when the rotation didn't confirm. Mirrored filter showed no
+# effect for LONG_ETH. Shadow mode logs the z-score at each entry so the
+# split can be verified on live trades before ever acting on it.
+# Basket excludes BNB (not listed on Kraken) — re-validated ex-BNB on the
+# same dataset before deploying (+18.2bp vs -4.8bp separation held).
+DOM_ALTS = {          # Kraken pair -> approx circulating supply (weights only;
+    "SOLUSD": 5.4e8,  # a few % supply drift doesn't move cap weights enough
+    "XRPUSD": 5.9e10, # to matter for a z-score threshold)
+    "XDGUSD": 1.5e11,
+    "ADAUSD": 3.6e10,
+}
+DOM_CONFIRM_Z = 1.0
+
+def dominance_shadow(signal_name):
+    """z-score of the 1h BTC-vs-alt-basket rotation over a ~7d window.
+    Returns dict for the OPEN log entry, or None on any failure — callers
+    must treat None as 'no data' and never let this block a trade."""
+    try:
+        closes = {}
+        for pair in ["XBTUSD"] + list(DOM_ALTS):
+            closes[pair] = {c["ts"]: c["close"] for c in klines(pair, "15m", 720)}
+        common = set(closes["XBTUSD"])
+        for pair in DOM_ALTS:
+            common &= set(closes[pair])
+        ts = sorted(common)
+        if len(ts) < 200:
+            print(f"  Shadow dominance: only {len(ts)} aligned candles, skipping")
+            return None
+        btc = [closes["XBTUSD"][t] for t in ts]
+        caps0 = {p: closes[p][ts[0]] * s for p, s in DOM_ALTS.items()}
+        tot   = sum(caps0.values())
+        idx   = [sum((caps0[p] / tot) * (closes[p][t] / closes[p][ts[0]])
+                     for p in DOM_ALTS) for t in ts]
+        D = [math.log(b / btc[0]) - math.log(i) for b, i in zip(btc, idx)]
+        changes_1h = [D[i] - D[i - 4] for i in range(4, len(D))]
+        mean  = sum(changes_1h) / len(changes_1h)
+        sigma = (sum((c - mean) ** 2 for c in changes_1h) / len(changes_1h)) ** 0.5
+        if sigma <= 0:
+            return None
+        d_now = D[-1] - D[-5]
+        z     = d_now / sigma
+        confirmed = (z >= DOM_CONFIRM_Z) if signal_name == "LONG_BTC" \
+               else (z <= -DOM_CONFIRM_Z)
+        return {"z": round(z, 3), "dD_1h": round(d_now, 6),
+                "sigma": round(sigma, 6), "confirmed": confirmed}
+    except Exception as e:
+        print(f"  Shadow dominance failed (trade unaffected): {e}")
         return None
 
 # ── Signal engines ────────────────────────────────────────────────────────────
@@ -794,6 +846,7 @@ def run():
                                 "trade_duration_minutes": None,
                                 "signal_strength":        sig["strength"],
                                 "convergence_type":       ct,
+                                "shadow_dom":             dominance_shadow(curr),
                             })
                             state["position_open"]     = True
                             state["entry_btc_size"]    = sizes["btc_size"]
