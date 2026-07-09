@@ -433,6 +433,19 @@ def get_balances():
         print(f"  Balances failed: {e}")
         return None
 
+def implausible_snapshot(position_open, any_open, acct):
+    """True when the API's account snapshot can't be trusted: state says a
+    position is open, yet Decibel simultaneously reports no positions AND
+    ~$0 equity in successful-looking responses. Equity can't be ~zero with
+    an open position short of liquidation, and a liquidation leaves fills —
+    so this shape means empty/glitched API data, not a real account state
+    (2026-07-09 incident: such a snapshot passed the api_available and
+    acct-None guards and 'reconciled' a live position into a phantom CLOSE
+    with pnl = -entire_equity). get_balances() parses missing fields as 0,
+    which is exactly how a glitched-but-parseable response lands here."""
+    return bool(position_open and not any_open
+                and acct is not None and acct.get("equity", 0.0) <= 0.01)
+
 def set_lev(symbol, lev):
     eff = min(lev, MAX_LEV.get(symbol, 10))
     try:
@@ -630,6 +643,36 @@ def run():
         state["last_run_utc"] = datetime.now(timezone.utc).isoformat()
         save_state(state)
         print(f"\n  Done. Acted: False (API unavailable)")
+        return 0
+
+    # ── Plausibility guard: successful-but-empty account snapshot ─────────────────
+    # Catches what the gate above can't: calls that succeed but return empty
+    # data (no positions + ~$0 equity while state shows an open position).
+    # Skips the whole cycle rather than "reconciling" a phantom close. Does
+    # NOT overwrite telemetry — the zeros are the suspect data. If this is a
+    # real liquidation the alert says to check manually; reconciliation stays
+    # blocked only while equity keeps reading ~0.
+    if has_dec and implausible_snapshot(state["position_open"], live["any_open"], acct):
+        print("  ⚠️ Implausible snapshot: no positions + ~$0 equity while state shows open — skipping cycle")
+        last_fail = state.get("last_api_fail_utc", "")
+        fail_elapsed = None
+        if last_fail:
+            try:
+                fail_elapsed = (datetime.now(timezone.utc) -
+                                datetime.fromisoformat(last_fail)).total_seconds() / 60
+            except Exception:
+                pass
+        if fail_elapsed is None or fail_elapsed >= 30:
+            tg("⚠️ Decibel returned an implausibly empty account snapshot (no positions, ~$0 "
+               "equity) while a position is open in state — treating as an API glitch and "
+               "skipping position management this cycle. If you were actually liquidated, "
+               "review manually.")
+            state["last_api_fail_utc"] = datetime.now(timezone.utc).isoformat()
+        else:
+            print(f"  Alert suppressed — {fmt(fail_elapsed,1)}m since last (cooldown 30m)")
+        state["last_run_utc"] = datetime.now(timezone.utc).isoformat()
+        save_state(state)
+        print(f"\n  Done. Acted: False (implausible API snapshot)")
         return 0
 
     # ── Reconcile: state says open but nothing is actually open on Decibel ───────
