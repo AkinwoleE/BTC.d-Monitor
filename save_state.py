@@ -33,6 +33,13 @@ and instead does an application-level, JSON-aware merge:
   last_run_utc and a Telegram alert fires so a human checks — this is a
   real tradeoff, not a complete merge, and is treated as such rather than
   silently picking a side.
+
+  peak_pnl/peak_pnl_time sit between the two categories: decision-relevant
+  (trailing stop) but churning every cycle while in profit, so colliding
+  runs routinely disagree on them by fractions of a cent. They merge as
+  max(local, remote) when the decision fields agree (a peak is monotone
+  for the life of a position) and are excluded from the conflict check —
+  see the 2026-07-09 false-alarm ping-pong (3 alerts over a $0.00002 peak).
 """
 import json, os, subprocess, sys, time
 from datetime import datetime
@@ -46,14 +53,59 @@ MAX_RETRIES = 5
 DECISION_FIELDS = [
     "position_open", "current_signal", "entry_btc_size", "entry_eth_size",
     "entry_time_utc", "entry_btc_price", "entry_eth_price", "entry_equity",
-    "trade_count", "open_signal", "peak_pnl", "peak_pnl_time",
+    "trade_count", "open_signal",
     "trail_active", "trail_flip_active", "last_flip_signal",
 ]
+# peak_pnl is decision-relevant (drives the trailing stop) but, unlike the
+# fields above, it churns every cycle while a position is in profit — two
+# overlapping runs will routinely disagree on it by fractions of a cent,
+# which used to trip the decision-conflict alert in a retry ping-pong
+# (3 false alarms on 2026-07-09 over a $0.00002 peak). A peak is monotone
+# non-decreasing for the lifetime of a position, so when the rest of the
+# decision fields agree, max(local, remote) is always the correct merge.
+PEAK_FIELDS = ["peak_pnl", "peak_pnl_time"]
 TELEMETRY_FIELDS = [
     "last_run_utc", "last_known_pnl", "last_equity", "last_avail",
     "last_unrealized_pnl", "equity_updated_utc", "last_lag_alert_utc",
     "last_api_fail_utc",
 ]
+
+def merge_state(local_state, remote_state):
+    """Application-level merge of two colliding trader_state.json versions.
+    Returns (merged_state, conflict). conflict is None when the merge is
+    clean, else the (local_snapshot, remote_snapshot, used_local) triple
+    for the alert. Peak fields merge as max() when decisions agree; on a
+    genuine decision conflict the winning side is kept wholesale (a peak
+    from a divergent state, e.g. one side already closed and reset it,
+    must not be resurrected across that divergence)."""
+    decision_match = all(
+        remote_state.get(k) == local_state.get(k) for k in DECISION_FIELDS
+    )
+    if decision_match:
+        merged = dict(remote_state)
+        for k in TELEMETRY_FIELDS:
+            if k in local_state:
+                merged[k] = local_state[k]
+        l_peak = float(local_state.get("peak_pnl") or 0.0)
+        r_peak = float(remote_state.get("peak_pnl") or 0.0)
+        winner = local_state if l_peak > r_peak else remote_state
+        for k in PEAK_FIELDS:
+            if k in winner:
+                merged[k] = winner[k]
+        return merged, None
+
+    try:
+        remote_ts = datetime.fromisoformat(remote_state.get("last_run_utc", ""))
+        local_ts  = datetime.fromisoformat(local_state.get("last_run_utc", ""))
+        use_local = local_ts > remote_ts
+    except Exception:
+        use_local = False
+    merged = local_state if use_local else remote_state
+    return merged, (
+        {k: local_state.get(k) for k in DECISION_FIELDS},
+        {k: remote_state.get(k) for k in DECISION_FIELDS},
+        use_local,
+    )
 
 def tg(text):
     if not BOT_TOKEN or not CHAT_ID:
@@ -132,27 +184,14 @@ def main():
         with open(LOG_FILE, "w") as f:
             json.dump(merged_log, f, indent=2)
 
-        # Re-apply state: decision-vs-telemetry merge
-        decision_match = all(
-            remote_state.get(k) == local_state.get(k) for k in DECISION_FIELDS
-        )
-        if decision_match:
-            merged_state = dict(remote_state)
-            for k in TELEMETRY_FIELDS:
-                if k in local_state:
-                    merged_state[k] = local_state[k]
-        else:
-            try:
-                remote_ts = datetime.fromisoformat(remote_state.get("last_run_utc", ""))
-                local_ts  = datetime.fromisoformat(local_state.get("last_run_utc", ""))
-                use_local = local_ts > remote_ts
-            except Exception:
-                use_local = False
-            merged_state = local_state if use_local else remote_state
+        # Re-apply state: decision-vs-telemetry merge (peaks merge as max)
+        merged_state, conflict = merge_state(local_state, remote_state)
+        if conflict:
+            local_snap, remote_snap, use_local = conflict
             tg("⚠️ State decision conflict between concurrent runs — used "
                f"{'local' if use_local else 'remote'} version, manual review recommended.\n"
-               f"local: {json.dumps({k: local_state.get(k) for k in DECISION_FIELDS})}\n"
-               f"remote: {json.dumps({k: remote_state.get(k) for k in DECISION_FIELDS})}")
+               f"local: {json.dumps(local_snap)}\n"
+               f"remote: {json.dumps(remote_snap)}")
 
         with open(STATE_FILE, "w") as f:
             json.dump(merged_state, f, indent=2)
