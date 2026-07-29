@@ -85,10 +85,11 @@ tr.sel td{background:var(--s2)}
 <header>
   <div>
     <h1>BTC RSI &middot; <span>Divergence Tracker</span></h1>
-    <div class="note">2-leg (3-pivot) RSI-14 divergences on BTC 1h &amp; 2h (Kraken). Pivots need 3 confirming bars,
-    so alerts fire ~3 candles after the final pivot prints. <b>Trades are manual</b> &mdash; the monitor only alerts
-    (Telegram) and tracks each signal 48h forward. All returns are in the trade's direction (bearish&nbsp;=&nbsp;short),
-    excluding fees.</div>
+    <div class="note">RSI-14 divergences on BTC 1h &amp; 2h (Kraken): the backtested <b>3-pivot</b> pattern, plus
+    <b>2-pt</b> single-leg pairs filtered to RSI extremes (first pivot &ge;65 / &le;35) &mdash; unvalidated, tracked to build
+    a live sample. Pivots need 3 confirming bars, so alerts fire ~3 candles after the final pivot prints.
+    <b>Trades are manual</b> &mdash; the monitor only alerts (Telegram) and tracks each signal 48h forward.
+    All returns are in the trade's direction (bearish&nbsp;=&nbsp;short), excluding fees.</div>
   </div>
   <div id="last-upd" style="font-size:12px;color:var(--text2)"></div>
 </header>
@@ -106,7 +107,7 @@ tr.sel td{background:var(--s2)}
     <div class="chart-wrap" style="margin-top:14px"><canvas id="ch-pnl"></canvas></div>
     <div class="note">Bars: return of entering at the alert price and holding 24h (green above zero&nbsp;=&nbsp;profit, red below&nbsp;=&nbsp;loss).
     Gray dashes: the best achievable result &mdash; optimal entry within 12h of the alert, optimal exit after that within the 48h window.
-    The gap between bar and dash is what entry/exit timing is worth.</div>
+    The gap between bar and dash is what entry/exit timing is worth. &sup2;&nbsp;=&nbsp;2-pt pattern.</div>
   </div>
 </section>
 
@@ -158,15 +159,19 @@ const C={line:()=>dark?'#4AA6B3':'#3F6F73',green:'#2E7D52',red:'#BC4A3C',
 
 let EPS=[],sel=null,chPnl=null,chDet=null;
 
+const legsOf=e=>e.legs||3;
 function stats(eps){
   const done=eps.filter(e=>e.stats&&e.stats.ret_24h!=null);
-  const n1=eps.filter(e=>e.tf==='1h').length,bear=eps.filter(e=>e.direction==='bearish').length;
+  const bear=eps.filter(e=>e.direction==='bearish').length;
+  const n3=eps.filter(e=>legsOf(e)===3).length;
   $('s-n').textContent=eps.length;
-  $('s-n-sub').textContent=`${bear} bearish · ${eps.length-bear} bullish · ${n1}×1h ${eps.length-n1}×2h`;
+  $('s-n-sub').textContent=`${n3}× 3-pivot · ${eps.length-n3}× 2-pt · ${bear}▼ ${eps.length-bear}▲`;
   if(done.length){
     const wins=done.filter(e=>e.stats.ret_24h>0).length;
     $('s-win').textContent=Math.round(100*wins/done.length)+'%';
-    $('s-win-sub').textContent=`${wins}/${done.length} profitable · enter at alert, exit +24h`;
+    const wr=l=>{const d=done.filter(e=>legsOf(e)===l);if(!d.length)return '—';
+      return d.filter(e=>e.stats.ret_24h>0).length+'/'+d.length};
+    $('s-win-sub').textContent=`3-pivot ${wr(3)} · 2-pt ${wr(2)} profitable @24h`;
     const avg24=done.reduce((a,e)=>a+e.stats.ret_24h,0)/done.length;
     const withBest=done.filter(e=>e.stats.best_pnl_pct!=null);
     const avgBest=withBest.length?withBest.reduce((a,e)=>a+e.stats.best_pnl_pct,0)/withBest.length:null;
@@ -182,7 +187,7 @@ function buildPnl(){
   if(chPnl)chPnl.destroy();
   const eps=EPS.filter(e=>e.stats&&e.stats.ret_24h!=null);
   if(!eps.length)return;
-  const labels=eps.map(e=>`${fmtDate(e.confirmed_ts).split(' ')[0]} ${e.tf} ${e.direction==='bearish'?'▼':'▲'}`);
+  const labels=eps.map(e=>`${fmtDate(e.confirmed_ts).split(' ')[0]} ${e.tf} ${e.direction==='bearish'?'▼':'▲'}${legsOf(e)===2?'²':''}`);
   chPnl=new Chart($('ch-pnl'),{type:'bar',
     data:{labels,datasets:[
       {label:'24h hold',data:eps.map(e=>e.stats.ret_24h),
@@ -202,7 +207,7 @@ function buildPnl(){
 function buildDet(){
   if(chDet)chDet.destroy();
   const e=sel;if(!e||!e.forward||!e.forward.length){$('det-title').textContent='Episode Detail — select a row below';return;}
-  $('det-title').textContent=`Episode Detail — ${e.direction.toUpperCase()} ${e.tf} · alert ${fmtDate(e.confirmed_ts)} @ ${px(e.confirm_price)}`;
+  $('det-title').textContent=`Episode Detail — ${e.direction.toUpperCase()} ${(e.legs||3)===2?'2-pt':'3-pivot'} ${e.tf} · alert ${fmtDate(e.confirmed_ts)} @ ${px(e.confirm_price)}`;
   const pts=e.forward.map(c=>({x:(c.ts+3600-e.confirmed_ts)/3600,y:c.close}));
   const maxH=Math.max(48,...pts.map(p=>p.x));
   const s=e.stats||{};
@@ -238,12 +243,13 @@ function buildTable(){
   const rows=[...EPS].reverse().map(e=>{
     const s=e.stats||{};
     const dirB=e.direction==='bearish'?'<span class="badge b-bear">▼ bearish</span>':'<span class="badge b-bull">▲ bullish</span>';
+    const pat=legsOf(e)===2?'<span class="badge b-track">2-pt</span>':'<span class="badge b-done">3-pivot</span>';
     const st=s.complete?'<span class="badge b-done">complete</span>':`<span class="badge b-track">tracking ${e.forward?e.forward.length:0}/48h</span>`;
     const r=k=>s[k]==null?'<td class="m">—</td>':`<td class="${pc(s[k])}">${s[k]>0?'+':''}${fmt(s[k])}%</td>`;
     const pv=e.pivots.map(p=>px(p.price)).join(' → ');
     const rs=e.pivots.map(p=>fmt(p.rsi,1)).join(' → ');
     return `<tr data-id="${e.id}">
-      <td>${fmtDate(e.confirmed_ts)}</td><td>${e.tf}</td><td>${dirB}</td>
+      <td>${fmtDate(e.confirmed_ts)}</td><td>${e.tf}</td><td>${dirB} ${pat}</td>
       <td>${px(e.confirm_price)}</td><td class="m">${pv}</td><td class="m">${rs}</td>
       ${r('ret_6h')}${r('ret_12h')}${r('ret_24h')}${r('ret_48h')}
       <td>${s.best_entry?px(s.best_entry.price)+' <span class="m">+'+fmt(s.best_entry.hours_after,1)+'h</span>':'—'}</td>

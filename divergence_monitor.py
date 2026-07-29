@@ -36,6 +36,8 @@ RSI_PERIOD   = 14
 PIVOT_K      = 3          # confirming bars each side of a pivot
 SPACING_MIN  = 4          # bars between consecutive pivots
 SPACING_MAX  = 60
+RSI_EXT_BEAR = 65         # 2-point pattern only: first pivot's RSI must be at an
+RSI_EXT_BULL = 35         # extreme, else mid-range noise fires ~2x/week per side
 FWD_HOURS    = 48         # forward tracking window after confirmation
 ENTRY_HOURS  = 12         # "best entry" search window after confirmation
 FRESH_ALERT  = {"1h": 2 * 3600, "2h": 4 * 3600}   # alert only if confirmed this recently
@@ -108,11 +110,34 @@ def pivots(candles, kind):
     return idx
 
 def find_divergences(candles, rsis, tf):
-    """All 3-pivot divergences fully confirmed within `candles`."""
+    """All divergences fully confirmed within `candles`.
+
+    legs=3: the backtested 3-pivot/2-leg pattern.
+    legs=2: single-leg pair, extremity-filtered (first pivot RSI >= RSI_EXT_BEAR /
+            <= RSI_EXT_BULL) — unvalidated by the backtest, tracked to build a live
+            sample. A 3-pivot episode's sub-pairs may also appear as 2-pt episodes.
+    """
     found = []
+    iv = 3600 if tf == "1h" else 7200
     for direction, kind in (("bearish", "high"), ("bullish", "low")):
         key = "high" if kind == "high" else "low"
         piv = [i for i in pivots(candles, kind) if rsis[i] is not None]
+
+        def make(idx, legs):
+            last = idx[-1]
+            ci = last + PIVOT_K                    # bar whose close confirms the final pivot
+            if ci >= len(candles):
+                return None
+            tag = direction if legs == 3 else f"{direction}2"
+            return {
+                "id": f"{tf}-{tag}-{candles[last]['ts']}",
+                "tf": tf, "direction": direction, "legs": legs,
+                "pivots": [{"ts": candles[i]["ts"], "price": candles[i][key],
+                            "rsi": round(rsis[i], 2)} for i in idx],
+                "confirmed_ts": candles[ci]["ts"] + iv,
+                "confirm_price": candles[ci]["close"],
+            }
+
         for a in range(len(piv) - 2):
             i1, i2, i3 = piv[a], piv[a + 1], piv[a + 2]
             if not (SPACING_MIN <= i2 - i1 <= SPACING_MAX and
@@ -124,20 +149,21 @@ def find_divergences(candles, rsis, tf):
                 ok = p1 < p2 < p3 and r1 > r2 > r3
             else:
                 ok = p1 > p2 > p3 and r1 < r2 < r3
-            if not ok:
+            if ok and (ep := make((i1, i2, i3), 3)):
+                found.append(ep)
+
+        for a in range(len(piv) - 1):
+            i1, i2 = piv[a], piv[a + 1]
+            if not SPACING_MIN <= i2 - i1 <= SPACING_MAX:
                 continue
-            ci = i3 + PIVOT_K                      # bar whose close confirms pivot 3
-            if ci >= len(candles):
-                continue
-            iv = 3600 if tf == "1h" else 7200
-            found.append({
-                "id": f"{tf}-{direction}-{candles[i3]['ts']}",
-                "tf": tf, "direction": direction,
-                "pivots": [{"ts": candles[i]["ts"], "price": candles[i][key],
-                            "rsi": round(rsis[i], 2)} for i in (i1, i2, i3)],
-                "confirmed_ts": candles[ci]["ts"] + iv,   # close time of confirming bar
-                "confirm_price": candles[ci]["close"],
-            })
+            p1, p2 = candles[i1][key], candles[i2][key]
+            r1, r2 = rsis[i1], rsis[i2]
+            if direction == "bearish":
+                ok = p1 < p2 and r1 > r2 and r1 >= RSI_EXT_BEAR
+            else:
+                ok = p1 > p2 and r1 < r2 and r1 <= RSI_EXT_BULL
+            if ok and (ep := make((i1, i2), 2)):
+                found.append(ep)
     return found
 
 # ── forward tracking / stats ──────────────────────────────────────────────────
@@ -205,14 +231,19 @@ def tg(msg):
 def alert(ep):
     arrow = "🔻" if ep["direction"] == "bearish" else "🔼"
     p = ep["pivots"]
+    legs = ep.get("legs", 3)
     seq_p = " → ".join(f"{x['price']:,.0f}" for x in p)
     seq_r = " → ".join(f"{x['rsi']:.1f}" for x in p)
-    age_h = (ep["confirmed_ts"] - p[2]["ts"]) / 3600
-    if ep["direction"] == "bearish":
+    age_h = (ep["confirmed_ts"] - p[-1]["ts"]) / 3600
+    if legs == 2:
+        hist = ("2-pt pattern (RSI-extreme filtered) — NOT in the backtest, "
+                "~2/week expected; treat as lower confidence while live data accumulates.")
+    elif ep["direction"] == "bearish":
         hist = "History (1h backtest): 86% right-direction, mean ≈ −1% @6–24h. 2h: rarer, similar edge."
     else:
         hist = "⚠️ History: bullish divergences were a coin flip (50%) in backtest — weak signal, size accordingly."
-    tg(f"{arrow} <b>{ep['direction'].upper()} RSI divergence — BTC {ep['tf']}</b>\n"
+    label = "RSI divergence" if legs == 3 else "2-pt RSI divergence"
+    tg(f"{arrow} <b>{ep['direction'].upper()} {label} — BTC {ep['tf']}</b>\n"
        f"Price: {seq_p}\n"
        f"RSI:   {seq_r}\n"
        f"Confirmed @ {ep['confirm_price']:,.0f} (pivot printed {age_h:.0f}h ago)\n"
