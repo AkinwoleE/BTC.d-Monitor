@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="cream">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>BTC.D Trader · RSI Divergence</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#E7DECF;--surface:#FAF6EE;--s2:#F0E8DA;--border:#DCD2C0;
+  --purple:#C15F3C;--cyan:#3F6F73;--green:#2E7D52;--red:#BC4A3C;--yellow:#B07D2B;
+  --text:#2B2722;--text2:#7C7466;--text3:#A89E8B;
+  --font:"Inter",sans-serif;--mono:"JetBrains Mono",monospace;
+}
+[data-theme=dark]{
+  --bg:#1A1714;--surface:#231F1A;--s2:#2A251F;--border:#39322A;
+  --text:#EDE6D8;--text2:#A39A88;--text3:#6E6557;
+}
+body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:100vh;font-size:14px}
+a{color:var(--cyan);text-decoration:none}a:hover{text-decoration:underline}
+.wrap{max-width:1280px;margin:0 auto;padding:24px 20px}
+header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:12px}
+header h1{font-size:1.35rem;font-weight:700;letter-spacing:-.02em}
+header h1 span{color:var(--purple)}
+.btn{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:7px 14px;cursor:pointer;font-size:13px;color:var(--text);transition:border-color .15s;font-family:var(--font)}
+.btn:hover{border-color:var(--purple)}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
+@media(max-width:900px){.stats{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:400px){.stats{grid-template-columns:1fr}}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 20px}
+.card.lp{border-left:3px solid var(--purple)}
+.card.lc{border-left:3px solid var(--cyan)}
+.card.lg{border-left:3px solid var(--green)}
+.card.lr{border-left:3px solid var(--red)}
+.lbl{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--text2);margin-bottom:7px}
+.val{font-family:var(--mono);font-size:1.55rem;font-weight:600;line-height:1}
+.sub{font-size:12px;color:var(--text2);margin-top:5px;font-family:var(--mono)}
+.g{color:var(--green)}.r{color:var(--red)}.y{color:var(--yellow)}.c{color:var(--cyan)}.m{color:var(--text2)}
+section{margin-bottom:20px}
+.chart-wrap{position:relative;height:260px}
+.badge{display:inline-block;padding:2px 9px;border-radius:99px;font-size:11px;font-weight:600}
+.b-bear{background:rgba(188,74,60,.12);color:var(--red)}
+.b-bull{background:rgba(46,125,82,.12);color:var(--green)}
+.b-track{background:rgba(176,125,43,.12);color:var(--yellow)}
+.b-done{background:rgba(100,116,139,.12);color:var(--text2)}
+.tbl-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;padding:7px 10px;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--text2);border-bottom:1px solid var(--border);white-space:nowrap}
+td{padding:9px 10px;border-bottom:1px solid var(--border);font-family:var(--mono);white-space:nowrap}
+tr:last-child td{border-bottom:none}
+tbody tr{cursor:pointer}
+tr:hover td{background:var(--s2)}
+tr.sel td{background:var(--s2)}
+.empty{text-align:center;padding:40px;color:var(--text2)}
+.note{font-size:12px;color:var(--text2);line-height:1.5;margin-top:8px}
+.topnav{position:sticky;top:0;z-index:50;background:color-mix(in srgb,var(--surface) 86%,transparent);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid var(--border)}
+.topnav-inner{max-width:1280px;margin:0 auto;padding:11px 20px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.nav-brand{display:flex;align-items:center;gap:9px;font-weight:700;font-size:15px;letter-spacing:-.01em;color:var(--text);text-decoration:none;white-space:nowrap}
+.nav-brand:hover{text-decoration:none}
+.nav-brand .mark{width:10px;height:10px;border-radius:2px;background:var(--purple);transform:rotate(45deg);flex-shrink:0}
+.nav-links{display:flex;gap:3px;background:var(--s2);border:1px solid var(--border);border-radius:11px;padding:3px}
+.nav-links a{padding:7px 15px;border-radius:8px;font-size:13px;font-weight:500;color:var(--text2);transition:color .15s,background .15s;text-decoration:none;white-space:nowrap}
+.nav-links a:hover{color:var(--text);text-decoration:none}
+.nav-links a.active{background:var(--surface);color:var(--text);box-shadow:0 1px 2px rgba(0,0,0,.05);font-weight:600}
+.nav-right{display:flex;align-items:center;gap:9px}
+@media(max-width:560px){.nav-links a{padding:6px 11px;font-size:12px}.nav-brand span.bn{display:none}}
+</style>
+</head>
+<body>
+<nav class="topnav"><div class="topnav-inner">
+  <a class="nav-brand" href="unified.html"><span class="mark"></span><span class="bn">BTC.D Trader</span></a>
+  <div class="nav-links">
+    <a href="unified.html">Live Monitor</a>
+    <a href="btcd-monitor-15m-binance_8.html">Signal Analysis</a>
+    <a href="performance.html">Performance</a>
+    <a href="divergence.html" class="active">Divergence</a>
+  </div>
+  <div class="nav-right">
+    <button class="btn" id="tbtn">&#9728;&#65039;</button>
+  </div>
+</div></nav>
+
+<div class="wrap">
+<header>
+  <div>
+    <h1>BTC RSI &middot; <span>Divergence Tracker</span></h1>
+    <div class="note">2-leg (3-pivot) RSI-14 divergences on BTC 1h &amp; 2h (Kraken). Pivots need 3 confirming bars,
+    so alerts fire ~3 candles after the final pivot prints. <b>Trades are manual</b> &mdash; the monitor only alerts
+    (Telegram) and tracks each signal 48h forward. All returns are in the trade's direction (bearish&nbsp;=&nbsp;short),
+    excluding fees.</div>
+  </div>
+  <div id="last-upd" style="font-size:12px;color:var(--text2)"></div>
+</header>
+
+<div class="stats">
+  <div class="card lp"><div class="lbl">Episodes Detected</div><div class="val" id="s-n">—</div><div class="sub" id="s-n-sub">—</div></div>
+  <div class="card lc"><div class="lbl">Win Rate &middot; 24h Hold</div><div class="val" id="s-win">—</div><div class="sub" id="s-win-sub">enter at alert, exit +24h</div></div>
+  <div class="card lg"><div class="lbl">Avg Return</div><div class="val" id="s-ret">—</div><div class="sub" id="s-ret-sub">—</div></div>
+  <div class="card lr"><div class="lbl">Best Timing (median)</div><div class="val" id="s-tim">—</div><div class="sub" id="s-tim-sub">best entry / best exit after alert</div></div>
+</div>
+
+<section>
+  <div class="card lp" style="padding:20px 24px">
+    <div class="lbl">Profitability per episode — 24h hold vs best entry&rarr;exit (%)</div>
+    <div class="chart-wrap" style="margin-top:14px"><canvas id="ch-pnl"></canvas></div>
+    <div class="note">Bars: return of entering at the alert price and holding 24h (green above zero&nbsp;=&nbsp;profit, red below&nbsp;=&nbsp;loss).
+    Gray dashes: the best achievable result &mdash; optimal entry within 12h of the alert, optimal exit after that within the 48h window.
+    The gap between bar and dash is what entry/exit timing is worth.</div>
+  </div>
+</section>
+
+<section>
+  <div class="card lc" style="padding:20px 24px">
+    <div class="lbl" id="det-title">Episode Detail — select a row below</div>
+    <div class="chart-wrap" style="margin-top:14px"><canvas id="ch-det"></canvas></div>
+    <div class="note" id="det-note">Price path for 48h after the alert. &#9650; best entry &middot; &#9670; best exit &middot; dashed line = alert price.</div>
+  </div>
+</section>
+
+<section>
+  <div class="card">
+    <div class="lbl" style="margin-bottom:14px">All Episodes</div>
+    <div class="tbl-wrap" id="tbl">
+      <div class="empty">No divergences detected yet — the pattern is rare (backtest: ~1&ndash;2 per month on 1h). The monitor checks every 15 minutes.</div>
+    </div>
+  </div>
+</section>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+const $=id=>document.getElementById(id);
+const _q=new URLSearchParams(location.search).get('theme');
+let dark=_q?_q==='dark':localStorage.getItem('theme')==='dark';
+const tbtn=$("tbtn");
+function applyTheme(){
+  document.documentElement.setAttribute('data-theme',dark?'dark':'cream');
+  tbtn.textContent=dark?'☀️':'🌙';
+  localStorage.setItem('theme',dark?'dark':'cream');
+}
+tbtn.onclick=()=>{dark=!dark;applyTheme();rebuildAll()};
+applyTheme();
+
+const fmt=(n,d=2)=>n==null?'—':(+n).toFixed(d);
+const px=n=>n==null?'—':(+n).toLocaleString('en-US',{maximumFractionDigits:0});
+const fmtDate=ts=>{
+  const d=new Date(ts*1000);
+  return d.toLocaleDateString('en-GB',{month:'short',day:'numeric'})
+    +' '+d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+};
+const pc=n=>n==null?'m':n>0?'g':n<0?'r':'m';
+const median=a=>{if(!a.length)return null;const s=[...a].sort((x,y)=>x-y);const m=Math.floor(s.length/2);return s.length%2?s[m]:(s[m-1]+s[m])/2};
+
+const C={line:()=>dark?'#4AA6B3':'#3F6F73',green:'#2E7D52',red:'#BC4A3C',
+  grid:()=>dark?'rgba(255,255,255,.06)':'rgba(60,50,35,.10)',
+  tick:()=>dark?'#A39A88':'#7C7466',dash:()=>dark?'#A39A88':'#7C7466'};
+
+let EPS=[],sel=null,chPnl=null,chDet=null;
+
+function stats(eps){
+  const done=eps.filter(e=>e.stats&&e.stats.ret_24h!=null);
+  const n1=eps.filter(e=>e.tf==='1h').length,bear=eps.filter(e=>e.direction==='bearish').length;
+  $('s-n').textContent=eps.length;
+  $('s-n-sub').textContent=`${bear} bearish · ${eps.length-bear} bullish · ${n1}×1h ${eps.length-n1}×2h`;
+  if(done.length){
+    const wins=done.filter(e=>e.stats.ret_24h>0).length;
+    $('s-win').textContent=Math.round(100*wins/done.length)+'%';
+    $('s-win-sub').textContent=`${wins}/${done.length} profitable · enter at alert, exit +24h`;
+    const avg24=done.reduce((a,e)=>a+e.stats.ret_24h,0)/done.length;
+    const withBest=done.filter(e=>e.stats.best_pnl_pct!=null);
+    const avgBest=withBest.length?withBest.reduce((a,e)=>a+e.stats.best_pnl_pct,0)/withBest.length:null;
+    const el=$('s-ret');el.textContent=(avg24>0?'+':'')+fmt(avg24)+'%';el.className='val '+pc(avg24);
+    $('s-ret-sub').textContent=`24h hold · best entry→exit avg ${avgBest==null?'—':(avgBest>0?'+':'')+fmt(avgBest)+'%'}`;
+    const me=median(withBest.map(e=>e.stats.best_entry?.hours_after).filter(v=>v!=null));
+    const mx=median(withBest.map(e=>e.stats.best_exit?.hours_after).filter(v=>v!=null));
+    $('s-tim').textContent=(me==null?'—':'+'+fmt(me,1)+'h')+' / '+(mx==null?'—':'+'+fmt(mx,1)+'h');
+  }
+}
+
+function buildPnl(){
+  if(chPnl)chPnl.destroy();
+  const eps=EPS.filter(e=>e.stats&&e.stats.ret_24h!=null);
+  if(!eps.length)return;
+  const labels=eps.map(e=>`${fmtDate(e.confirmed_ts).split(' ')[0]} ${e.tf} ${e.direction==='bearish'?'▼':'▲'}`);
+  chPnl=new Chart($('ch-pnl'),{type:'bar',
+    data:{labels,datasets:[
+      {label:'24h hold',data:eps.map(e=>e.stats.ret_24h),
+       backgroundColor:eps.map(e=>e.stats.ret_24h>=0?C.green:C.red),
+       borderRadius:4,barPercentage:.55,maxBarThickness:46},
+      {label:'best entry→exit',type:'scatter',data:eps.map(e=>e.stats.best_pnl_pct),
+       pointStyle:'line',pointRadius:11,pointBorderWidth:3,pointBorderColor:C.dash(),showLine:false}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{labels:{usePointStyle:true,color:C.tick(),font:{family:'Inter',size:12}}},
+        tooltip:{callbacks:{label:c=>` ${c.dataset.label}: ${c.parsed.y>0?'+':''}${fmt(c.parsed.y)}%`}}},
+      scales:{x:{grid:{display:false},ticks:{color:C.tick(),font:{family:'JetBrains Mono',size:11}}},
+        y:{grid:{color:C.grid()},border:{display:false},
+           ticks:{color:C.tick(),font:{family:'JetBrains Mono',size:11},callback:v=>v+'%'}}}}});
+}
+
+function buildDet(){
+  if(chDet)chDet.destroy();
+  const e=sel;if(!e||!e.forward||!e.forward.length){$('det-title').textContent='Episode Detail — select a row below';return;}
+  $('det-title').textContent=`Episode Detail — ${e.direction.toUpperCase()} ${e.tf} · alert ${fmtDate(e.confirmed_ts)} @ ${px(e.confirm_price)}`;
+  const pts=e.forward.map(c=>({x:(c.ts+3600-e.confirmed_ts)/3600,y:c.close}));
+  const maxH=Math.max(48,...pts.map(p=>p.x));
+  const s=e.stats||{};
+  const mark=(b,style)=>b?[{x:(b.ts-e.confirmed_ts)/3600,y:b.price}]:[];
+  chDet=new Chart($('ch-det'),{type:'line',
+    data:{datasets:[
+      {label:'BTC price',data:pts,borderColor:C.line(),borderWidth:2,pointRadius:0,
+       pointHitRadius:12,tension:.25},
+      {label:'alert price',data:[{x:0,y:e.confirm_price},{x:maxH,y:e.confirm_price}],
+       borderColor:C.dash(),borderWidth:1.5,borderDash:[6,5],pointRadius:0,pointHitRadius:0},
+      {label:'best entry',type:'scatter',data:mark(s.best_entry),
+       pointStyle:'triangle',pointRadius:9,backgroundColor:C.green,borderColor:C.green},
+      {label:'best exit',type:'scatter',data:mark(s.best_exit),
+       pointStyle:'rectRot',pointRadius:9,backgroundColor:C.red,borderColor:C.red}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'nearest',intersect:false},
+      plugins:{legend:{labels:{usePointStyle:true,color:C.tick(),font:{family:'Inter',size:12}}},
+        tooltip:{callbacks:{
+          title:c=>'+'+fmt(c[0].parsed.x,1)+'h after alert',
+          label:c=>` ${c.dataset.label}: ${px(c.parsed.y)}`}}},
+      scales:{x:{type:'linear',min:0,max:maxH,grid:{color:C.grid()},border:{display:false},
+          ticks:{color:C.tick(),font:{family:'JetBrains Mono',size:11},stepSize:6,callback:v=>'+'+v+'h'}},
+        y:{grid:{color:C.grid()},border:{display:false},
+          ticks:{color:C.tick(),font:{family:'JetBrains Mono',size:11},callback:v=>(v/1000).toFixed(1)+'k'}}}}});
+  const be=s.best_entry,bx=s.best_exit;
+  $('det-note').innerHTML=(be&&bx)
+    ?`&#9650; best entry <b>${px(be.price)}</b> at +${fmt(be.hours_after,1)}h &middot; &#9670; best exit <b>${px(bx.price)}</b> at +${fmt(bx.hours_after,1)}h &middot; best-case <b class="${pc(s.best_pnl_pct)}">${s.best_pnl_pct>0?'+':''}${fmt(s.best_pnl_pct)}%</b> &middot; worst adverse move ${fmt(s.mae_pct)}%`
+    :'Price path for 48h after the alert. &#9650; best entry &middot; &#9670; best exit &middot; dashed line = alert price.';
+}
+
+function buildTable(){
+  if(!EPS.length)return;
+  const rows=[...EPS].reverse().map(e=>{
+    const s=e.stats||{};
+    const dirB=e.direction==='bearish'?'<span class="badge b-bear">▼ bearish</span>':'<span class="badge b-bull">▲ bullish</span>';
+    const st=s.complete?'<span class="badge b-done">complete</span>':`<span class="badge b-track">tracking ${e.forward?e.forward.length:0}/48h</span>`;
+    const r=k=>s[k]==null?'<td class="m">—</td>':`<td class="${pc(s[k])}">${s[k]>0?'+':''}${fmt(s[k])}%</td>`;
+    const pv=e.pivots.map(p=>px(p.price)).join(' → ');
+    const rs=e.pivots.map(p=>fmt(p.rsi,1)).join(' → ');
+    return `<tr data-id="${e.id}">
+      <td>${fmtDate(e.confirmed_ts)}</td><td>${e.tf}</td><td>${dirB}</td>
+      <td>${px(e.confirm_price)}</td><td class="m">${pv}</td><td class="m">${rs}</td>
+      ${r('ret_6h')}${r('ret_12h')}${r('ret_24h')}${r('ret_48h')}
+      <td>${s.best_entry?px(s.best_entry.price)+' <span class="m">+'+fmt(s.best_entry.hours_after,1)+'h</span>':'—'}</td>
+      <td>${s.best_exit?px(s.best_exit.price)+' <span class="m">+'+fmt(s.best_exit.hours_after,1)+'h</span>':'—'}</td>
+      ${s.best_pnl_pct==null?'<td class="m">—</td>':`<td class="${pc(s.best_pnl_pct)}"><b>${s.best_pnl_pct>0?'+':''}${fmt(s.best_pnl_pct)}%</b></td>`}
+      <td>${st}</td></tr>`;
+  }).join('');
+  $('tbl').innerHTML=`<table><thead><tr>
+    <th>Alerted</th><th>TF</th><th>Direction</th><th>Alert Px</th><th>Pivot Prices</th><th>Pivot RSI</th>
+    <th>6h</th><th>12h</th><th>24h</th><th>48h</th>
+    <th>Best Entry</th><th>Best Exit</th><th>Best PnL</th><th>Status</th>
+  </tr></thead><tbody>${rows}</tbody></table>`;
+  document.querySelectorAll('tbody tr').forEach(tr=>{
+    tr.onclick=()=>{sel=EPS.find(e=>e.id===tr.dataset.id);
+      document.querySelectorAll('tbody tr').forEach(t=>t.classList.remove('sel'));
+      tr.classList.add('sel');buildDet();};
+  });
+}
+
+function rebuildAll(){buildPnl();buildDet();}
+
+fetch('divergences.json?t='+Date.now()).then(r=>{
+  if(!r.ok)throw new Error(r.status);return r.json();
+}).then(d=>{
+  EPS=(d.episodes||[]).slice().sort((a,b)=>a.confirmed_ts-b.confirmed_ts);
+  $('last-upd').textContent=d.updated?'Data updated '+d.updated.slice(0,16).replace('T',' ')+' UTC':'';
+  if(!EPS.length)return;
+  sel=EPS[EPS.length-1];
+  document.fonts.ready.then(()=>{
+    stats(EPS);buildPnl();buildTable();buildDet();
+    const last=document.querySelector('tbody tr');if(last)last.classList.add('sel');
+  });
+}).catch(e=>{
+  $('tbl').innerHTML=`<div class="empty">Could not load divergences.json (${e.message}). Serve over HTTP (./serve.sh) — file:// won't work.</div>`;
+});
+</script>
+</body>
+</html>
