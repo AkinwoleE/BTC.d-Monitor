@@ -26,6 +26,7 @@ BASE       = os.path.dirname(os.path.abspath(__file__))
 DIV_FILE   = os.path.join(BASE, "divergences.json")
 STATE_FILE = os.path.join(BASE, "divergence_trader_state.json")
 LOG_FILE   = os.path.join(BASE, "divergence_trades.json")
+EQ_FILE    = os.path.join(BASE, "divergence_equity.json")
 
 ENABLED      = os.environ.get("DIV_TRADING_ENABLED", "").lower() == "true"
 DRY_RUN      = os.environ.get("DIV_DRY_RUN", "").lower() == "true"
@@ -167,6 +168,24 @@ def load_state():
 def save_state(st):
     json.dump(st, open(STATE_FILE, "w"), indent=1)
 
+def record_equity(equity):
+    """Hourly (or on >0.5% move) equity snapshots for the dashboard's graph."""
+    try:
+        try:
+            hist = json.load(open(EQ_FILE))
+        except (FileNotFoundError, json.JSONDecodeError):
+            hist = []
+        now = int(time.time())
+        if hist:
+            last = hist[-1]
+            moved = abs(equity - last["equity"]) >= max(0.005 * max(last["equity"], 1.0), 0.01)
+            if now - last["ts"] < 3300 and not moved:
+                return
+        hist.append({"ts": now, "equity": round(equity, 2)})
+        json.dump(hist[-5000:], open(EQ_FILE, "w"))
+    except Exception as e:
+        print(f"  record_equity: {e}")
+
 def log_event(ev):
     try:
         log = json.load(open(LOG_FILE))
@@ -279,10 +298,16 @@ def main():
     now = int(time.time())
     print(f"divergence_trader {datetime.now(timezone.utc).isoformat()} "
           f"enabled={ENABLED} dry_run={DRY_RUN}")
-    if not ENABLED:
-        print("  DIV_TRADING_ENABLED != true — no-op."); return
     if not (DEC_PRIVATE_KEY and DEC_SUB and DEC_NODE_KEY):
         print("  Decibel credentials missing — no-op."); return
+
+    # equity graph samples are recorded whenever creds work, even with trading off
+    live_pos, equity, api_ok = live_snapshot()
+    if api_ok:
+        record_equity(equity)
+
+    if not ENABLED:
+        print("  DIV_TRADING_ENABLED != true — equity sampled, no trading."); return
 
     st = load_state()
     try:
@@ -290,7 +315,6 @@ def main():
     except Exception as e:
         print(f"  cannot read divergences.json ({e}) — skipping cycle."); return
 
-    live_pos, equity, api_ok = live_snapshot()
     if not api_ok:
         print("  API unavailable — skipping all position management this cycle.")
         save_state(st); return

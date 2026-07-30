@@ -112,6 +112,18 @@ tr.sel td{background:var(--s2)}
 </section>
 
 <section>
+  <div class="card lp" style="padding:20px 24px">
+    <div style="display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px">
+      <div class="lbl">Account Equity — Decibel</div>
+      <div class="sub" id="eq-now" style="margin:0">—</div>
+    </div>
+    <div class="chart-wrap" style="margin-top:14px"><canvas id="ch-eq"></canvas></div>
+    <div class="note" id="eq-note">Sampled hourly (and on &gt;0.5% moves) by the trader step whenever Decibel credentials
+    are valid — including dry-run. Dots mark bot trade closes (green profit / red loss).</div>
+  </div>
+</section>
+
+<section>
   <div class="card lc" style="padding:20px 24px">
     <div class="lbl" id="det-title">Episode Detail — select a row below</div>
     <div class="chart-wrap" style="margin-top:14px"><canvas id="ch-det"></canvas></div>
@@ -157,7 +169,7 @@ const C={line:()=>dark?'#4AA6B3':'#3F6F73',green:'#2E7D52',red:'#BC4A3C',
   grid:()=>dark?'rgba(255,255,255,.06)':'rgba(60,50,35,.10)',
   tick:()=>dark?'#A39A88':'#7C7466',dash:()=>dark?'#A39A88':'#7C7466'};
 
-let EPS=[],sel=null,chPnl=null,chDet=null;
+let EPS=[],EQ=[],TRADES=[],sel=null,chPnl=null,chDet=null,chEq=null;
 
 const legsOf=e=>e.legs||3;
 function stats(eps){
@@ -269,16 +281,63 @@ function buildTable(){
   });
 }
 
-function rebuildAll(){buildPnl();buildDet();}
+function buildEq(){
+  if(chEq)chEq.destroy();
+  const card=$('ch-eq').closest('section');
+  if(!EQ.length){
+    $('ch-eq').parentElement.style.display='none';
+    $('eq-note').textContent='No equity data yet — samples appear once the trader step runs with valid Decibel credentials (dry-run included).';
+    return;
+  }
+  $('ch-eq').parentElement.style.display='';
+  const purple=getComputedStyle(document.documentElement).getPropertyValue('--purple').trim()||'#C15F3C';
+  const first=EQ[0].equity,lastq=EQ[EQ.length-1].equity,delta=lastq-first;
+  $('eq-now').innerHTML=`now <b>$${lastq.toFixed(2)}</b> · since start <span class="${pc(delta)}">${delta>=0?'+':''}$${delta.toFixed(2)}</span>`;
+  const pts=EQ.map(s=>({x:s.ts,y:s.equity}));
+  // nearest equity sample for each bot CLOSE event
+  const closes=TRADES.filter(t=>t.action==='CLOSE').map(t=>{
+    const ts=Math.floor(new Date(t.timestamp).getTime()/1000);
+    let best=EQ[0];for(const s of EQ)if(Math.abs(s.ts-ts)<Math.abs(best.ts-ts))best=s;
+    return {x:best.ts,y:best.equity,pnl:t.pnl,reason:t.reason};
+  });
+  const dsets=[{label:'equity',data:pts,borderColor:purple,borderWidth:2,pointRadius:0,
+    pointHitRadius:10,tension:.15,fill:true,
+    backgroundColor:dark?'rgba(193,95,60,.10)':'rgba(193,95,60,.08)'}];
+  if(closes.length)dsets.push({label:'trade close',type:'scatter',
+    data:closes,pointStyle:'circle',pointRadius:6,pointBorderWidth:2,
+    pointBackgroundColor:closes.map(c=>(c.pnl??0)>=0?C.green:C.red),
+    pointBorderColor:dark?'#231F1A':'#FAF6EE'});
+  chEq=new Chart($('ch-eq'),{type:'line',
+    data:{datasets:dsets},
+    options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'nearest',intersect:false},
+      plugins:{legend:{display:closes.length>0,labels:{usePointStyle:true,color:C.tick(),font:{family:'Inter',size:12}}},
+        tooltip:{callbacks:{
+          title:c=>fmtDate(c[0].parsed.x),
+          label:c=>{const raw=c.raw;
+            if(raw&&raw.reason!==undefined)return ` close (${raw.reason}): pnl ${raw.pnl==null?'?':(raw.pnl>=0?'+':'')+'$'+(+raw.pnl).toFixed(2)}`;
+            return ` equity: $${c.parsed.y.toFixed(2)}`;}}}},
+      scales:{x:{type:'linear',min:pts[0].x,max:pts[pts.length-1].x,grid:{display:false},
+          ticks:{color:C.tick(),font:{family:'JetBrains Mono',size:11},maxTicksLimit:8,
+            callback:v=>fmtDate(v)}},
+        y:{grid:{color:C.grid()},border:{display:false},
+          ticks:{color:C.tick(),font:{family:'JetBrains Mono',size:11},callback:v=>'$'+(+v).toFixed(0)}}}}});
+}
+function rebuildAll(){buildPnl();buildDet();buildEq();}
 
-fetch('divergences.json?t='+Date.now()).then(r=>{
-  if(!r.ok)throw new Error(r.status);return r.json();
-}).then(d=>{
+const optional=u=>fetch(u+'?t='+Date.now()).then(r=>r.ok?r.json():[]).catch(()=>[]);
+Promise.all([
+  fetch('divergences.json?t='+Date.now()).then(r=>{if(!r.ok)throw new Error(r.status);return r.json();}),
+  optional('divergence_equity.json'),
+  optional('divergence_trades.json')
+]).then(([d,eq,trades])=>{
   EPS=(d.episodes||[]).slice().sort((a,b)=>a.confirmed_ts-b.confirmed_ts);
+  EQ=Array.isArray(eq)?eq:[];
+  TRADES=Array.isArray(trades)?trades:[];
   $('last-upd').textContent=d.updated?'Data updated '+d.updated.slice(0,16).replace('T',' ')+' UTC':'';
-  if(!EPS.length)return;
-  sel=EPS[EPS.length-1];
   document.fonts.ready.then(()=>{
+    buildEq();
+    if(!EPS.length)return;
+    sel=EPS[EPS.length-1];
     stats(EPS);buildPnl();buildTable();buildDet();
     const last=document.querySelector('tbody tr');if(last)last.classList.add('sel');
   });
