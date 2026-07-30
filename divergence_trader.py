@@ -28,14 +28,19 @@ STATE_FILE = os.path.join(BASE, "divergence_trader_state.json")
 LOG_FILE   = os.path.join(BASE, "divergence_trades.json")
 EQ_FILE    = os.path.join(BASE, "divergence_equity.json")
 
+def env_num(name, default, cast=float):
+    """GitHub Actions injects '' for undefined ${{ vars.X }} — treat as unset."""
+    v = os.environ.get(name, "").strip()
+    return cast(v) if v else cast(default)
+
 ENABLED      = os.environ.get("DIV_TRADING_ENABLED", "").lower() == "true"
 DRY_RUN      = os.environ.get("DIV_DRY_RUN", "").lower() == "true"
-POSITION_USD = float(os.environ.get("DIV_POSITION_USD", "1000"))
-TP_USD       = float(os.environ.get("DIV_TP_USD", "34"))    # per POSITION_USD
-SL_USD       = float(os.environ.get("DIV_SL_USD", "20"))
-MAX_HOURS    = float(os.environ.get("DIV_MAX_HOURS", "48"))
-LEVERAGE     = int(os.environ.get("DIV_LEVERAGE", "20"))
-SLIPPAGE     = float(os.environ.get("SLIPPAGE", "0.5"))
+POSITION_USD = env_num("DIV_POSITION_USD", 1000)
+TP_USD       = env_num("DIV_TP_USD", 34)    # per POSITION_USD
+SL_USD       = env_num("DIV_SL_USD", 20)
+MAX_HOURS    = env_num("DIV_MAX_HOURS", 48)
+LEVERAGE     = env_num("DIV_LEVERAGE", 20, int)
+SLIPPAGE     = env_num("SLIPPAGE", 0.5)
 SYMBOL       = "BTC/USD"
 FRESH        = {"1h": 2 * 3600, "2h": 4 * 3600}   # same freshness gate as alerts
 GRACE_SEC    = 600                                # reconciliation grace after entry
