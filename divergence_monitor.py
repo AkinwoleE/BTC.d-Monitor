@@ -268,21 +268,41 @@ def main():
         data = {"episodes": []}
     known = {e["id"]: e for e in data["episodes"]}
 
-    fresh_alerts = 0
+    new_eps = []
     for candles, tf in ((c1h, "1h"), (c2h, "2h")):
         rs = rsi([c["close"] for c in candles])
         for ep in find_divergences(candles, rs, tf):
             if ep["id"] in known:
                 continue
-            is_fresh = now - ep["confirmed_ts"] <= FRESH_ALERT[tf]
-            ep["alerted"] = bool(is_fresh)
             ep["forward"] = []
-            data["episodes"].append(ep)
-            known[ep["id"]] = ep
-            print(f"  NEW {ep['id']} confirmed {datetime.fromtimestamp(ep['confirmed_ts'], tz=timezone.utc)} fresh={is_fresh}")
-            if is_fresh:
-                alert(ep)
-                fresh_alerts += 1
+            new_eps.append(ep)
+
+    # One alert per divergence structure: a 3-pivot's 2-pt sub-pair, or the same
+    # setup on 1h and 2h, must not each ping. Suppress the alert (episode is
+    # still recorded) when an already-alerted episode shares the direction and
+    # a final pivot within 2h. Process 3-pivot before 2-pt, 1h before 2h, so
+    # the stronger/finer pattern is the one that alerts.
+    def already_alerted_similar(ep):
+        t = ep["pivots"][-1]["ts"]
+        return any(o.get("alerted") and o["direction"] == ep["direction"]
+                   and abs(o["pivots"][-1]["ts"] - t) <= 2 * 3600
+                   for o in data["episodes"])
+
+    new_eps.sort(key=lambda e: (-e.get("legs", 3), e["tf"]))
+    fresh_alerts = 0
+    for ep in new_eps:
+        is_fresh = now - ep["confirmed_ts"] <= FRESH_ALERT[ep["tf"]]
+        dup = is_fresh and already_alerted_similar(ep)
+        ep["alerted"] = bool(is_fresh and not dup)
+        if dup:
+            ep["alert_suppressed"] = "duplicate-structure"
+        data["episodes"].append(ep)
+        known[ep["id"]] = ep
+        print(f"  NEW {ep['id']} confirmed {datetime.fromtimestamp(ep['confirmed_ts'], tz=timezone.utc)} "
+              f"fresh={is_fresh}{' (alert suppressed: duplicate structure)' if dup else ''}")
+        if ep["alerted"]:
+            alert(ep)
+            fresh_alerts += 1
 
     # forward-track anything not yet complete
     for ep in data["episodes"]:

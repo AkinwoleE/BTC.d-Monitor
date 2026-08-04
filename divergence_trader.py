@@ -321,6 +321,13 @@ def main():
         print(f"  cannot read divergences.json ({e}) — skipping cycle."); return
 
     if not api_ok:
+        # loud but rate-limited: silent credential death is how the old bot
+        # sat unnoticed for 17 days
+        if now - st.get("last_api_fail_alert", 0) > 6 * 3600:
+            tg("🚨 Divergence bot: Decibel API/credentials FAILING while trading is enabled — "
+               "no trades possible. Check DECIBEL_PRIVATE_KEY delegation on Decibel + the "
+               "GitHub secret. (next reminder in 6h)")
+            st["last_api_fail_alert"] = now
         print("  API unavailable — skipping all position management this cycle.")
         save_state(st); return
 

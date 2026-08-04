@@ -325,25 +325,43 @@ function buildEq(){
 function rebuildAll(){buildPnl();buildDet();buildEq();}
 
 const optional=u=>fetch(u+'?t='+Date.now()).then(r=>r.ok?r.json():[]).catch(()=>[]);
-Promise.all([
-  fetch('divergences.json?t='+Date.now()).then(r=>{if(!r.ok)throw new Error(r.status);return r.json();}),
-  optional('divergence_equity.json'),
-  optional('divergence_trades.json')
-]).then(([d,eq,trades])=>{
-  EPS=(d.episodes||[]).slice().sort((a,b)=>a.confirmed_ts-b.confirmed_ts);
-  EQ=Array.isArray(eq)?eq:[];
-  TRADES=Array.isArray(trades)?trades:[];
-  $('last-upd').textContent=d.updated?'Data updated '+d.updated.slice(0,16).replace('T',' ')+' UTC':'';
-  document.fonts.ready.then(()=>{
-    buildEq();
-    if(!EPS.length)return;
-    sel=EPS[EPS.length-1];
-    stats(EPS);buildPnl();buildTable();buildDet();
-    const last=document.querySelector('tbody tr');if(last)last.classList.add('sel');
+let UPDATED=null,firstLoad=true;
+function freshness(){
+  if(!UPDATED){$('last-upd').textContent='';return;}
+  const mins=(Date.now()-new Date(UPDATED).getTime())/60000;
+  const rel=mins<1.5?'just now':mins<90?Math.round(mins)+' min ago':(mins/60).toFixed(1)+' h ago';
+  // monitor commits every 15 min — well past that means data has stopped flowing
+  const warn=mins>40?' <span style="color:#BC4A3C;font-weight:600">⚠ stale — monitor not committing?</span>':'';
+  $('last-upd').innerHTML='Data updated '+UPDATED.slice(0,16).replace('T',' ')+' UTC ('+rel+')'+warn;
+}
+function loadAll(){
+  Promise.all([
+    fetch('divergences.json?t='+Date.now()).then(r=>{if(!r.ok)throw new Error(r.status);return r.json();}),
+    optional('divergence_equity.json'),
+    optional('divergence_trades.json')
+  ]).then(([d,eq,trades])=>{
+    EPS=(d.episodes||[]).slice().sort((a,b)=>a.confirmed_ts-b.confirmed_ts);
+    EQ=Array.isArray(eq)?eq:[];
+    TRADES=Array.isArray(trades)?trades:[];
+    UPDATED=d.updated||null;freshness();
+    document.fonts.ready.then(()=>{
+      buildEq();
+      if(EPS.length){
+        const keep=sel&&EPS.find(e=>e.id===sel.id);
+        sel=keep||EPS[EPS.length-1];
+        stats(EPS);buildPnl();buildTable();buildDet();
+        const row=document.querySelector(`tbody tr[data-id="${sel.id}"]`);
+        if(row)row.classList.add('sel');
+      }
+      firstLoad=false;
+    });
+  }).catch(e=>{
+    if(firstLoad)$('tbl').innerHTML=`<div class="empty">Could not load divergences.json (${e.message}). Serve over HTTP (./serve.sh) — file:// won't work.</div>`;
   });
-}).catch(e=>{
-  $('tbl').innerHTML=`<div class="empty">Could not load divergences.json (${e.message}). Serve over HTTP (./serve.sh) — file:// won't work.</div>`;
-});
+}
+loadAll();
+setInterval(loadAll,60000);      // pairs with serve.sh's 60s git pull
+setInterval(freshness,30000);
 </script>
 </body>
 </html>
