@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="cream">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>BTC.D Trader · Divergence Watch</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#E7DECF;--surface:#FAF6EE;--s2:#F0E8DA;--border:#DCD2C0;
+  --purple:#C15F3C;--cyan:#3F6F73;--green:#2E7D52;--red:#BC4A3C;--yellow:#B07D2B;
+  --text:#2B2722;--text2:#7C7466;--text3:#A89E8B;
+  --font:"Inter",sans-serif;--mono:"JetBrains Mono",monospace;
+}
+[data-theme=dark]{
+  --bg:#1A1714;--surface:#231F1A;--s2:#2A251F;--border:#39322A;
+  --text:#EDE6D8;--text2:#A39A88;--text3:#6E6557;
+}
+body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:100vh;font-size:14px}
+a{color:var(--cyan);text-decoration:none}a:hover{text-decoration:underline}
+.wrap{max-width:1280px;margin:0 auto;padding:24px 20px}
+header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:12px}
+header h1{font-size:1.35rem;font-weight:700;letter-spacing:-.02em}
+header h1 span{color:var(--purple)}
+.btn{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:7px 14px;cursor:pointer;font-size:13px;color:var(--text);transition:border-color .15s;font-family:var(--font)}
+.btn:hover{border-color:var(--purple)}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 20px}
+.note{font-size:12px;color:var(--text2);line-height:1.5;margin-top:8px}
+.empty{text-align:center;padding:64px 20px;color:var(--text2)}
+.empty .big{font-size:2rem;margin-bottom:10px}
+.empty .t{font-size:15px;font-weight:600;color:var(--text);margin-bottom:6px}
+.empty .d{font-size:13px;max-width:420px;margin:0 auto;line-height:1.6}
+.topnav{position:sticky;top:0;z-index:50;background:color-mix(in srgb,var(--surface) 86%,transparent);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid var(--border)}
+.topnav-inner{max-width:1280px;margin:0 auto;padding:11px 20px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.nav-brand{display:flex;align-items:center;gap:9px;font-weight:700;font-size:15px;letter-spacing:-.01em;color:var(--text);text-decoration:none;white-space:nowrap}
+.nav-brand:hover{text-decoration:none}
+.nav-brand .mark{width:10px;height:10px;border-radius:2px;background:var(--purple);transform:rotate(45deg);flex-shrink:0}
+.nav-links{display:flex;gap:3px;background:var(--s2);border:1px solid var(--border);border-radius:11px;padding:3px}
+.nav-links a{padding:7px 15px;border-radius:8px;font-size:13px;font-weight:500;color:var(--text2);transition:color .15s,background .15s;text-decoration:none;white-space:nowrap}
+.nav-links a:hover{color:var(--text);text-decoration:none}
+.nav-links a.active{background:var(--surface);color:var(--text);box-shadow:0 1px 2px rgba(0,0,0,.05);font-weight:600}
+.nav-right{display:flex;align-items:center;gap:9px}
+.nav-more{position:relative}
+.nav-more-btn{display:flex;align-items:center;gap:5px;padding:7px 15px;border-radius:8px;font-size:13px;font-weight:500;color:var(--text2);background:none;border:none;cursor:pointer;font-family:var(--font);white-space:nowrap;transition:color .15s,background .15s}
+.nav-more-btn:hover{color:var(--text)}
+.nav-more-btn .caret{font-size:10px;line-height:1;transition:transform .15s}
+.nav-more-btn[aria-expanded=true] .caret{transform:rotate(180deg)}
+.nav-more-btn.here{background:var(--surface);color:var(--text);box-shadow:0 1px 2px rgba(0,0,0,.05);font-weight:600}
+.nav-more-menu{position:absolute;top:calc(100% + 9px);right:0;min-width:185px;background:var(--surface);border:1px solid var(--border);border-radius:11px;padding:4px;box-shadow:0 8px 24px rgba(0,0,0,.10);display:none;z-index:60}
+.nav-more-menu.open{display:block}
+.nav-more-menu a{display:block;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:500;color:var(--text2)}
+.nav-more-menu a:hover{color:var(--text);background:var(--s2);text-decoration:none}
+.nav-more-menu a.current{background:var(--s2);color:var(--text);font-weight:600}
+@media(max-width:560px){.nav-links a{padding:6px 11px;font-size:12px}.nav-more-btn{padding:6px 11px;font-size:12px}.nav-brand span.bn{display:none}}
+</style>
+</head>
+<body>
+<nav class="topnav"><div class="topnav-inner">
+  <a class="nav-brand" href="divergence.html"><span class="mark"></span><span class="bn">BTC.D Trader</span></a>
+  <div class="nav-links">
+    <a href="divergence.html">Divergence</a>
+    <a href="divergence_watch.html" class="active">Divergence Watch</a>
+    <div class="nav-more">
+      <button class="nav-more-btn" id="nav-more-btn" aria-haspopup="true" aria-expanded="false" aria-controls="nav-more-menu">More <span class="caret">&#9662;</span></button>
+      <div class="nav-more-menu" id="nav-more-menu" role="menu">
+        <a href="unified.html" role="menuitem">Live Monitor</a>
+        <a href="btcd-monitor-15m-binance_8.html" role="menuitem">Signal Analysis</a>
+        <a href="performance.html" role="menuitem">Performance</a>
+      </div>
+    </div>
+  </div>
+  <div class="nav-right">
+    <button class="btn" id="tbtn">&#9728;&#65039;</button>
+  </div>
+</div></nav>
+
+<div class="wrap">
+<header>
+  <div>
+    <h1>Divergence &middot; <span>Watch</span></h1>
+    <div class="note">Placeholder &mdash; content coming soon.</div>
+  </div>
+</header>
+
+<div class="card">
+  <div class="empty">
+    <div class="big">&#128064;</div>
+    <div class="t">Nothing here yet</div>
+    <div class="d">This dashboard is reserved for a future view. Check back once it's built out.</div>
+  </div>
+</div>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+let dark=localStorage.getItem('theme')==='dark';
+const tbtn=$("tbtn");
+function applyTheme(){
+  document.documentElement.setAttribute('data-theme',dark?'dark':'cream');
+  tbtn.textContent=dark?'☀️':'🌙';
+  localStorage.setItem('theme',dark?'dark':'cream');
+}
+tbtn.onclick=()=>{dark=!dark;applyTheme()};
+applyTheme();
+
+// nav "More" dropdown — identical block on every page
+(()=>{
+  const btn=document.getElementById('nav-more-btn'),menu=document.getElementById('nav-more-menu');
+  if(!btn||!menu)return;
+  const setOpen=o=>{menu.classList.toggle('open',o);btn.setAttribute('aria-expanded',o)};
+  btn.addEventListener('click',e=>{e.stopPropagation();setOpen(!menu.classList.contains('open'))});
+  document.addEventListener('click',e=>{if(menu.classList.contains('open')&&!menu.contains(e.target)&&e.target!==btn)setOpen(false)});
+  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&menu.classList.contains('open')){setOpen(false);btn.focus()}});
+  menu.addEventListener('click',e=>{if(e.target.closest('a'))setOpen(false)});
+})();
+</script>
+</body>
+</html>
