@@ -47,6 +47,7 @@ section{margin-bottom:26px}
 .b-track{background:rgba(176,125,43,.12);color:var(--yellow)}
 .b-done{background:rgba(100,116,139,.12);color:var(--text2)}
 .b-src{background:rgba(63,111,115,.12);color:var(--cyan)}
+.chart-wrap{position:relative;height:230px}
 .tbl-wrap{overflow-x:auto}
 table{width:100%;border-collapse:collapse;font-size:13px}
 th{text-align:left;padding:7px 10px;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--text2);border-bottom:1px solid var(--border);white-space:nowrap}
@@ -118,17 +119,24 @@ tr:hover td{background:var(--s2)}
 <div id="sections"><div class="card"><div class="empty">Loading…</div></div></div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
 const $=id=>document.getElementById(id);
-let dark=localStorage.getItem('theme')==='dark';
+const _q=new URLSearchParams(location.search).get('theme');
+let dark=_q?_q==='dark':localStorage.getItem('theme')==='dark';
 const tbtn=$("tbtn");
+let LAST_DATA=null;
 function applyTheme(){
   document.documentElement.setAttribute('data-theme',dark?'dark':'cream');
   tbtn.textContent=dark?'☀️':'🌙';
   localStorage.setItem('theme',dark?'dark':'cream');
 }
-tbtn.onclick=()=>{dark=!dark;applyTheme()};
+tbtn.onclick=()=>{dark=!dark;applyTheme();if(LAST_DATA)render(LAST_DATA)};
 applyTheme();
+
+const C={green:'#2E7D52',red:'#BC4A3C',
+  grid:()=>dark?'rgba(255,255,255,.06)':'rgba(60,50,35,.10)',
+  tick:()=>dark?'#A39A88':'#7C7466',dash:()=>dark?'#A39A88':'#7C7466'};
 
 // nav "More" dropdown — identical block on every page
 (()=>{
@@ -168,12 +176,19 @@ function horizonsFor(eps){
   return [...set.entries()].sort((a,b)=>a[1].n-b[1].n).map(([key,v])=>({key,...v}));
 }
 
+function holdInfo(eps){
+  const horizons=horizonsFor(eps);
+  if(!horizons.length)return{key:null,n:null,unit:'h',horizons};
+  const h=horizons[Math.floor(horizons.length/2)]; // ~half of fwd window, mirrors Divergence page's "24h hold" choice
+  return{key:h.key,n:h.n,unit:h.unit,horizons};
+}
+
 function assetSection(symbol, eps){
   const src=SRC[symbol]||'—', tf=TF[symbol]||'—';
   const done=eps.filter(e=>e.stats&&e.stats.complete);
-  const horizons=horizonsFor(eps);
-  const holdKey=horizons.length?horizons[Math.floor(horizons.length/2)].key:null; // ~half of fwd window, mirrors Divergence page's "24h hold" choice
-  const holdUnit=horizons.length?horizons[Math.floor(horizons.length/2)]:null;
+  const {key:holdKey,n:holdN,unit:holdU,horizons}=holdInfo(eps);
+  const holdUnit=holdKey?{n:holdN,unit:holdU}:null;
+  const slug=symbol.replace('/','');
 
   let statsHtml;
   if(!eps.length){
@@ -205,6 +220,15 @@ function assetSection(symbol, eps){
       <div class="card lr"><div class="lbl">Best Timing (median)</div><div class="val" style="font-size:1.1rem">${me==null?'—':'+'+fmt(me,1)+unitKey}/${mx==null?'—':'+'+fmt(mx,1)+unitKey}</div>
         <div class="sub">best entry / best exit after alert</div></div>
     </div>`;
+  }
+
+  let chartHtml='';
+  if(eps.length && holdKey){
+    chartHtml=`<div class="card lp" style="padding:20px 24px"><div class="lbl">Profitability per episode — ${holdN}${holdU} hold vs best entry&rarr;exit (%)</div>
+      <div class="chart-wrap" style="margin-top:14px"><canvas id="ch-pnl-${slug}"></canvas></div>
+      <div class="note">Bars: return of entering at the alert price and holding ${holdN}${holdU} (green above zero&nbsp;=&nbsp;profit, red below&nbsp;=&nbsp;loss).
+      Gray dashes: the best achievable result &mdash; optimal entry within the pattern's entry-search window, optimal exit after that within the full forward-tracking window.
+      &sup2;&nbsp;=&nbsp;2-pt pattern.</div></div>`;
   }
 
   let tableHtml='';
@@ -241,8 +265,36 @@ function assetSection(symbol, eps){
       <h2>${symbol}<span class="tf">${tf} &middot; <span class="badge b-src">${src}</span></span></h2>
     </div>
     ${statsHtml}
+    ${chartHtml?`<div style="height:14px"></div>${chartHtml}`:''}
     ${eps.length?`<div style="height:14px"></div>${tableHtml}`:''}
   </section>`;
+}
+
+let CHARTS={};
+function buildChart(symbol, eps){
+  const slug=symbol.replace('/','');
+  const canvas=$(`ch-pnl-${slug}`);
+  if(CHARTS[slug]){CHARTS[slug].destroy();delete CHARTS[slug];}
+  if(!canvas)return;
+  const {key:holdKey,n:holdN,unit:holdU}=holdInfo(eps);
+  if(!holdKey)return;
+  const done=eps.filter(e=>e.stats&&e.stats[holdKey]!=null);
+  if(!done.length)return;
+  const labels=done.map(e=>`${fmtDate(e.confirmed_ts).split(' ')[0]} ${e.direction==='bearish'?'▼':'▲'}${(e.legs||3)===2?'²':''}`);
+  CHARTS[slug]=new Chart(canvas,{type:'bar',
+    data:{labels,datasets:[
+      {label:`${holdN}${holdU} hold`,data:done.map(e=>e.stats[holdKey]),
+       backgroundColor:done.map(e=>e.stats[holdKey]>=0?C.green:C.red),
+       borderRadius:4,barPercentage:.55,maxBarThickness:40},
+      {label:'best entry→exit',type:'scatter',data:done.map(e=>e.stats.best_pnl_pct??null),
+       pointStyle:'line',pointRadius:9,pointBorderWidth:3,pointBorderColor:C.dash(),showLine:false}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{labels:{usePointStyle:true,color:C.tick(),font:{family:'Inter',size:12}}},
+        tooltip:{callbacks:{label:c=>c.parsed.y==null?` ${c.dataset.label}: —`:` ${c.dataset.label}: ${c.parsed.y>0?'+':''}${(+c.parsed.y).toFixed(2)}%`}}},
+      scales:{x:{grid:{display:false},ticks:{color:C.tick(),font:{family:'JetBrains Mono',size:10}}},
+        y:{grid:{color:C.grid()},border:{display:false},
+           ticks:{color:C.tick(),font:{family:'JetBrains Mono',size:11},callback:v=>v+'%'}}}}});
 }
 
 function render(data){
@@ -250,7 +302,11 @@ function render(data){
   const bySymbol={'ETH/USD':[],'SOL/USD':[],'XAU/USD':[]};
   for(const e of eps){ if(bySymbol[e.symbol]) bySymbol[e.symbol].push(e); else (bySymbol[e.symbol]=bySymbol[e.symbol]||[]).push(e); }
   for(const k in bySymbol) bySymbol[k].sort((a,b)=>a.confirmed_ts-b.confirmed_ts);
+  Object.values(CHARTS).forEach(c=>c.destroy()); CHARTS={};
   $('sections').innerHTML=Object.entries(bySymbol).map(([sym,list])=>assetSection(sym,list)).join('');
+  document.fonts.ready.then(()=>{
+    for(const [sym,list] of Object.entries(bySymbol)) buildChart(sym,list);
+  });
 }
 
 let UPDATED=null;
@@ -267,6 +323,7 @@ function loadAll(){
     if(!r.ok)throw new Error(r.status);return r.json();
   }).then(d=>{
     UPDATED=d.updated||null; freshness();
+    LAST_DATA=d;
     render(d);
   }).catch(e=>{
     $('sections').innerHTML=`<div class="card"><div class="empty">Could not load multi_divergences.json (${e.message}). Serve over HTTP (./serve.sh) — file:// won't work. If this is a fresh deploy, the workflow may not have run yet.</div></div>`;
