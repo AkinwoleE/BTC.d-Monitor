@@ -1,0 +1,56 @@
+name: Multi-Asset Divergence Monitor
+
+# Fully independent of the BTC trading stack: own schedule, own concurrency
+# group, own data file (multi_divergences.json). No repository_dispatch —
+# that trigger is specifically cron-job.org's integration for the trading
+# bot's tighter cadence, and nothing here executes trades, so there's no
+# reason to run more often than the fastest timeframe here (1h) needs.
+on:
+  schedule:
+    - cron: "7 * * * *"   # hourly, offset from the other workflows' :00/:05 marks
+  workflow_dispatch:
+
+# Unique group name — cannot collide with btcd_trader.yml's "trader-run" or
+# divergence_monitor.yml's "divergence-monitor" groups. Even if a run here
+# and a run on either other workflow land in the same GitHub-cron minute,
+# they're independent jobs writing to a file (multi_divergences.json) that
+# no other workflow touches, so there is no shared-state race to diagnose —
+# unlike the git-conflict incident on trader_state.json/trader_log.json,
+# concurrent pushes here just retry via `git pull --rebase` same as the
+# other two workflows already do safely.
+concurrency:
+  group: multi-divergence-monitor
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - run: pip install requests
+
+      - name: Run multi-asset divergence monitor
+        run: python multi_divergence_monitor.py
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TWELVEDATA_API_KEY: ${{ secrets.TWELVEDATA_API_KEY }}
+
+      - name: Commit data
+        run: |
+          git config user.name "multi-divergence-bot"
+          git config user.email "actions@users.noreply.github.com"
+          if [ -f multi_divergences.json ]; then git add multi_divergences.json; fi
+          git diff --cached --quiet && exit 0
+          git commit -m "multi-divergence: update data [skip ci]"
+          git pull --rebase origin main || true
+          git push origin main

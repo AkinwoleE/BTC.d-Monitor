@@ -25,12 +25,39 @@ header h1{font-size:1.35rem;font-weight:700;letter-spacing:-.02em}
 header h1 span{color:var(--purple)}
 .btn{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:7px 14px;cursor:pointer;font-size:13px;color:var(--text);transition:border-color .15s;font-family:var(--font)}
 .btn:hover{border-color:var(--purple)}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:14px}
+@media(max-width:900px){.stats{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:400px){.stats{grid-template-columns:1fr}}
 .card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 20px}
-.note{font-size:12px;color:var(--text2);line-height:1.5;margin-top:8px}
-.empty{text-align:center;padding:64px 20px;color:var(--text2)}
+.card.lp{border-left:3px solid var(--purple)}
+.card.lc{border-left:3px solid var(--cyan)}
+.card.lg{border-left:3px solid var(--green)}
+.card.lr{border-left:3px solid var(--red)}
+.lbl{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--text2);margin-bottom:7px}
+.val{font-family:var(--mono);font-size:1.4rem;font-weight:600;line-height:1}
+.sub{font-size:12px;color:var(--text2);margin-top:5px;font-family:var(--mono)}
+.g{color:var(--green)}.r{color:var(--red)}.y{color:var(--yellow)}.c{color:var(--cyan)}.m{color:var(--text2)}
+section{margin-bottom:26px}
+.asset-head{display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:14px}
+.asset-head h2{font-size:1.1rem;font-weight:700;letter-spacing:-.01em}
+.asset-head h2 .tf{font-family:var(--mono);font-size:12px;font-weight:500;color:var(--text2);margin-left:8px;text-transform:none;letter-spacing:0}
+.badge{display:inline-block;padding:2px 9px;border-radius:99px;font-size:11px;font-weight:600}
+.b-bear{background:rgba(188,74,60,.12);color:var(--red)}
+.b-bull{background:rgba(46,125,82,.12);color:var(--green)}
+.b-track{background:rgba(176,125,43,.12);color:var(--yellow)}
+.b-done{background:rgba(100,116,139,.12);color:var(--text2)}
+.b-src{background:rgba(63,111,115,.12);color:var(--cyan)}
+.tbl-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;padding:7px 10px;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--text2);border-bottom:1px solid var(--border);white-space:nowrap}
+td{padding:9px 10px;border-bottom:1px solid var(--border);font-family:var(--mono);white-space:nowrap}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:var(--s2)}
+.empty{text-align:center;padding:40px 20px;color:var(--text2)}
 .empty .big{font-size:2rem;margin-bottom:10px}
 .empty .t{font-size:15px;font-weight:600;color:var(--text);margin-bottom:6px}
 .empty .d{font-size:13px;max-width:420px;margin:0 auto;line-height:1.6}
+.note{font-size:12px;color:var(--text2);line-height:1.5;margin-top:8px}
 .topnav{position:sticky;top:0;z-index:50;background:color-mix(in srgb,var(--surface) 86%,transparent);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid var(--border)}
 .topnav-inner{max-width:1280px;margin:0 auto;padding:11px 20px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
 .nav-brand{display:flex;align-items:center;gap:9px;font-weight:700;font-size:15px;letter-spacing:-.01em;color:var(--text);text-decoration:none;white-space:nowrap}
@@ -79,17 +106,16 @@ header h1 span{color:var(--purple)}
 <header>
   <div>
     <h1>Divergence &middot; <span>Watch</span></h1>
-    <div class="note">Placeholder &mdash; content coming soon.</div>
+    <div class="note">RSI-14 divergence detection across ETH/USD (1h, Kraken), SOL/USD (1h, Kraken) and XAU/USD
+    (1d, TwelveData) &mdash; same pivot/RSI pattern engine as the BTC monitor (3-pivot + experimental 2-pt), run by a
+    fully separate, non-trading script (<code>multi_divergence_monitor.py</code>). <b>Detect, log, alert only &mdash;
+    no trading logic.</b> None of these three assets have a dedicated backtest yet (unlike BTC's validated 3-pivot
+    pattern), so treat every episode here as exploratory until enough live data accumulates.</div>
   </div>
+  <div id="last-upd" style="font-size:12px;color:var(--text2)"></div>
 </header>
 
-<div class="card">
-  <div class="empty">
-    <div class="big">&#128064;</div>
-    <div class="t">Nothing here yet</div>
-    <div class="d">This dashboard is reserved for a future view. Check back once it's built out.</div>
-  </div>
-</div>
+<div id="sections"><div class="card"><div class="empty">Loading…</div></div></div>
 </div>
 
 <script>
@@ -114,6 +140,141 @@ applyTheme();
   document.addEventListener('keydown',e=>{if(e.key==='Escape'&&menu.classList.contains('open')){setOpen(false);btn.focus()}});
   menu.addEventListener('click',e=>{if(e.target.closest('a'))setOpen(false)});
 })();
+
+const fmt=(n,d=2)=>n==null?'—':(+n).toFixed(d);
+const px=(v,symbol)=>v==null?'—':(+v).toLocaleString('en-US',{maximumFractionDigits:(symbol==='SOL/USD'||v<1000)?2:0});
+const fmtDate=ts=>{
+  const d=new Date(ts*1000);
+  return d.toLocaleDateString('en-GB',{month:'short',day:'numeric'})
+    +' '+d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+};
+const pc=n=>n==null?'m':n>0?'g':n<0?'r':'m';
+const median=a=>{if(!a.length)return null;const s=[...a].sort((x,y)=>x-y);const m=Math.floor(s.length/2);return s.length%2?s[m]:(s[m-1]+s[m])/2};
+const SRC={'ETH/USD':'Kraken','SOL/USD':'Kraken','XAU/USD':'TwelveData'};
+const TF={'ETH/USD':'1h','SOL/USD':'1h','XAU/USD':'1d'};
+
+// discover the return-horizon columns actually present per symbol (ret_<n><unit>),
+// rather than hardcoding them — stays correct if multi_divergence_monitor.py's
+// per-asset horizons_bars ever change.
+function horizonsFor(eps){
+  const set=new Map();
+  for(const e of eps){
+    if(!e.stats)continue;
+    for(const k of Object.keys(e.stats)){
+      const m=k.match(/^ret_(\d+)([a-z])$/);
+      if(m)set.set(k,{n:+m[1],unit:m[2]});
+    }
+  }
+  return [...set.entries()].sort((a,b)=>a[1].n-b[1].n).map(([key,v])=>({key,...v}));
+}
+
+function assetSection(symbol, eps){
+  const src=SRC[symbol]||'—', tf=TF[symbol]||'—';
+  const done=eps.filter(e=>e.stats&&e.stats.complete);
+  const horizons=horizonsFor(eps);
+  const holdKey=horizons.length?horizons[Math.floor(horizons.length/2)].key:null; // ~half of fwd window, mirrors Divergence page's "24h hold" choice
+  const holdUnit=horizons.length?horizons[Math.floor(horizons.length/2)]:null;
+
+  let statsHtml;
+  if(!eps.length){
+    statsHtml=`<div class="card"><div class="empty">
+      <div class="big">&#128064;</div>
+      <div class="t">No ${symbol} divergences yet</div>
+      <div class="d">The monitor checks every hour. 3-pivot episodes are rare (BTC's backtest saw ~1&ndash;2/month);
+      2-pt episodes should show up faster.</div>
+    </div></div>`;
+  } else {
+    const holdDone=holdKey?done.filter(e=>e.stats[holdKey]!=null):[];
+    const wins=holdDone.filter(e=>e.stats[holdKey]>0).length;
+    const winPct=holdDone.length?Math.round(100*wins/holdDone.length)+'%':'—';
+    const avgHold=holdDone.length?holdDone.reduce((a,e)=>a+e.stats[holdKey],0)/holdDone.length:null;
+    const withBest=eps.filter(e=>e.stats&&e.stats.best_pnl_pct!=null);
+    const avgBest=withBest.length?withBest.reduce((a,e)=>a+e.stats.best_pnl_pct,0)/withBest.length:null;
+    const unitKey=horizons.length?horizons[0].unit:'h';
+    const me=median(withBest.map(e=>e.stats.best_entry?.[`${unitKey}_after`]).filter(v=>v!=null));
+    const mx=median(withBest.map(e=>e.stats.best_exit?.[`${unitKey}_after`]).filter(v=>v!=null));
+    const n3=eps.filter(e=>(e.legs||3)===3).length;
+    const bear=eps.filter(e=>e.direction==='bearish').length;
+    statsHtml=`<div class="stats">
+      <div class="card lp"><div class="lbl">Episodes</div><div class="val">${eps.length}</div>
+        <div class="sub">${n3}&times; 3-pivot &middot; ${eps.length-n3}&times; 2-pt &middot; ${bear}&#9660; ${eps.length-bear}&#9650;</div></div>
+      <div class="card lc"><div class="lbl">Win Rate &middot; ${holdUnit?holdUnit.n+holdUnit.unit:''} Hold</div><div class="val">${winPct}</div>
+        <div class="sub">${holdDone.length?wins+'/'+holdDone.length+' profitable':'—'}</div></div>
+      <div class="card lg"><div class="lbl">Avg Return</div><div class="val ${pc(avgHold)}">${avgHold==null?'—':(avgHold>0?'+':'')+fmt(avgHold)+'%'}</div>
+        <div class="sub">best entry&rarr;exit avg ${avgBest==null?'—':(avgBest>0?'+':'')+fmt(avgBest)+'%'}</div></div>
+      <div class="card lr"><div class="lbl">Best Timing (median)</div><div class="val" style="font-size:1.1rem">${me==null?'—':'+'+fmt(me,1)+unitKey}/${mx==null?'—':'+'+fmt(mx,1)+unitKey}</div>
+        <div class="sub">best entry / best exit after alert</div></div>
+    </div>`;
+  }
+
+  let tableHtml='';
+  if(eps.length){
+    const rows=[...eps].reverse().map(e=>{
+      const s=e.stats||{};
+      const dirB=e.direction==='bearish'?'<span class="badge b-bear">▼ bearish</span>':'<span class="badge b-bull">▲ bullish</span>';
+      const pat=(e.legs||3)===2?'<span class="badge b-track">2-pt</span>':'<span class="badge b-done">3-pivot</span>';
+      const st=s.complete?'<span class="badge b-done">complete</span>':`<span class="badge b-track">tracking</span>`;
+      const pv=e.pivots.map(p=>px(p.price,symbol)).join(' → ');
+      const rs=e.pivots.map(p=>fmt(p.rsi,1)).join(' → ');
+      const hCells=horizons.map(h=>{
+        const v=s[h.key];
+        return v==null?'<td class="m">—</td>':`<td class="${pc(v)}">${v>0?'+':''}${fmt(v)}%</td>`;
+      }).join('');
+      const unitKey=horizons.length?horizons[0].unit:'h';
+      const be=s.best_entry?`${px(s.best_entry.price,symbol)} <span class="m">+${fmt(s.best_entry[`${unitKey}_after`],1)}${unitKey}</span>`:'—';
+      const bx=s.best_exit?`${px(s.best_exit.price,symbol)} <span class="m">+${fmt(s.best_exit[`${unitKey}_after`],1)}${unitKey}</span>`:'—';
+      const bp=s.best_pnl_pct==null?'<td class="m">—</td>':`<td class="${pc(s.best_pnl_pct)}"><b>${s.best_pnl_pct>0?'+':''}${fmt(s.best_pnl_pct)}%</b></td>`;
+      return `<tr>
+        <td>${fmtDate(e.confirmed_ts)}</td><td>${dirB} ${pat}</td>
+        <td>${px(e.confirm_price,symbol)}</td><td class="m">${pv}</td><td class="m">${rs}</td>
+        ${hCells}<td>${be}</td><td>${bx}</td>${bp}<td>${st}</td></tr>`;
+    }).join('');
+    const hHead=horizons.map(h=>`<th>${h.n}${h.unit}</th>`).join('');
+    tableHtml=`<div class="card"><div class="tbl-wrap"><table><thead><tr>
+      <th>Alerted</th><th>Direction</th><th>Alert Px</th><th>Pivot Prices</th><th>Pivot RSI</th>
+      ${hHead}<th>Best Entry</th><th>Best Exit</th><th>Best PnL</th><th>Status</th>
+    </tr></thead><tbody>${rows}</tbody></table></div></div>`;
+  }
+
+  return `<section>
+    <div class="asset-head">
+      <h2>${symbol}<span class="tf">${tf} &middot; <span class="badge b-src">${src}</span></span></h2>
+    </div>
+    ${statsHtml}
+    ${eps.length?`<div style="height:14px"></div>${tableHtml}`:''}
+  </section>`;
+}
+
+function render(data){
+  const eps=data.episodes||[];
+  const bySymbol={'ETH/USD':[],'SOL/USD':[],'XAU/USD':[]};
+  for(const e of eps){ if(bySymbol[e.symbol]) bySymbol[e.symbol].push(e); else (bySymbol[e.symbol]=bySymbol[e.symbol]||[]).push(e); }
+  for(const k in bySymbol) bySymbol[k].sort((a,b)=>a.confirmed_ts-b.confirmed_ts);
+  $('sections').innerHTML=Object.entries(bySymbol).map(([sym,list])=>assetSection(sym,list)).join('');
+}
+
+let UPDATED=null;
+function freshness(){
+  if(!UPDATED){$('last-upd').textContent='';return;}
+  const mins=(Date.now()-new Date(UPDATED).getTime())/60000;
+  const rel=mins<1.5?'just now':mins<90?Math.round(mins)+' min ago':(mins/60).toFixed(1)+' h ago';
+  // monitor runs hourly — well past that means data has stopped flowing
+  const warn=mins>90?' <span style="color:#BC4A3C;font-weight:600">⚠ stale — monitor not running?</span>':'';
+  $('last-upd').innerHTML='Data updated '+UPDATED.slice(0,16).replace('T',' ')+' UTC ('+rel+')'+warn;
+}
+function loadAll(){
+  fetch('multi_divergences.json?t='+Date.now()).then(r=>{
+    if(!r.ok)throw new Error(r.status);return r.json();
+  }).then(d=>{
+    UPDATED=d.updated||null; freshness();
+    render(d);
+  }).catch(e=>{
+    $('sections').innerHTML=`<div class="card"><div class="empty">Could not load multi_divergences.json (${e.message}). Serve over HTTP (./serve.sh) — file:// won't work. If this is a fresh deploy, the workflow may not have run yet.</div></div>`;
+  });
+}
+loadAll();
+setInterval(loadAll,60000);
+setInterval(freshness,30000);
 </script>
 </body>
 </html>
