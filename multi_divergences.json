@@ -7614,7 +7614,30 @@
     "mfe_pct": 4.366,
     "mae_pct": 0.949
    }
+  },
+  {
+   "id": "SOLUSD-1h-bearish2-1786291200",
+   "symbol": "SOL/USD",
+   "tf": "1h",
+   "direction": "bearish",
+   "legs": 2,
+   "pivots": [
+    {
+     "ts": 1786201200,
+     "price": 76.73,
+     "rsi": 77.49
+    },
+    {
+     "ts": 1786291200,
+     "price": 77.48,
+     "rsi": 76.31
+    }
+   ],
+   "confirmed_ts": 1786305600,
+   "confirm_price": 77.19,
+   "forward": [],
+   "alerted": true
   }
  ],
- "updated": "2026-08-09T19:40:34.604876+00:00"
+ "updated": "2026-08-09T20:43:42.924194+00:00"
 }
