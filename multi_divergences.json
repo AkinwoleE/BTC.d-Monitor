@@ -9384,6 +9384,12 @@
      "high": 76.95,
      "low": 76.51,
      "close": 76.51
+    },
+    {
+     "ts": 1786356000,
+     "high": 76.8,
+     "low": 76.48,
+     "close": 76.76
     }
    ],
    "alerted": true,
@@ -9391,8 +9397,8 @@
     "complete": false,
     "ret_6h": 0.453,
     "ret_12h": 0.337,
-    "ret_24h": 0.881,
-    "ret_48h": 0.881,
+    "ret_24h": 0.557,
+    "ret_48h": 0.557,
     "best_entry": {
      "ts": 1786312800,
      "price": 77.71,
@@ -9481,26 +9487,32 @@
      "high": 76.95,
      "low": 76.51,
      "close": 76.51
+    },
+    {
+     "ts": 1786356000,
+     "high": 76.8,
+     "low": 76.48,
+     "close": 76.76
     }
    ],
    "alerted": true,
    "stats": {
     "complete": false,
     "ret_6h": -0.117,
-    "ret_12h": 0.429,
-    "ret_24h": 0.429,
-    "ret_48h": 0.429,
+    "ret_12h": 0.104,
+    "ret_24h": 0.104,
+    "ret_48h": 0.104,
     "best_entry": {
      "ts": 1786348800,
      "price": 77.08,
      "h_after": 6.0
     },
     "best_exit": {
-     "ts": 1786352400,
-     "price": 76.51,
-     "h_after": 7.0
+     "ts": 1786356000,
+     "price": 76.48,
+     "h_after": 8.0
     },
-    "best_pnl_pct": 0.739,
+    "best_pnl_pct": 0.778,
     "mfe_pct": 0.69,
     "mae_pct": 0.312
    }
@@ -9573,6 +9585,12 @@
      "high": 76.95,
      "low": 76.51,
      "close": 76.51
+    },
+    {
+     "ts": 1786356000,
+     "high": 76.8,
+     "low": 76.48,
+     "close": 76.76
     }
    ],
    "alerted": false,
@@ -9580,24 +9598,24 @@
    "stats": {
     "complete": false,
     "ret_6h": -0.117,
-    "ret_12h": 0.429,
-    "ret_24h": 0.429,
-    "ret_48h": 0.429,
+    "ret_12h": 0.104,
+    "ret_24h": 0.104,
+    "ret_48h": 0.104,
     "best_entry": {
      "ts": 1786348800,
      "price": 77.08,
      "h_after": 6.0
     },
     "best_exit": {
-     "ts": 1786352400,
-     "price": 76.51,
-     "h_after": 7.0
+     "ts": 1786356000,
+     "price": 76.48,
+     "h_after": 8.0
     },
-    "best_pnl_pct": 0.739,
+    "best_pnl_pct": 0.778,
     "mfe_pct": 0.69,
     "mae_pct": 0.312
    }
   }
  ],
- "updated": "2026-08-10T10:25:29.047006+00:00"
+ "updated": "2026-08-10T11:54:42.584873+00:00"
 }
