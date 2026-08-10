@@ -11,5 +11,10 @@
   "sl_price": 66396.2,
   "tp_sl_ok": true,
   "timestamp": "2026-08-10T02:00:48.465963+00:00"
+ },
+ {
+  "action": "SKIP_SAME_DIRECTION",
+  "episode_id": "2h-bearish2-1786312800",
+  "timestamp": "2026-08-10T06:00:44.145552+00:00"
  }
 ]
