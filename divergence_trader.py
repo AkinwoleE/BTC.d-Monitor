@@ -56,6 +56,12 @@ SL_USD       = env_num("DIV_SL_USD", 20)
 MAX_HOURS    = env_num("DIV_MAX_HOURS", 48)
 LEVERAGE     = env_num("DIV_LEVERAGE", 20, int)
 SLIPPAGE     = env_num("SLIPPAGE", 0.5)
+# one-off manual test trade (workflow_dispatch only — never set on the hourly
+# cron) — bypasses signal detection entirely, places a single real order
+# using the normal open_position() path so it's picked up and managed
+# (TP/SL/48h-exit) by every subsequent run exactly like a signal-driven trade
+MANUAL_SIDE     = os.environ.get("MANUAL_SIDE", "").strip().lower()   # "long" or "short"
+MANUAL_SIZE_USD = env_num("MANUAL_SIZE_USD", 0)
 SYMBOL       = "BTC/USD"
 FRESH        = {"1h": 2 * 3600, "2h": 4 * 3600}   # same freshness gate as alerts
 GRACE_SEC    = 600                                # reconciliation grace after entry
@@ -236,17 +242,18 @@ def place_protection(direction, entry):
     print(f"  tp/sl: tp={tp} sl={sl} ok={ok} {json.dumps(r)[:120]}")
     return ok, tp, sl
 
-def open_position(st, ep, equity):
+def open_position(st, ep, equity, size_usd=None):
+    size_usd = POSITION_USD if size_usd is None else size_usd
     direction = ep["direction"]
     side = "long" if direction == "bullish" else "short"
-    need = POSITION_USD / LEVERAGE * 1.15
+    need = size_usd / LEVERAGE * 1.15
     if equity < need:
         tg(f"⚠️ Divergence trade SKIPPED — insufficient margin: equity ${equity:.2f} &lt; ${need:.2f} "
-           f"needed for ${POSITION_USD:.0f} @ {LEVERAGE}x. Deposit to enable.")
+           f"needed for ${size_usd:.0f} @ {LEVERAGE}x. Deposit to enable.")
         st["acted"][ep["id"]] = int(time.time())
         return
     price = dec_price()
-    size = round(POSITION_USD / price, 5)
+    size = round(size_usd / price, 5)
     info = market_info()
     if info and size < info["min_size"]:
         tg(f"⚠️ Divergence trade SKIPPED — size {size} below market min {info['min_size']}")
@@ -287,7 +294,7 @@ def open_position(st, ep, equity):
     arrow = "🔼" if side == "long" else "🔻"
     warn = "" if tpsl_ok else "\n🚨 TP/SL placement FAILED — will retry every run + software fallback active."
     tg(f"{arrow} <b>Divergence bot OPENED {side.upper()} {SYMBOL}</b>\n"
-       f"Signal: {ep['id']}\nSize: {size} (${POSITION_USD:.0f} @ {LEVERAGE}x)\n"
+       f"Signal: {ep['id']}\nSize: {size} (${size_usd:.0f} @ {LEVERAGE}x)\n"
        f"Entry ~{entry:,.0f} · TP {tp:,.0f} · SL {sl:,.0f} · time-exit {MAX_HOURS:.0f}h{warn}")
 
 def close_position_now(st, reason):
@@ -314,6 +321,22 @@ def close_position_now(st, reason):
     st["position"] = None
     return True
 
+def manual_trade(st, equity):
+    """One-off test trade requested via workflow_dispatch inputs, independent
+    of DIV_TRADING_ENABLED — an explicit ad-hoc action, not the strategy."""
+    if st.get("position"):
+        tg(f"⚠️ Manual trade SKIPPED — a position is already open on this account "
+           f"({st['position']['direction']} from {st['position']['entry_price']:,.0f}). "
+           f"Close it first.")
+        return
+    if MANUAL_SIZE_USD <= 0:
+        tg("⚠️ Manual trade SKIPPED — MANUAL_SIZE_USD not set or <= 0."); return
+    direction = "bullish" if MANUAL_SIDE == "long" else "bearish"
+    ep = {"id": f"MANUAL-{int(time.time())}", "direction": direction}
+    print(f"  [{ACCOUNT}] MANUAL TRADE: {MANUAL_SIDE} ${MANUAL_SIZE_USD:.0f} @ {LEVERAGE}x")
+    open_position(st, ep, equity, size_usd=MANUAL_SIZE_USD)
+    save_state(st)
+
 # ── main ──────────────────────────────────────────────────────────────────────
 def main():
     now = int(time.time())
@@ -326,6 +349,12 @@ def main():
     live_pos, equity, api_ok = live_snapshot()
     if api_ok:
         record_equity(equity)
+
+    if MANUAL_SIDE in ("long", "short"):
+        if not api_ok:
+            print(f"  [{ACCOUNT}] MANUAL TRADE requested but API unavailable — aborting."); return
+        manual_trade(load_state(), equity)
+        return
 
     if not ENABLED:
         print("  DIV_TRADING_ENABLED != true — equity sampled, no trading."); return
