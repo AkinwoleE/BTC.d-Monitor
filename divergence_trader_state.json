@@ -1,15 +1,5 @@
 {
- "position": {
-  "episode_id": "1h-bearish2-1786312800",
-  "direction": "bearish",
-  "size": 0.01536,
-  "entry_price": 65094.3,
-  "entry_ts": 1786327248,
-  "entry_equity": 200.05288,
-  "tp_price": 62881.1,
-  "sl_price": 66396.2,
-  "tp_sl_ok": true
- },
+ "position": null,
  "acted": {
   "1h-bearish2-1786312800": 1786327248,
   "2h-bearish2-1786312800": 1786341622

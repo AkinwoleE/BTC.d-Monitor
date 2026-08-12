@@ -16,5 +16,15 @@
   "action": "SKIP_SAME_DIRECTION",
   "episode_id": "2h-bearish2-1786312800",
   "timestamp": "2026-08-10T06:00:44.145552+00:00"
+ },
+ {
+  "action": "CLOSE",
+  "episode_id": "1h-bearish2-1786312800",
+  "reason": "TIME_EXIT_48H",
+  "direction": "bearish",
+  "entry_price": 65094.3,
+  "pnl": 19.949658,
+  "held_hours": 48.5,
+  "timestamp": "2026-08-12T02:30:51.770888+00:00"
  }
 ]
