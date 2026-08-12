@@ -11,5 +11,15 @@
   "sl_price": 62874.2,
   "tp_sl_ok": true,
   "timestamp": "2026-08-12T11:53:51.301595+00:00"
+ },
+ {
+  "action": "CLOSE",
+  "episode_id": "MANUAL-1786535618",
+  "reason": "TP_SL_FILLED",
+  "direction": "bullish",
+  "entry_price": 64157.3,
+  "pnl": -0.055895999999989954,
+  "held_hours": 0.6,
+  "timestamp": "2026-08-12T12:29:57.113940+00:00"
  }
 ]
