@@ -1,0 +1,15 @@
+[
+ {
+  "action": "OPEN",
+  "episode_id": "MANUAL-1786535618",
+  "direction": "bullish",
+  "side": "long",
+  "size": 0.00156,
+  "entry_price": 64157.3,
+  "equity": 237.538398,
+  "tp_price": 66338.6,
+  "sl_price": 62874.2,
+  "tp_sl_ok": true,
+  "timestamp": "2026-08-12T11:53:51.301595+00:00"
+ }
+]
