@@ -14,8 +14,9 @@
   --font:"Inter",sans-serif;--mono:"JetBrains Mono",monospace;
 }
 [data-theme=dark]{
-  --bg:#1A1714;--surface:#231F1A;--s2:#2A251F;--border:#39322A;
-  --text:#EDE6D8;--text2:#A39A88;--text3:#6E6557;
+  --bg:#0A1210;--surface:#101C19;--s2:#16221E;--border:rgba(210,225,220,.14);
+  --purple:#C2653D;--cyan:#0C8FBA;--green:#4CAB58;--red:#C6493D;--yellow:#B08817;
+  --text:#F3FAF7;--text2:#A9BAB4;--text3:#7C8B86;
 }
 body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:100vh;font-size:14px}
 a{color:var(--cyan);text-decoration:none}a:hover{text-decoration:underline}
@@ -182,9 +183,9 @@ const fmtDate=ts=>{
 const pc=n=>n==null?'m':n>0?'g':n<0?'r':'m';
 const median=a=>{if(!a.length)return null;const s=[...a].sort((x,y)=>x-y);const m=Math.floor(s.length/2);return s.length%2?s[m]:(s[m-1]+s[m])/2};
 
-const C={line:()=>dark?'#4AA6B3':'#3F6F73',green:'#2E7D52',red:'#BC4A3C',
-  grid:()=>dark?'rgba(255,255,255,.06)':'rgba(60,50,35,.10)',
-  tick:()=>dark?'#A39A88':'#7C7466',dash:()=>dark?'#A39A88':'#7C7466'};
+const C={line:()=>dark?'#0C8FBA':'#3F6F73',green:()=>dark?'#4CAB58':'#2E7D52',red:()=>dark?'#C6493D':'#BC4A3C',
+  grid:()=>dark?'rgba(255,255,255,.08)':'rgba(60,50,35,.10)',
+  tick:()=>dark?'#A9BAB4':'#7C7466',dash:()=>dark?'#A9BAB4':'#7C7466'};
 
 let EPS=[],EQ=[],TRADES=[],sel=null,chPnl=null,chDet=null,chEq=null;
 
@@ -220,7 +221,7 @@ function buildPnl(){
   chPnl=new Chart($('ch-pnl'),{type:'bar',
     data:{labels,datasets:[
       {label:'24h hold',data:eps.map(e=>e.stats.ret_24h),
-       backgroundColor:eps.map(e=>e.stats.ret_24h>=0?C.green:C.red),
+       backgroundColor:eps.map(e=>e.stats.ret_24h>=0?C.green():C.red()),
        borderRadius:4,barPercentage:.55,maxBarThickness:46},
       {label:'best entry→exit',type:'scatter',data:eps.map(e=>e.stats.best_pnl_pct),
        pointStyle:'line',pointRadius:11,pointBorderWidth:3,pointBorderColor:C.dash(),showLine:false}
@@ -248,9 +249,9 @@ function buildDet(){
       {label:'alert price',data:[{x:0,y:e.confirm_price},{x:maxH,y:e.confirm_price}],
        borderColor:C.dash(),borderWidth:1.5,borderDash:[6,5],pointRadius:0,pointHitRadius:0},
       {label:'best entry',type:'scatter',data:mark(s.best_entry),
-       pointStyle:'triangle',pointRadius:9,backgroundColor:C.green,borderColor:C.green},
+       pointStyle:'triangle',pointRadius:9,backgroundColor:C.green(),borderColor:C.green()},
       {label:'best exit',type:'scatter',data:mark(s.best_exit),
-       pointStyle:'rectRot',pointRadius:9,backgroundColor:C.red,borderColor:C.red}
+       pointStyle:'rectRot',pointRadius:9,backgroundColor:C.red(),borderColor:C.red()}
     ]},
     options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'nearest',intersect:false},
       plugins:{legend:{labels:{usePointStyle:true,color:C.tick(),font:{family:'Inter',size:12}}},
@@ -319,11 +320,11 @@ function buildEq(){
   });
   const dsets=[{label:'equity',data:pts,borderColor:purple,borderWidth:2,pointRadius:0,
     pointHitRadius:10,tension:.15,fill:true,
-    backgroundColor:dark?'rgba(193,95,60,.10)':'rgba(193,95,60,.08)'}];
+    backgroundColor:dark?'rgba(194,101,61,.14)':'rgba(193,95,60,.08)'}];
   if(closes.length)dsets.push({label:'trade close',type:'scatter',
     data:closes,pointStyle:'circle',pointRadius:6,pointBorderWidth:2,
-    pointBackgroundColor:closes.map(c=>(c.pnl??0)>=0?C.green:C.red),
-    pointBorderColor:dark?'#231F1A':'#FAF6EE'});
+    pointBackgroundColor:closes.map(c=>(c.pnl??0)>=0?C.green():C.red()),
+    pointBorderColor:dark?'#101C19':'#FAF6EE'});
   chEq=new Chart($('ch-eq'),{type:'line',
     data:{datasets:dsets},
     options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'nearest',intersect:false},

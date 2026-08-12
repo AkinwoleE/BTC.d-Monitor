@@ -14,8 +14,9 @@
   --font:"Inter",sans-serif;--mono:"JetBrains Mono",monospace;
 }
 [data-theme=dark]{
-  --bg:#1A1714;--surface:#231F1A;--s2:#2A251F;--border:#39322A;
-  --text:#EDE6D8;--text2:#A39A88;--text3:#6E6557;
+  --bg:#0A1210;--surface:#101C19;--s2:#16221E;--border:rgba(210,225,220,.14);
+  --purple:#C2653D;--cyan:#0C8FBA;--green:#4CAB58;--red:#C6493D;--yellow:#B08817;
+  --text:#F3FAF7;--text2:#A9BAB4;--text3:#7C8B86;
 }
 body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:100vh;font-size:14px}
 a{color:var(--cyan);text-decoration:none}a:hover{text-decoration:underline}
@@ -153,7 +154,8 @@ tr:hover td{background:var(--s2)}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
 const $=id=>document.getElementById(id);
-let dark=localStorage.getItem('theme')==='dark';
+const _q=new URLSearchParams(location.search).get('theme');
+let dark=_q?_q==='dark':localStorage.getItem('theme')==='dark';
 const tbtn=$("tbtn");
 function applyTheme(){
   document.documentElement.setAttribute('data-theme',dark?'dark':'cream');
@@ -219,17 +221,18 @@ function rebuildChart(){
   const labels=['Start',...cl2.map(t=>fmtDate(t.close.timestamp))];
   let cum=0;
   const data=[0,...cl2.map(t=>{cum+=t.close.pnl;return+cum.toFixed(2)})];
-  const gridClr=dark?'rgba(255,255,255,.06)':'rgba(60,50,35,.10)';
-  const tickClr=dark?'#A39A88':'#7C7466';
+  const gridClr=dark?'rgba(255,255,255,.08)':'rgba(60,50,35,.10)';
+  const tickClr=dark?'#A9BAB4':'#7C7466';
   if(chart)chart.destroy();
   chart=new Chart($("ch"),{
     type:'line',
     data:{labels,datasets:[{data,
-      borderColor:'#C15F3C',
+      borderColor:dark?'#C2653D':'#C15F3C',
       backgroundColor:ctx=>{const g=ctx.chart.ctx.createLinearGradient(0,0,0,240);
-        g.addColorStop(0,'rgba(193,95,60,.20)');g.addColorStop(1,'rgba(193,95,60,0)');return g},
+        const rgb=dark?'194,101,61':'193,95,60';
+        g.addColorStop(0,`rgba(${rgb},.20)`);g.addColorStop(1,`rgba(${rgb},0)`);return g},
       fill:true,tension:.35,pointRadius:data.length<20?4:2,
-      pointBackgroundColor:'#C15F3C',borderWidth:2}]},
+      pointBackgroundColor:dark?'#C2653D':'#C15F3C',borderWidth:2}]},
     options:{responsive:true,maintainAspectRatio:false,
       plugins:{legend:{display:false},tooltip:{callbacks:{
         label:c=>` $${c.raw.toFixed(2)}`}}},
