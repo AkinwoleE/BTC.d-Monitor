@@ -15,18 +15,33 @@ Rule set (derived from the 13-trade 2-pt backfill, 2026-07-29):
 Gating: trades ONLY when DIV_TRADING_ENABLED=true AND Decibel creds are set.
 DIV_DRY_RUN=true logs+alerts every decision without placing orders.
 
-State: divergence_trader_state.json (fails LOUD on corruption — never silently
-resets; that failure mode wiped trader history four times in the old bot).
-Log:   divergence_trades.json (append-only events).
+Multi-account: set TRADER_ACCOUNT to run this same script against a second
+person's Decibel account (e.g. a friend's), fully isolated from the primary
+account — separate state/log/equity files (suffixed by account name), and
+every Telegram message tagged with the account so the two are never
+ambiguous in a shared chat. The account's credentials/sizing/enable-flag are
+supplied by the CALLER (the GitHub workflow maps that account's secrets onto
+these same generic env var names for that step) — this file never hardcodes
+a second set of credential names, so adding a third account later is a
+workflow-only change.
+
+State: divergence_trader_state{_account}.json (fails LOUD on corruption —
+never silently resets; that failure mode wiped trader history four times in
+the old bot).
+Log:   divergence_trades{_account}.json (append-only events).
 """
 import os, json, time, subprocess, requests
 from datetime import datetime, timezone
 
-BASE       = os.path.dirname(os.path.abspath(__file__))
-DIV_FILE   = os.path.join(BASE, "divergences.json")
-STATE_FILE = os.path.join(BASE, "divergence_trader_state.json")
-LOG_FILE   = os.path.join(BASE, "divergence_trades.json")
-EQ_FILE    = os.path.join(BASE, "divergence_equity.json")
+BASE    = os.path.dirname(os.path.abspath(__file__))
+ACCOUNT = (os.environ.get("TRADER_ACCOUNT", "") or "primary").strip()
+SUFFIX  = "" if ACCOUNT.lower() == "primary" else f"_{ACCOUNT.lower()}"
+TAG     = f"[{ACCOUNT}] "
+
+DIV_FILE   = os.path.join(BASE, "divergences.json")               # shared signal source — never suffixed
+STATE_FILE = os.path.join(BASE, f"divergence_trader_state{SUFFIX}.json")
+LOG_FILE   = os.path.join(BASE, f"divergence_trades{SUFFIX}.json")
+EQ_FILE    = os.path.join(BASE, f"divergence_equity{SUFFIX}.json")
 
 def env_num(name, default, cast=float):
     """GitHub Actions injects '' for undefined ${{ vars.X }} — treat as unset."""
@@ -54,6 +69,7 @@ CHAT_ID         = os.environ.get("TELEGRAM_CHAT_ID", "")
 
 # ── Telegram ──────────────────────────────────────────────────────────────────
 def tg(msg):
+    msg = TAG + msg   # every alert is tagged with the account — never ambiguous in a shared chat
     if not BOT_TOKEN or not CHAT_ID:
         print(f"  [no telegram] {msg}")
         return
@@ -301,10 +317,10 @@ def close_position_now(st, reason):
 # ── main ──────────────────────────────────────────────────────────────────────
 def main():
     now = int(time.time())
-    print(f"divergence_trader {datetime.now(timezone.utc).isoformat()} "
-          f"enabled={ENABLED} dry_run={DRY_RUN}")
+    print(f"divergence_trader[{ACCOUNT}] {datetime.now(timezone.utc).isoformat()} "
+          f"enabled={ENABLED} dry_run={DRY_RUN} state={os.path.basename(STATE_FILE)}")
     if not (DEC_PRIVATE_KEY and DEC_SUB and DEC_NODE_KEY):
-        print("  Decibel credentials missing — no-op."); return
+        print(f"  [{ACCOUNT}] Decibel credentials missing — no-op."); return
 
     # equity graph samples are recorded whenever creds work, even with trading off
     live_pos, equity, api_ok = live_snapshot()

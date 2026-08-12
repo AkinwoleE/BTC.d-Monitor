@@ -58,14 +58,46 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
 
+      # Second, fully independent account (Yar's) — same signal feed
+      # (divergences.json), own state/log/equity files (divergence_trader.py
+      # suffixes them by TRADER_ACCOUNT), own credentials, own on/off switch.
+      # continue-on-error: a problem in this step (bad key, Decibel API issue,
+      # anything) must never skip the Commit data step below and must never
+      # touch the primary account's already-saved state — the two are only
+      # connected by reading the same divergences.json.
+      - name: Run divergence trader (Yar's account)
+        continue-on-error: true
+        run: python divergence_trader.py
+        env:
+          TRADER_ACCOUNT: yar
+          # defaults to OFF — unlike the primary account, this trades someone
+          # else's money and must be an explicit opt-in via the repo variable
+          DIV_TRADING_ENABLED: ${{ vars.YAR_TRADING_ENABLED || 'false' }}
+          DIV_DRY_RUN: ${{ vars.YAR_DRY_RUN }}
+          DIV_POSITION_USD: ${{ vars.YAR_POSITION_USD }}
+          DIV_TP_USD: ${{ vars.YAR_TP_USD }}
+          DIV_SL_USD: ${{ vars.YAR_SL_USD }}
+          DIV_MAX_HOURS: ${{ vars.YAR_MAX_HOURS }}
+          DIV_LEVERAGE: ${{ vars.YAR_LEVERAGE }}
+          DECIBEL_PRIVATE_KEY: ${{ secrets.YAR_KEY }}
+          DECIBEL_SUBACCOUNT: ${{ secrets.YAR_SUBACCOUNT }}
+          # shared infra credentials, not account-specific — reused as-is
+          DECIBEL_NODE_API_KEY: ${{ secrets.DECIBEL_NODE_API_KEY }}
+          DECIBEL_GAS_STATION_API_KEY: ${{ secrets.DECIBEL_GAS_STATION_API_KEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+
       - name: Commit data
+        if: always()
         run: |
           git config user.name "divergence-bot"
           git config user.email "actions@users.noreply.github.com"
           # add each file individually: a single `git add` with any missing
           # pathspec stages NOTHING (this silently blocked all data commits
           # 2026-07-30 → 08-04 while the trader files didn't exist yet)
-          for f in divergences.json divergence_trader_state.json divergence_trades.json divergence_equity.json; do
+          for f in divergences.json \
+                   divergence_trader_state.json divergence_trades.json divergence_equity.json \
+                   divergence_trader_state_yar.json divergence_trades_yar.json divergence_equity_yar.json; do
             if [ -f "$f" ]; then git add "$f"; fi
           done
           git diff --cached --quiet && exit 0
