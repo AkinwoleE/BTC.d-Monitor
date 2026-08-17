@@ -14354,15 +14354,21 @@
      "high": 1912.4,
      "low": 1903.44,
      "close": 1907.51
+    },
+    {
+     "ts": 1786989600,
+     "high": 1910.74,
+     "low": 1905.85,
+     "close": 1908.15
     }
    ],
    "alerted": true,
    "stats": {
     "complete": false,
     "ret_6h": -0.971,
-    "ret_12h": -0.822,
-    "ret_24h": -0.822,
-    "ret_48h": -0.822,
+    "ret_12h": -0.856,
+    "ret_24h": -0.856,
+    "ret_48h": -0.856,
     "best_entry": {
      "ts": 1786978800,
      "price": 1913.4,
@@ -14377,7 +14383,59 @@
     "mfe_pct": 0.089,
     "mae_pct": 1.134
    }
+  },
+  {
+   "id": "ETHUSD-1h-bearish-1786978800",
+   "symbol": "ETH/USD",
+   "tf": "1h",
+   "direction": "bearish",
+   "legs": 3,
+   "pivots": [
+    {
+     "ts": 1786932000,
+     "price": 1906.05,
+     "rsi": 71.93
+    },
+    {
+     "ts": 1786946400,
+     "price": 1910.0,
+     "rsi": 71.11
+    },
+    {
+     "ts": 1786978800,
+     "price": 1913.4,
+     "rsi": 64.79
+    }
+   ],
+   "confirmed_ts": 1786993200,
+   "confirm_price": 1908.15,
+   "forward": [],
+   "alerted": true
+  },
+  {
+   "id": "ETHUSD-1h-bearish2-1786978800",
+   "symbol": "ETH/USD",
+   "tf": "1h",
+   "direction": "bearish",
+   "legs": 2,
+   "pivots": [
+    {
+     "ts": 1786946400,
+     "price": 1910.0,
+     "rsi": 71.11
+    },
+    {
+     "ts": 1786978800,
+     "price": 1913.4,
+     "rsi": 64.79
+    }
+   ],
+   "confirmed_ts": 1786993200,
+   "confirm_price": 1908.15,
+   "forward": [],
+   "alerted": false,
+   "alert_suppressed": "duplicate-structure"
   }
  ],
- "updated": "2026-08-17T18:50:59.552104+00:00"
+ "updated": "2026-08-17T19:34:42.661014+00:00"
 }
