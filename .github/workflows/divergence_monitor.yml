@@ -46,6 +46,11 @@ jobs:
           # Actions variable DIV_TRADING_ENABLED=false to switch it off
           DIV_TRADING_ENABLED: ${{ vars.DIV_TRADING_ENABLED || 'true' }}
           DIV_DRY_RUN: ${{ vars.DIV_DRY_RUN }}
+          # 2h-only since 2026-08-19 — 3-year backtest showed 1h/2-pt losing
+          # money at scale while 2h stayed positive across nearly every
+          # 6-month window. Detection/alerting of 1h signals is unaffected;
+          # this only stops the trader from acting on them.
+          DIV_TRADE_TF: ${{ vars.DIV_TRADE_TF || '2h' }}
           DIV_POSITION_USD: ${{ vars.DIV_POSITION_USD }}
           DIV_TP_USD: ${{ vars.DIV_TP_USD }}
           DIV_SL_USD: ${{ vars.DIV_SL_USD }}
@@ -74,6 +79,8 @@ jobs:
           # else's money and must be an explicit opt-in via the repo variable
           DIV_TRADING_ENABLED: ${{ vars.YAR_TRADING_ENABLED || 'false' }}
           DIV_DRY_RUN: ${{ vars.YAR_DRY_RUN }}
+          # same 2h-only restriction as the primary account (2026-08-19)
+          DIV_TRADE_TF: ${{ vars.YAR_TRADE_TF || '2h' }}
           DIV_POSITION_USD: ${{ vars.YAR_POSITION_USD }}
           DIV_TP_USD: ${{ vars.YAR_TP_USD }}
           DIV_SL_USD: ${{ vars.YAR_SL_USD }}

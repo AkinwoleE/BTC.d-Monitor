@@ -15,6 +15,13 @@ Rule set (derived from the 13-trade 2-pt backfill, 2026-07-29):
 Gating: trades ONLY when DIV_TRADING_ENABLED=true AND Decibel creds are set.
 DIV_DRY_RUN=true logs+alerts every decision without placing orders.
 
+DIV_TRADE_TF (default "1h,2h") restricts which signal timeframes this trader
+will ACT on — comma-separated. Detection/alerting in divergence_monitor.py is
+unaffected either way; this only gates entries here. Added 2026-08-19 after
+a 3-year backtest showed the 1h/2-pt combination losing money at scale while
+2h stayed positive across almost every 6-month window — set to "2h" on both
+accounts to stop trading 1h without losing 1h visibility on the dashboard.
+
 Multi-account: set TRADER_ACCOUNT to run this same script against a second
 person's Decibel account (e.g. a friend's), fully isolated from the primary
 account — separate state/log/equity files (suffixed by account name), and
@@ -63,6 +70,7 @@ SLIPPAGE     = env_num("SLIPPAGE", 0.5)
 MANUAL_SIDE     = os.environ.get("MANUAL_SIDE", "").strip().lower()   # "long" or "short"
 MANUAL_SIZE_USD = env_num("MANUAL_SIZE_USD", 0)
 SYMBOL       = "BTC/USD"
+TRADE_TF     = {t.strip() for t in os.environ.get("DIV_TRADE_TF", "1h,2h").split(",") if t.strip()}
 FRESH        = {"1h": 2 * 3600, "2h": 4 * 3600}   # same freshness gate as alerts
 GRACE_SEC    = 600                                # reconciliation grace after entry
 
@@ -341,7 +349,7 @@ def manual_trade(st, equity):
 def main():
     now = int(time.time())
     print(f"divergence_trader[{ACCOUNT}] {datetime.now(timezone.utc).isoformat()} "
-          f"enabled={ENABLED} dry_run={DRY_RUN} state={os.path.basename(STATE_FILE)}")
+          f"enabled={ENABLED} dry_run={DRY_RUN} trade_tf={sorted(TRADE_TF)} state={os.path.basename(STATE_FILE)}")
     if not (DEC_PRIVATE_KEY and DEC_SUB and DEC_NODE_KEY):
         print(f"  [{ACCOUNT}] Decibel credentials missing — no-op."); return
 
@@ -429,7 +437,8 @@ def main():
 
     # ── act on fresh signals ──
     fresh = [e for e in eps
-             if now - e["confirmed_ts"] <= FRESH.get(e["tf"], 7200)
+             if e["tf"] in TRADE_TF
+             and now - e["confirmed_ts"] <= FRESH.get(e["tf"], 7200)
              and e["id"] not in st["acted"]]
     fresh.sort(key=lambda e: e["confirmed_ts"])
     for ep in fresh:
