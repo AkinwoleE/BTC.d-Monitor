@@ -14285,7 +14285,30 @@
     "mfe_pct": 2.941,
     "mae_pct": 0.312
    }
+  },
+  {
+   "id": "ETHUSD-1h-bearish2-1786946400",
+   "symbol": "ETH/USD",
+   "tf": "1h",
+   "direction": "bearish",
+   "legs": 2,
+   "pivots": [
+    {
+     "ts": 1786932000,
+     "price": 1906.05,
+     "rsi": 71.93
+    },
+    {
+     "ts": 1786946400,
+     "price": 1910.0,
+     "rsi": 71.11
+    }
+   ],
+   "confirmed_ts": 1786960800,
+   "confirm_price": 1891.95,
+   "forward": [],
+   "alerted": true
   }
  ],
- "updated": "2026-08-17T09:51:59.907248+00:00"
+ "updated": "2026-08-17T10:39:46.542034+00:00"
 }
