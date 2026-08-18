@@ -14396,6 +14396,18 @@
      "high": 1912.87,
      "low": 1907.17,
      "close": 1908.16
+    },
+    {
+     "ts": 1787014800,
+     "high": 1908.6,
+     "low": 1897.98,
+     "close": 1899.73
+    },
+    {
+     "ts": 1787018400,
+     "high": 1901.94,
+     "low": 1888.0,
+     "close": 1891.44
     }
    ],
    "alerted": true,
@@ -14403,20 +14415,20 @@
     "complete": false,
     "ret_6h": -0.971,
     "ret_12h": -0.667,
-    "ret_24h": -0.857,
-    "ret_48h": -0.857,
+    "ret_24h": 0.027,
+    "ret_48h": 0.027,
     "best_entry": {
      "ts": 1786978800,
      "price": 1913.4,
      "h_after": 5.0
     },
     "best_exit": {
-     "ts": 1787004000,
-     "price": 1901.56,
-     "h_after": 12.0
+     "ts": 1787018400,
+     "price": 1888.0,
+     "h_after": 16.0
     },
-    "best_pnl_pct": 0.619,
-    "mfe_pct": 0.089,
+    "best_pnl_pct": 1.327,
+    "mfe_pct": 0.209,
     "mae_pct": 1.316
    }
   },
@@ -14481,27 +14493,39 @@
      "high": 1912.87,
      "low": 1907.17,
      "close": 1908.16
+    },
+    {
+     "ts": 1787014800,
+     "high": 1908.6,
+     "low": 1897.98,
+     "close": 1899.73
+    },
+    {
+     "ts": 1787018400,
+     "high": 1901.94,
+     "low": 1888.0,
+     "close": 1891.44
     }
    ],
    "alerted": true,
    "stats": {
     "complete": false,
     "ret_6h": -0.001,
-    "ret_12h": -0.001,
-    "ret_24h": -0.001,
-    "ret_48h": -0.001,
+    "ret_12h": 0.876,
+    "ret_24h": 0.876,
+    "ret_48h": 0.876,
     "best_entry": {
      "ts": 1787007600,
      "price": 1916.84,
      "h_after": 4.0
     },
     "best_exit": {
-     "ts": 1787007600,
-     "price": 1902.82,
-     "h_after": 4.0
+     "ts": 1787018400,
+     "price": 1888.0,
+     "h_after": 7.0
     },
-    "best_pnl_pct": 0.731,
-    "mfe_pct": 0.345,
+    "best_pnl_pct": 1.505,
+    "mfe_pct": 1.056,
     "mae_pct": 0.455
    }
   },
@@ -14561,6 +14585,18 @@
      "high": 1912.87,
      "low": 1907.17,
      "close": 1908.16
+    },
+    {
+     "ts": 1787014800,
+     "high": 1908.6,
+     "low": 1897.98,
+     "close": 1899.73
+    },
+    {
+     "ts": 1787018400,
+     "high": 1901.94,
+     "low": 1888.0,
+     "close": 1891.44
     }
    ],
    "alerted": false,
@@ -14568,24 +14604,52 @@
    "stats": {
     "complete": false,
     "ret_6h": -0.001,
-    "ret_12h": -0.001,
-    "ret_24h": -0.001,
-    "ret_48h": -0.001,
+    "ret_12h": 0.876,
+    "ret_24h": 0.876,
+    "ret_48h": 0.876,
     "best_entry": {
      "ts": 1787007600,
      "price": 1916.84,
      "h_after": 4.0
     },
     "best_exit": {
-     "ts": 1787007600,
-     "price": 1902.82,
-     "h_after": 4.0
+     "ts": 1787018400,
+     "price": 1888.0,
+     "h_after": 7.0
     },
-    "best_pnl_pct": 0.731,
-    "mfe_pct": 0.345,
+    "best_pnl_pct": 1.505,
+    "mfe_pct": 1.056,
     "mae_pct": 0.455
    }
+  },
+  {
+   "id": "ETHUSD-1h-bearish-1787007600",
+   "symbol": "ETH/USD",
+   "tf": "1h",
+   "direction": "bearish",
+   "legs": 3,
+   "pivots": [
+    {
+     "ts": 1786946400,
+     "price": 1910.0,
+     "rsi": 71.11
+    },
+    {
+     "ts": 1786978800,
+     "price": 1913.4,
+     "rsi": 64.79
+    },
+    {
+     "ts": 1787007600,
+     "price": 1916.84,
+     "rsi": 63.51
+    }
+   ],
+   "confirmed_ts": 1787022000,
+   "confirm_price": 1891.44,
+   "forward": [],
+   "alerted": true
   }
  ],
- "updated": "2026-08-18T01:43:59.720035+00:00"
+ "updated": "2026-08-18T03:03:16.652295+00:00"
 }
