@@ -22,6 +22,16 @@ a 3-year backtest showed the 1h/2-pt combination losing money at scale while
 2h stayed positive across almost every 6-month window — set to "2h" on both
 accounts to stop trading 1h without losing 1h visibility on the dashboard.
 
+DIV_BLOCK_DAYS (default "", comma-separated 3-letter UTC weekday abbrevs,
+e.g. "Sat,Sun") blocks NEW ENTRIES only on the listed days — a signal that
+confirms on a blocked day is simply never traded (not deferred to the next
+allowed day). Does NOT affect management of an already-open position: SL/TP/
+48h-exit checks run every day regardless, so a position opened before a
+blocked day is never left unmanaged. Does NOT affect the manual-trade
+workflow_dispatch path — that's an explicit human action, exempt by design.
+Added 2026-08-19 after the 3-year backtest showed Saturday/Sunday entries
+underperforming weekday ones on the 2h timeframe (the only one now live).
+
 Multi-account: set TRADER_ACCOUNT to run this same script against a second
 person's Decibel account (e.g. a friend's), fully isolated from the primary
 account — separate state/log/equity files (suffixed by account name), and
@@ -71,6 +81,7 @@ MANUAL_SIDE     = os.environ.get("MANUAL_SIDE", "").strip().lower()   # "long" o
 MANUAL_SIZE_USD = env_num("MANUAL_SIZE_USD", 0)
 SYMBOL       = "BTC/USD"
 TRADE_TF     = {t.strip() for t in os.environ.get("DIV_TRADE_TF", "1h,2h").split(",") if t.strip()}
+BLOCK_DAYS   = {d.strip()[:3].title() for d in os.environ.get("DIV_BLOCK_DAYS", "").split(",") if d.strip()}
 FRESH        = {"1h": 2 * 3600, "2h": 4 * 3600}   # same freshness gate as alerts
 GRACE_SEC    = 600                                # reconciliation grace after entry
 
@@ -349,7 +360,8 @@ def manual_trade(st, equity):
 def main():
     now = int(time.time())
     print(f"divergence_trader[{ACCOUNT}] {datetime.now(timezone.utc).isoformat()} "
-          f"enabled={ENABLED} dry_run={DRY_RUN} trade_tf={sorted(TRADE_TF)} state={os.path.basename(STATE_FILE)}")
+          f"enabled={ENABLED} dry_run={DRY_RUN} trade_tf={sorted(TRADE_TF)} "
+          f"block_days={sorted(BLOCK_DAYS) or 'none'} state={os.path.basename(STATE_FILE)}")
     if not (DEC_PRIVATE_KEY and DEC_SUB and DEC_NODE_KEY):
         print(f"  [{ACCOUNT}] Decibel credentials missing — no-op."); return
 
@@ -438,6 +450,7 @@ def main():
     # ── act on fresh signals ──
     fresh = [e for e in eps
              if e["tf"] in TRADE_TF
+             and datetime.fromtimestamp(e["confirmed_ts"], tz=timezone.utc).strftime("%a") not in BLOCK_DAYS
              and now - e["confirmed_ts"] <= FRESH.get(e["tf"], 7200)
              and e["id"] not in st["acted"]]
     fresh.sort(key=lambda e: e["confirmed_ts"])

@@ -51,6 +51,9 @@ jobs:
           # 6-month window. Detection/alerting of 1h signals is unaffected;
           # this only stops the trader from acting on them.
           DIV_TRADE_TF: ${{ vars.DIV_TRADE_TF || '2h' }}
+          # no new entries Sat/Sun UTC (2026-08-19) -- existing positions still
+          # managed every day; manual-trade workflow is exempt by design
+          DIV_BLOCK_DAYS: ${{ vars.DIV_BLOCK_DAYS || 'Sat,Sun' }}
           DIV_POSITION_USD: ${{ vars.DIV_POSITION_USD }}
           DIV_TP_USD: ${{ vars.DIV_TP_USD }}
           DIV_SL_USD: ${{ vars.DIV_SL_USD }}
@@ -81,6 +84,7 @@ jobs:
           DIV_DRY_RUN: ${{ vars.YAR_DRY_RUN }}
           # same 2h-only restriction as the primary account (2026-08-19)
           DIV_TRADE_TF: ${{ vars.YAR_TRADE_TF || '2h' }}
+          DIV_BLOCK_DAYS: ${{ vars.YAR_BLOCK_DAYS || 'Sat,Sun' }}
           DIV_POSITION_USD: ${{ vars.YAR_POSITION_USD }}
           DIV_TP_USD: ${{ vars.YAR_TP_USD }}
           DIV_SL_USD: ${{ vars.YAR_SL_USD }}
