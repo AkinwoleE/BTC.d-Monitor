@@ -1,15 +1,5 @@
 {
- "position": {
-  "episode_id": "2h-bearish2-1787061600",
-  "direction": "bearish",
-  "size": 0.0155,
-  "entry_price": 64528.9,
-  "entry_ts": 1787090470,
-  "entry_equity": 235.182122,
-  "tp_price": 62334.9,
-  "sl_price": 65819.5,
-  "tp_sl_ok": true
- },
+ "position": null,
  "acted": {
   "2h-bullish-1786716000": 1786744868,
   "2h-bearish2-1787061600": 1787090470
