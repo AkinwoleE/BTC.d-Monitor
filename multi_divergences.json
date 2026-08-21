@@ -16217,6 +16217,12 @@
      "high": 89.49,
      "low": 88.72,
      "close": 89.1
+    },
+    {
+     "ts": 1787284800,
+     "high": 89.47,
+     "low": 88.85,
+     "close": 89.43
     }
    ],
    "alerted": true,
@@ -16225,7 +16231,7 @@
     "ret_6h": -5.371,
     "ret_12h": -10.16,
     "ret_24h": -12.548,
-    "ret_48h": -15.027,
+    "ret_48h": -15.453,
     "best_entry": {
      "ts": 1787173200,
      "price": 87.28,
@@ -16339,6 +16345,12 @@
      "high": 89.49,
      "low": 88.72,
      "close": 89.1
+    },
+    {
+     "ts": 1787284800,
+     "high": 89.47,
+     "low": 88.85,
+     "close": 89.43
     }
    ],
    "alerted": true,
@@ -16346,8 +16358,8 @@
     "complete": false,
     "ret_6h": -1.225,
     "ret_12h": -3.121,
-    "ret_24h": -2.982,
-    "ret_48h": -2.982,
+    "ret_24h": -3.363,
+    "ret_48h": -3.363,
     "best_entry": {
      "ts": 1787277600,
      "price": 90.14,
@@ -16431,15 +16443,21 @@
      "high": 2352.98,
      "low": 2336.64,
      "close": 2340.19
+    },
+    {
+     "ts": 1787284800,
+     "high": 2354.2,
+     "low": 2340.01,
+     "close": 2352.72
     }
    ],
    "alerted": true,
    "stats": {
     "complete": false,
     "ret_6h": -1.54,
-    "ret_12h": -0.756,
-    "ret_24h": -0.756,
-    "ret_48h": -0.756,
+    "ret_12h": -1.296,
+    "ret_24h": -1.296,
+    "ret_48h": -1.296,
     "best_entry": {
      "ts": 1787274000,
      "price": 2379.5,
@@ -16454,7 +16472,59 @@
     "mfe_pct": 0.64,
     "mae_pct": 2.449
    }
+  },
+  {
+   "id": "ETHUSD-1h-bearish-1787274000",
+   "symbol": "ETH/USD",
+   "tf": "1h",
+   "direction": "bearish",
+   "legs": 3,
+   "pivots": [
+    {
+     "ts": 1787223600,
+     "price": 2317.6,
+     "rsi": 81.19
+    },
+    {
+     "ts": 1787241600,
+     "price": 2357.88,
+     "rsi": 80.78
+    },
+    {
+     "ts": 1787274000,
+     "price": 2379.5,
+     "rsi": 75.55
+    }
+   ],
+   "confirmed_ts": 1787288400,
+   "confirm_price": 2352.72,
+   "forward": [],
+   "alerted": true
+  },
+  {
+   "id": "ETHUSD-1h-bearish2-1787274000",
+   "symbol": "ETH/USD",
+   "tf": "1h",
+   "direction": "bearish",
+   "legs": 2,
+   "pivots": [
+    {
+     "ts": 1787241600,
+     "price": 2357.88,
+     "rsi": 80.78
+    },
+    {
+     "ts": 1787274000,
+     "price": 2379.5,
+     "rsi": 75.55
+    }
+   ],
+   "confirmed_ts": 1787288400,
+   "confirm_price": 2352.72,
+   "forward": [],
+   "alerted": false,
+   "alert_suppressed": "duplicate-structure"
   }
  ],
- "updated": "2026-08-21T04:48:25.797990+00:00"
+ "updated": "2026-08-21T05:39:53.103692+00:00"
 }
