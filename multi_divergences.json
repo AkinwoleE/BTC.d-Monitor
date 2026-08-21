@@ -16223,6 +16223,12 @@
      "high": 89.47,
      "low": 88.85,
      "close": 89.43
+    },
+    {
+     "ts": 1787288400,
+     "high": 90.8,
+     "low": 89.17,
+     "close": 90.38
     }
    ],
    "alerted": true,
@@ -16231,7 +16237,7 @@
     "ret_6h": -5.371,
     "ret_12h": -10.16,
     "ret_24h": -12.548,
-    "ret_48h": -15.453,
+    "ret_48h": -16.68,
     "best_entry": {
      "ts": 1787173200,
      "price": 87.28,
@@ -16244,7 +16250,7 @@
     },
     "best_pnl_pct": 4.102,
     "mfe_pct": 0.129,
-    "mae_pct": 16.37
+    "mae_pct": 17.222
    }
   },
   {
@@ -16351,6 +16357,12 @@
      "high": 89.47,
      "low": 88.85,
      "close": 89.43
+    },
+    {
+     "ts": 1787288400,
+     "high": 90.8,
+     "low": 89.17,
+     "close": 90.38
     }
    ],
    "alerted": true,
@@ -16358,8 +16370,8 @@
     "complete": false,
     "ret_6h": -1.225,
     "ret_12h": -3.121,
-    "ret_24h": -3.363,
-    "ret_48h": -3.363,
+    "ret_24h": -4.461,
+    "ret_48h": -4.461,
     "best_entry": {
      "ts": 1787277600,
      "price": 90.14,
@@ -16372,7 +16384,7 @@
     },
     "best_pnl_pct": 1.83,
     "mfe_pct": 0.0,
-    "mae_pct": 4.184
+    "mae_pct": 4.947
    }
   },
   {
@@ -16449,15 +16461,21 @@
      "high": 2354.2,
      "low": 2340.01,
      "close": 2352.72
+    },
+    {
+     "ts": 1787288400,
+     "high": 2366.57,
+     "low": 2348.65,
+     "close": 2366.53
     }
    ],
    "alerted": true,
    "stats": {
     "complete": false,
     "ret_6h": -1.54,
-    "ret_12h": -1.296,
-    "ret_24h": -1.296,
-    "ret_48h": -1.296,
+    "ret_12h": -1.891,
+    "ret_24h": -1.891,
+    "ret_48h": -1.891,
     "best_entry": {
      "ts": 1787274000,
      "price": 2379.5,
@@ -16498,8 +16516,35 @@
    ],
    "confirmed_ts": 1787288400,
    "confirm_price": 2352.72,
-   "forward": [],
-   "alerted": true
+   "forward": [
+    {
+     "ts": 1787288400,
+     "high": 2366.57,
+     "low": 2348.65,
+     "close": 2366.53
+    }
+   ],
+   "alerted": true,
+   "stats": {
+    "complete": false,
+    "ret_6h": -0.587,
+    "ret_12h": -0.587,
+    "ret_24h": -0.587,
+    "ret_48h": -0.587,
+    "best_entry": {
+     "ts": 1787288400,
+     "price": 2366.57,
+     "h_after": 0.0
+    },
+    "best_exit": {
+     "ts": 1787288400,
+     "price": 2348.65,
+     "h_after": 0.0
+    },
+    "best_pnl_pct": 0.757,
+    "mfe_pct": 0.173,
+    "mae_pct": 0.589
+   }
   },
   {
    "id": "ETHUSD-1h-bearish2-1787274000",
@@ -16521,10 +16566,37 @@
    ],
    "confirmed_ts": 1787288400,
    "confirm_price": 2352.72,
-   "forward": [],
+   "forward": [
+    {
+     "ts": 1787288400,
+     "high": 2366.57,
+     "low": 2348.65,
+     "close": 2366.53
+    }
+   ],
    "alerted": false,
-   "alert_suppressed": "duplicate-structure"
+   "alert_suppressed": "duplicate-structure",
+   "stats": {
+    "complete": false,
+    "ret_6h": -0.587,
+    "ret_12h": -0.587,
+    "ret_24h": -0.587,
+    "ret_48h": -0.587,
+    "best_entry": {
+     "ts": 1787288400,
+     "price": 2366.57,
+     "h_after": 0.0
+    },
+    "best_exit": {
+     "ts": 1787288400,
+     "price": 2348.65,
+     "h_after": 0.0
+    },
+    "best_pnl_pct": 0.757,
+    "mfe_pct": 0.173,
+    "mae_pct": 0.589
+   }
   }
  ],
- "updated": "2026-08-21T05:39:53.103692+00:00"
+ "updated": "2026-08-21T06:59:20.773221+00:00"
 }
