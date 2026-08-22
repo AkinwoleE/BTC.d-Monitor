@@ -10605,7 +10605,29 @@
     "mfe_pct": 0.754,
     "mae_pct": 14.613
    }
+  },
+  {
+   "id": "1h-bearish2-1787367600",
+   "tf": "1h",
+   "direction": "bearish",
+   "legs": 2,
+   "pivots": [
+    {
+     "ts": 1787349600,
+     "price": 78738.0,
+     "rsi": 70.49
+    },
+    {
+     "ts": 1787367600,
+     "price": 78800.0,
+     "rsi": 66.75
+    }
+   ],
+   "confirmed_ts": 1787382000,
+   "confirm_price": 77484.4,
+   "forward": [],
+   "alerted": true
   }
  ],
- "updated": "2026-08-22T06:30:22.000815+00:00"
+ "updated": "2026-08-22T07:00:21.544989+00:00"
 }
