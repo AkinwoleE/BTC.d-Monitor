@@ -17924,15 +17924,21 @@
      "high": 2418.78,
      "low": 2407.99,
      "close": 2412.79
+    },
+    {
+     "ts": 1787457600,
+     "high": 2416.15,
+     "low": 2371.3,
+     "close": 2379.41
     }
    ],
    "alerted": true,
    "stats": {
-    "complete": false,
+    "complete": true,
     "ret_6h": -1.777,
     "ret_12h": -2.264,
     "ret_24h": -6.876,
-    "ret_48h": -2.553,
+    "ret_48h": -1.134,
     "best_entry": {
      "ts": 1787299200,
      "price": 2447.99,
@@ -18250,16 +18256,22 @@
      "high": 2418.78,
      "low": 2407.99,
      "close": 2412.79
+    },
+    {
+     "ts": 1787457600,
+     "high": 2416.15,
+     "low": 2371.3,
+     "close": 2379.41
     }
    ],
    "alerted": false,
    "alert_suppressed": "duplicate-structure",
    "stats": {
-    "complete": false,
+    "complete": true,
     "ret_6h": -1.777,
     "ret_12h": -2.264,
     "ret_24h": -6.876,
-    "ret_48h": -2.553,
+    "ret_48h": -1.134,
     "best_entry": {
      "ts": 1787299200,
      "price": 2447.99,
@@ -18451,6 +18463,12 @@
      "high": 2418.78,
      "low": 2407.99,
      "close": 2412.79
+    },
+    {
+     "ts": 1787457600,
+     "high": 2416.15,
+     "low": 2371.3,
+     "close": 2379.41
     }
    ],
    "alerted": true,
@@ -18459,22 +18477,22 @@
     "ret_6h": 2.983,
     "ret_12h": 3.081,
     "ret_24h": 3.349,
-    "ret_48h": 3.758,
+    "ret_48h": 5.089,
     "best_entry": {
      "ts": 1787371200,
      "price": 2529.06,
      "h_after": 2.0
     },
     "best_exit": {
-     "ts": 1787374800,
-     "price": 2375.09,
-     "h_after": 3.0
+     "ts": 1787457600,
+     "price": 2371.3,
+     "h_after": 26.0
     },
-    "best_pnl_pct": 6.088,
-    "mfe_pct": 5.262,
+    "best_pnl_pct": 6.238,
+    "mfe_pct": 5.413,
     "mae_pct": 0.88
    }
   }
  ],
- "updated": "2026-08-23T04:46:22.043664+00:00"
+ "updated": "2026-08-23T05:36:45.041261+00:00"
 }
