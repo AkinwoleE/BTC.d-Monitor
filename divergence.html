@@ -26,6 +26,16 @@ header h1{font-size:1.35rem;font-weight:700;letter-spacing:-.02em}
 header h1 span{color:var(--purple)}
 .btn{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:7px 14px;cursor:pointer;font-size:13px;color:var(--text);transition:border-color .15s;font-family:var(--font)}
 .btn:hover{border-color:var(--purple)}
+.filter-bar{display:flex;flex-wrap:wrap;gap:10px 20px;align-items:center;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 16px;margin-bottom:16px}
+.filter-group{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.filter-group .fg-lbl{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--text2);margin-right:2px}
+.filter-pills{display:flex;gap:3px;background:var(--s2);border:1px solid var(--border);border-radius:9px;padding:3px}
+.filter-pills button{border:none;background:none;cursor:pointer;padding:5px 11px;border-radius:7px;font-size:12px;font-weight:500;color:var(--text2);font-family:var(--font);transition:color .15s,background .15s;white-space:nowrap}
+.filter-pills button:hover{color:var(--text)}
+.filter-pills button.active{background:var(--surface);color:var(--text);box-shadow:0 1px 2px rgba(0,0,0,.05);font-weight:600}
+.filter-reset{margin-left:auto;font-size:12px;color:var(--text2);background:none;border:none;cursor:pointer;text-decoration:underline;font-family:var(--font);padding:4px}
+.filter-reset:hover{color:var(--text)}
+.filter-reset:disabled{visibility:hidden}
 .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
 @media(max-width:900px){.stats{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:400px){.stats{grid-template-columns:1fr}}
@@ -112,6 +122,34 @@ tr.sel td{background:var(--s2)}
   <div id="last-upd" style="font-size:12px;color:var(--text2)"></div>
 </header>
 
+<div class="filter-bar" id="filter-bar">
+  <div class="filter-group">
+    <span class="fg-lbl">Timeframe</span>
+    <div class="filter-pills" data-group="tf">
+      <button class="active" data-val="all">All</button>
+      <button data-val="1h">1h</button>
+      <button data-val="2h">2h</button>
+    </div>
+  </div>
+  <div class="filter-group">
+    <span class="fg-lbl">Pattern</span>
+    <div class="filter-pills" data-group="legs">
+      <button class="active" data-val="all">All</button>
+      <button data-val="2">2-pt</button>
+      <button data-val="3">3-pivot</button>
+    </div>
+  </div>
+  <div class="filter-group">
+    <span class="fg-lbl">Direction</span>
+    <div class="filter-pills" data-group="dir">
+      <button class="active" data-val="all">All</button>
+      <button data-val="bearish">Bearish</button>
+      <button data-val="bullish">Bullish</button>
+    </div>
+  </div>
+  <button class="filter-reset" id="filter-reset" disabled>Reset filters</button>
+</div>
+
 <div class="stats">
   <div class="card lp"><div class="lbl">Episodes Detected</div><div class="val" id="s-n">—</div><div class="sub" id="s-n-sub">—</div></div>
   <div class="card lc"><div class="lbl">Win Rate &middot; 24h Hold</div><div class="val" id="s-win">—</div><div class="sub" id="s-win-sub">enter at alert, exit +24h</div></div>
@@ -122,7 +160,7 @@ tr.sel td{background:var(--s2)}
 <section>
   <div class="card lp" style="padding:20px 24px">
     <div class="lbl">Profitability per episode — 24h hold vs best entry&rarr;exit (%)</div>
-    <div class="chart-wrap" style="margin-top:14px"><canvas id="ch-pnl"></canvas></div>
+    <div class="chart-wrap" style="margin-top:14px"><canvas id="ch-pnl"></canvas><div class="empty" id="pnl-empty" style="display:none;position:absolute;inset:0">No episodes match these filters.</div></div>
     <div class="note">Bars: return of entering at the alert price and holding 24h (green above zero&nbsp;=&nbsp;profit, red below&nbsp;=&nbsp;loss).
     Gray dashes: the best achievable result &mdash; optimal entry within 12h of the alert, optimal exit after that within the 48h window.
     The gap between bar and dash is what entry/exit timing is worth. &sup2;&nbsp;=&nbsp;2-pt pattern.</div>
@@ -190,6 +228,13 @@ const C={line:()=>dark?'#0C8FBA':'#3F6F73',green:()=>dark?'#4CAB58':'#2E7D52',re
 let EPS=[],EQ=[],TRADES=[],sel=null,chPnl=null,chDet=null,chEq=null;
 
 const legsOf=e=>e.legs||3;
+const FILTER={tf:'all',legs:'all',dir:'all'};
+function filteredEps(){
+  return EPS.filter(e=>
+    (FILTER.tf==='all'||e.tf===FILTER.tf)&&
+    (FILTER.legs==='all'||String(legsOf(e))===FILTER.legs)&&
+    (FILTER.dir==='all'||e.direction===FILTER.dir));
+}
 function stats(eps){
   const done=eps.filter(e=>e.stats&&e.stats.ret_24h!=null);
   const bear=eps.filter(e=>e.direction==='bearish').length;
@@ -210,12 +255,17 @@ function stats(eps){
     const me=median(withBest.map(e=>e.stats.best_entry?.hours_after).filter(v=>v!=null));
     const mx=median(withBest.map(e=>e.stats.best_exit?.hours_after).filter(v=>v!=null));
     $('s-tim').textContent=(me==null?'—':'+'+fmt(me,1)+'h')+' / '+(mx==null?'—':'+'+fmt(mx,1)+'h');
+  }else{
+    $('s-win').textContent='—';$('s-win-sub').textContent='enter at alert, exit +24h';
+    const el=$('s-ret');el.textContent='—';el.className='val';$('s-ret-sub').textContent='—';
+    $('s-tim').textContent='—';$('s-tim-sub').textContent='best entry / best exit after alert';
   }
 }
 
-function buildPnl(){
+function buildPnl(base){
   if(chPnl)chPnl.destroy();
-  const eps=EPS.filter(e=>e.stats&&e.stats.ret_24h!=null);
+  const eps=(base||EPS).filter(e=>e.stats&&e.stats.ret_24h!=null);
+  $('pnl-empty').style.display=eps.length?'none':'block';
   if(!eps.length)return;
   const labels=eps.map(e=>`${fmtDate(e.confirmed_ts).split(' ')[0]} ${e.tf} ${e.direction==='bearish'?'▼':'▲'}${legsOf(e)===2?'²':''}`);
   chPnl=new Chart($('ch-pnl'),{type:'bar',
@@ -268,9 +318,14 @@ function buildDet(){
     :'Price path for 48h after the alert. &#9650; best entry &middot; &#9670; best exit &middot; dashed line = alert price.';
 }
 
-function buildTable(){
+function buildTable(base){
   if(!EPS.length)return;
-  const rows=[...EPS].reverse().map(e=>{
+  const eps=base||EPS;
+  if(!eps.length){
+    $('tbl').innerHTML='<div class="empty">No episodes match these filters.</div>';
+    return;
+  }
+  const rows=[...eps].reverse().map(e=>{
     const s=e.stats||{};
     const dirB=e.direction==='bearish'?'<span class="badge b-bear">▼ bearish</span>':'<span class="badge b-bull">▲ bullish</span>';
     const pat=legsOf(e)===2?'<span class="badge b-track">2-pt</span>':'<span class="badge b-done">3-pivot</span>';
@@ -340,7 +395,45 @@ function buildEq(){
         y:{grid:{color:C.grid()},border:{display:false},
           ticks:{color:C.tick(),font:{family:'JetBrains Mono',size:11},callback:v=>'$'+(+v).toFixed(0)}}}}});
 }
-function rebuildAll(){buildPnl();buildDet();buildEq();}
+function renderFiltered(){
+  const eps=filteredEps();
+  stats(eps);buildPnl(eps);buildTable(eps);
+  if(!sel||!eps.find(e=>e.id===sel.id))sel=eps.length?eps[eps.length-1]:null;
+  buildDet();
+  const row=sel&&document.querySelector(`tbody tr[data-id="${sel.id}"]`);
+  if(row)row.classList.add('sel');
+}
+function syncFilterUrl(){
+  const p=new URLSearchParams(location.search);
+  ['tf','legs','dir'].forEach(k=>FILTER[k]==='all'?p.delete(k):p.set(k,FILTER[k]));
+  const qs=p.toString();
+  history.replaceState(null,'',location.pathname+(qs?'?'+qs:''));
+}
+(()=>{
+  const p=new URLSearchParams(location.search);
+  ['tf','legs','dir'].forEach(k=>{const v=p.get(k);if(v)FILTER[k]=v;});
+  document.querySelectorAll('.filter-pills').forEach(grp=>{
+    const key=grp.dataset.group;
+    grp.querySelectorAll('button').forEach(btn=>{
+      btn.classList.toggle('active',btn.dataset.val===FILTER[key]);
+      btn.onclick=()=>{
+        FILTER[key]=btn.dataset.val;
+        grp.querySelectorAll('button').forEach(b=>b.classList.toggle('active',b===btn));
+        $('filter-reset').disabled=FILTER.tf==='all'&&FILTER.legs==='all'&&FILTER.dir==='all';
+        syncFilterUrl();renderFiltered();
+      };
+    });
+  });
+  $('filter-reset').disabled=FILTER.tf==='all'&&FILTER.legs==='all'&&FILTER.dir==='all';
+  $('filter-reset').onclick=()=>{
+    FILTER.tf=FILTER.legs=FILTER.dir='all';
+    document.querySelectorAll('.filter-pills').forEach(grp=>
+      grp.querySelectorAll('button').forEach(b=>b.classList.toggle('active',b.dataset.val==='all')));
+    $('filter-reset').disabled=true;
+    syncFilterUrl();renderFiltered();
+  };
+})();
+function rebuildAll(){renderFiltered();buildEq();}
 
 const optional=u=>fetch(u+'?t='+Date.now()).then(r=>r.ok?r.json():[]).catch(()=>[]);
 let UPDATED=null,firstLoad=true;
@@ -364,13 +457,7 @@ function loadAll(){
     UPDATED=d.updated||null;freshness();
     document.fonts.ready.then(()=>{
       buildEq();
-      if(EPS.length){
-        const keep=sel&&EPS.find(e=>e.id===sel.id);
-        sel=keep||EPS[EPS.length-1];
-        stats(EPS);buildPnl();buildTable();buildDet();
-        const row=document.querySelector(`tbody tr[data-id="${sel.id}"]`);
-        if(row)row.classList.add('sel');
-      }
+      if(EPS.length)renderFiltered();
       firstLoad=false;
     });
   }).catch(e=>{
