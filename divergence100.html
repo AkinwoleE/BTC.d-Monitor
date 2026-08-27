@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="cream">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Divergence 100 · Top-100 Profitability Leaderboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#E7DECF;--surface:#FAF6EE;--s2:#F0E8DA;--border:#DCD2C0;
+  --purple:#C15F3C;--cyan:#3F6F73;--green:#2E7D52;--red:#BC4A3C;--yellow:#B07D2B;
+  --text:#2B2722;--text2:#7C7466;--text3:#A89E8B;
+  --font:"Inter",sans-serif;--mono:"JetBrains Mono",monospace;
+}
+[data-theme=dark]{
+  --bg:#0A1210;--surface:#101C19;--s2:#16221E;--border:rgba(210,225,220,.14);
+  --purple:#C2653D;--cyan:#0C8FBA;--green:#4CAB58;--red:#C6493D;--yellow:#B08817;
+  --text:#F3FAF7;--text2:#A9BAB4;--text3:#7C8B86;
+}
+body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:100vh;font-size:14px}
+a{color:var(--cyan);text-decoration:none}a:hover{text-decoration:underline}
+.wrap{max-width:1280px;margin:0 auto;padding:24px 20px}
+header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:12px}
+header h1{font-size:1.35rem;font-weight:700;letter-spacing:-.02em}
+header h1 span{color:var(--purple)}
+.btn{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:7px 14px;cursor:pointer;font-size:13px;color:var(--text);transition:border-color .15s;font-family:var(--font)}
+.btn:hover{border-color:var(--purple)}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
+@media(max-width:900px){.stats{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:400px){.stats{grid-template-columns:1fr}}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 20px}
+.card.lp{border-left:3px solid var(--purple)}
+.card.lc{border-left:3px solid var(--cyan)}
+.card.lg{border-left:3px solid var(--green)}
+.card.lr{border-left:3px solid var(--red)}
+.lbl{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--text2);margin-bottom:7px}
+.val{font-family:var(--mono);font-size:1.55rem;font-weight:600;line-height:1}
+.sub{font-size:12px;color:var(--text2);margin-top:5px;font-family:var(--mono)}
+.g{color:var(--green)}.r{color:var(--red)}.y{color:var(--yellow)}.c{color:var(--cyan)}.m{color:var(--text2)}
+section{margin-bottom:20px}
+.note{font-size:12px;color:var(--text2);line-height:1.5;margin-top:8px}
+.topnav{position:sticky;top:0;z-index:50;background:color-mix(in srgb,var(--surface) 86%,transparent);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid var(--border)}
+.topnav-inner{max-width:1280px;margin:0 auto;padding:11px 20px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.nav-brand{display:flex;align-items:center;gap:9px;font-weight:700;font-size:15px;letter-spacing:-.01em;color:var(--text);text-decoration:none;white-space:nowrap}
+.nav-brand:hover{text-decoration:none}
+.nav-brand .mark{width:10px;height:10px;border-radius:2px;background:var(--purple);transform:rotate(45deg);flex-shrink:0}
+.nav-links{display:flex;gap:3px;background:var(--s2);border:1px solid var(--border);border-radius:11px;padding:3px}
+.nav-links a{padding:7px 15px;border-radius:8px;font-size:13px;font-weight:500;color:var(--text2);transition:color .15s,background .15s;text-decoration:none;white-space:nowrap}
+.nav-links a:hover{color:var(--text);text-decoration:none}
+.nav-links a.active{background:var(--surface);color:var(--text);box-shadow:0 1px 2px rgba(0,0,0,.05);font-weight:600}
+.nav-right{display:flex;align-items:center;gap:9px}
+.nav-more{position:relative}
+.nav-more-btn{display:flex;align-items:center;gap:5px;padding:7px 15px;border-radius:8px;font-size:13px;font-weight:500;color:var(--text2);background:none;border:none;cursor:pointer;font-family:var(--font);white-space:nowrap;transition:color .15s,background .15s}
+.nav-more-btn:hover{color:var(--text)}
+.nav-more-btn .caret{font-size:10px;line-height:1;transition:transform .15s}
+.nav-more-btn[aria-expanded=true] .caret{transform:rotate(180deg)}
+.nav-more-btn.here{background:var(--surface);color:var(--text);box-shadow:0 1px 2px rgba(0,0,0,.05);font-weight:600}
+.nav-more-menu{position:absolute;top:calc(100% + 9px);right:0;min-width:185px;background:var(--surface);border:1px solid var(--border);border-radius:11px;padding:4px;box-shadow:0 8px 24px rgba(0,0,0,.10);display:none;z-index:60}
+.nav-more-menu.open{display:block}
+.nav-more-menu a{display:block;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:500;color:var(--text2)}
+.nav-more-menu a:hover{color:var(--text);background:var(--s2);text-decoration:none}
+.nav-more-menu a.current{background:var(--s2);color:var(--text);font-weight:600}
+@media(max-width:560px){.nav-links a{padding:6px 11px;font-size:12px}.nav-more-btn{padding:6px 11px;font-size:12px}.nav-brand span.bn{display:none}}
+
+/* ranked list */
+.rank-list{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+.rank-row{display:grid;grid-template-columns:34px 130px 110px 1fr 78px;align-items:center;gap:12px;padding:9px 16px;border-bottom:1px solid var(--border)}
+.rank-row:last-child{border-bottom:none}
+.rank-row:hover{background:var(--s2)}
+.rank-row.head{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--text2);padding:10px 16px}
+.rr-rank{font-family:var(--mono);font-size:12px;color:var(--text2);text-align:right}
+.rr-id{display:flex;flex-direction:column;line-height:1.25}
+.rr-sym{font-weight:700;font-size:13.5px}
+.rr-mcap{font-size:11px;color:var(--text3);font-family:var(--mono)}
+.rr-meta{font-size:12px;color:var(--text2);font-family:var(--mono)}
+.rr-bar-track{display:flex;align-items:center;height:18px;position:relative}
+.rr-bar-half{flex:1;height:100%;display:flex}
+.rr-bar-half.rr-left{justify-content:flex-end}
+.rr-bar-half.rr-right{justify-content:flex-start}
+.rr-bar{height:100%;border-radius:3px;min-width:2px}
+.rr-bar.rr-pos{background:var(--green)}
+.rr-bar.rr-neg{background:var(--red)}
+.rr-center{position:absolute;left:50%;top:-2px;bottom:-2px;width:1px;background:var(--border)}
+.rr-val{font-family:var(--mono);font-size:13px;font-weight:600;text-align:right}
+@media(max-width:760px){
+  .rank-row{grid-template-columns:26px 90px 1fr 60px;grid-template-areas:"rank id bar val" "rank id meta meta"}
+  .rr-rank{grid-area:rank}.rr-id{grid-area:id}.rr-meta{grid-area:meta;font-size:11px}
+  .rr-bar-track{grid-area:bar}.rr-val{grid-area:val}
+}
+details.excl summary{cursor:pointer;color:var(--text2);font-size:12px}
+details.excl{margin-top:6px}
+</style>
+</head>
+<body>
+<nav class="topnav"><div class="topnav-inner">
+  <a class="nav-brand" href="divergence.html"><span class="mark"></span><span class="bn">BTC.D Trader</span></a>
+  <div class="nav-links">
+    <a href="divergence.html">Divergence</a>
+    <a href="divergence100.html" class="active">Divergence 100</a>
+    <div class="nav-more">
+      <button class="nav-more-btn" id="nav-more-btn" aria-haspopup="true" aria-expanded="false" aria-controls="nav-more-menu">More <span class="caret">&#9662;</span></button>
+      <div class="nav-more-menu" id="nav-more-menu" role="menu">
+        <a href="unified.html" role="menuitem">Live Monitor</a>
+        <a href="btcd-monitor-15m-binance_8.html" role="menuitem">Signal Analysis</a>
+        <a href="performance.html" role="menuitem">Performance</a>
+      </div>
+    </div>
+  </div>
+  <div class="nav-right">
+    <button class="btn" id="tbtn">&#9728;&#65039;</button>
+  </div>
+</div></nav>
+
+<div class="wrap">
+<header>
+  <div>
+    <h1>Divergence <span>100</span></h1>
+    <div class="note">2h RSI-14 divergence profitability across the <b>CoinGecko top 100 by market cap</b>
+    (stablecoins excluded), ranked most&nbsp;&rarr;&nbsp;least profitable. Same detection methodology as the
+    <a href="divergence.html">BTC Divergence Tracker</a> (k=3-confirmed pivots, 3-pivot + 2-pt patterns pooled),
+    run on ~3 years of native Binance 2h klines per token. <b>Research/backtest only, not traded</b> &mdash;
+    rebuilt daily, not a live alert feed.</div>
+  </div>
+  <div id="last-upd" style="font-size:12px;color:var(--text2)"></div>
+</header>
+
+<div class="stats">
+  <div class="card lp"><div class="lbl">Tokens Ranked</div><div class="val" id="s-n">—</div><div class="sub" id="s-n-sub">—</div></div>
+  <div class="card lg"><div class="lbl">Best Performer</div><div class="val" id="s-best">—</div><div class="sub" id="s-best-sub">avg 24h return</div></div>
+  <div class="card lr"><div class="lbl">Worst Performer</div><div class="val" id="s-worst">—</div><div class="sub" id="s-worst-sub">avg 24h return</div></div>
+  <div class="card lc"><div class="lbl">Universe Avg Return</div><div class="val" id="s-avg">—</div><div class="sub" id="s-avg-sub">mean of per-token avg 24h returns</div></div>
+</div>
+
+<section>
+  <div class="rank-row head">
+    <div style="text-align:right">#</div><div>Token</div><div>Episodes</div><div>Avg 24h return</div><div style="text-align:right">Value</div>
+  </div>
+  <div class="rank-list" id="rank-list">
+    <div style="padding:40px;text-align:center;color:var(--text2)">Loading&hellip;</div>
+  </div>
+  <div class="note">
+    Bars: each token's average return of entering at the divergence alert price and holding 24h, in the
+    signal's direction (bearish&nbsp;=&nbsp;short), excluding fees. Centered at 0%; green = net profitable, red = net losing.
+    Win rate is the share of that token's episodes profitable at 24h.
+    <details class="excl">
+      <summary id="excl-summary">Excluded tokens</summary>
+      <div id="excl-body" style="margin-top:6px"></div>
+    </details>
+  </div>
+</section>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const _q=new URLSearchParams(location.search).get('theme');
+let dark=_q?_q==='dark':localStorage.getItem('theme')==='dark';
+const tbtn=$("tbtn");
+function applyTheme(){
+  document.documentElement.setAttribute('data-theme',dark?'dark':'cream');
+  tbtn.textContent=dark?'☀️':'🌙';
+  localStorage.setItem('theme',dark?'dark':'cream');
+}
+tbtn.onclick=()=>{dark=!dark;applyTheme()};
+applyTheme();
+
+const fmt=(n,d=2)=>n==null?'—':(+n).toFixed(d);
+const pc=n=>n==null?'m':n>0?'g':n<0?'r':'m';
+
+function render(data){
+  const toks=(data.tokens||[]).filter(t=>t.avg_ret_24h!=null);
+  const maxAbs=Math.max(0.5,...toks.map(t=>Math.abs(t.avg_ret_24h)))*1.05;
+
+  $('s-n').textContent=toks.length;
+  $('s-n-sub').textContent=`of ${ (data.tokens||[]).length + (data.excluded_no_binance_pair||[]).length + (data.excluded_stablecoins||[]).length } top-100 tokens`;
+  if(toks.length){
+    const best=toks[0], worst=toks[toks.length-1];
+    $('s-best').innerHTML=`<span class="g">${best.symbol}</span>`;
+    $('s-best-sub').innerHTML=`<span class="g">+${fmt(best.avg_ret_24h)}%</span> · ${best.episodes} episodes`;
+    $('s-worst').innerHTML=`<span class="r">${worst.symbol}</span>`;
+    $('s-worst-sub').innerHTML=`<span class="r">${fmt(worst.avg_ret_24h)}%</span> · ${worst.episodes} episodes`;
+    const univAvg=toks.reduce((a,t)=>a+t.avg_ret_24h,0)/toks.length;
+    const el=$('s-avg');el.textContent=(univAvg>0?'+':'')+fmt(univAvg)+'%';el.className='val '+pc(univAvg);
+  }
+
+  $('rank-list').innerHTML=toks.map((t,i)=>{
+    const v=t.avg_ret_24h, isPos=v>=0;
+    const w=(Math.abs(v)/maxAbs*100).toFixed(1);
+    return `<div class="rank-row">
+      <div class="rr-rank">${i+1}</div>
+      <div class="rr-id"><span class="rr-sym">${t.symbol}</span><span class="rr-mcap">mcap #${t.rank}</span></div>
+      <div class="rr-meta">${t.episodes} eps · ${t.win_rate==null?'—':t.win_rate+'%'} win</div>
+      <div class="rr-bar-track">
+        <div class="rr-bar-half rr-left">${isPos?'':`<div class="rr-bar rr-neg" style="width:${w}%"></div>`}</div>
+        <div class="rr-center"></div>
+        <div class="rr-bar-half rr-right">${isPos?`<div class="rr-bar rr-pos" style="width:${w}%"></div>`:''}</div>
+      </div>
+      <div class="rr-val ${pc(v)}">${isPos?'+':''}${fmt(v)}%</div>
+    </div>`;
+  }).join('') || '<div style="padding:40px;text-align:center;color:var(--text2)">No ranked tokens.</div>';
+
+  const noPair=data.excluded_no_binance_pair||[], stable=data.excluded_stablecoins||[];
+  $('excl-summary').textContent=`Excluded tokens (${stable.length} stablecoins, ${noPair.length} no Binance USDT pair)`;
+  $('excl-body').innerHTML=
+    `<div style="margin-bottom:4px"><b>Stablecoins:</b> ${stable.join(', ')||'none'}</div>`+
+    `<div><b>No Binance USDT listing:</b> ${noPair.map(t=>`${t.symbol} (mcap #${t.rank})`).join(', ')||'none'}</div>`;
+}
+
+function loadAll(){
+  fetch('divergence100.json?t='+Date.now()).then(r=>{if(!r.ok)throw new Error(r.status);return r.json();})
+    .then(d=>{
+      $('last-upd').textContent=d.updated?('Data updated '+d.updated.slice(0,16).replace('T',' ')+' UTC'):'';
+      render(d);
+    })
+    .catch(e=>{
+      $('rank-list').innerHTML=`<div style="padding:40px;text-align:center;color:var(--text2)">Could not load divergence100.json (${e.message}). Serve over HTTP (./serve.sh) — file:// won't work.</div>`;
+    });
+}
+loadAll();
+setInterval(loadAll,300000);
+</script>
+<script>
+// nav "More" dropdown — identical block on every page
+(()=>{
+  const btn=document.getElementById('nav-more-btn'),menu=document.getElementById('nav-more-menu');
+  if(!btn||!menu)return;
+  const setOpen=o=>{menu.classList.toggle('open',o);btn.setAttribute('aria-expanded',o)};
+  btn.addEventListener('click',e=>{e.stopPropagation();setOpen(!menu.classList.contains('open'))});
+  document.addEventListener('click',e=>{if(menu.classList.contains('open')&&!menu.contains(e.target)&&e.target!==btn)setOpen(false)});
+  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&menu.classList.contains('open')){setOpen(false);btn.focus()}});
+  menu.addEventListener('click',e=>{if(e.target.closest('a'))setOpen(false)});
+})();
+</script>
+</body>
+</html>

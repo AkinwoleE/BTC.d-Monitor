@@ -1,0 +1,412 @@
+{
+ "built": "2026-08-27T13:08:00.698030+00:00",
+ "universe": "CoinGecko top 100 by market cap",
+ "tokens": [
+  {
+   "rank": 1,
+   "symbol": "BTC",
+   "id": "bitcoin"
+  },
+  {
+   "rank": 2,
+   "symbol": "ETH",
+   "id": "ethereum"
+  },
+  {
+   "rank": 4,
+   "symbol": "BNB",
+   "id": "binancecoin"
+  },
+  {
+   "rank": 5,
+   "symbol": "XRP",
+   "id": "ripple"
+  },
+  {
+   "rank": 7,
+   "symbol": "SOL",
+   "id": "solana"
+  },
+  {
+   "rank": 8,
+   "symbol": "TRX",
+   "id": "tron"
+  },
+  {
+   "rank": 11,
+   "symbol": "DOGE",
+   "id": "dogecoin"
+  },
+  {
+   "rank": 12,
+   "symbol": "ZEC",
+   "id": "zcash"
+  },
+  {
+   "rank": 15,
+   "symbol": "LINK",
+   "id": "chainlink"
+  },
+  {
+   "rank": 19,
+   "symbol": "ADA",
+   "id": "cardano"
+  },
+  {
+   "rank": 20,
+   "symbol": "XLM",
+   "id": "stellar"
+  },
+  {
+   "rank": 21,
+   "symbol": "BCH",
+   "id": "bitcoin-cash"
+  },
+  {
+   "rank": 26,
+   "symbol": "GRAM",
+   "id": "the-open-network"
+  },
+  {
+   "rank": 27,
+   "symbol": "LTC",
+   "id": "litecoin"
+  },
+  {
+   "rank": 28,
+   "symbol": "HBAR",
+   "id": "hedera-hashgraph"
+  },
+  {
+   "rank": 30,
+   "symbol": "AVAX",
+   "id": "avalanche-2"
+  },
+  {
+   "rank": 31,
+   "symbol": "SHIB",
+   "id": "shiba-inu"
+  },
+  {
+   "rank": 32,
+   "symbol": "SUI",
+   "id": "sui"
+  },
+  {
+   "rank": 35,
+   "symbol": "XAUT",
+   "id": "tether-gold"
+  },
+  {
+   "rank": 37,
+   "symbol": "UNI",
+   "id": "uniswap"
+  },
+  {
+   "rank": 40,
+   "symbol": "NEAR",
+   "id": "near"
+  },
+  {
+   "rank": 41,
+   "symbol": "TAO",
+   "id": "bittensor"
+  },
+  {
+   "rank": 45,
+   "symbol": "PAXG",
+   "id": "pax-gold"
+  },
+  {
+   "rank": 46,
+   "symbol": "AAVE",
+   "id": "aave"
+  },
+  {
+   "rank": 47,
+   "symbol": "ASTER",
+   "id": "aster-2"
+  },
+  {
+   "rank": 48,
+   "symbol": "PUMP",
+   "id": "pump-fun"
+  },
+  {
+   "rank": 49,
+   "symbol": "WLFI",
+   "id": "world-liberty-financial"
+  },
+  {
+   "rank": 50,
+   "symbol": "ONDO",
+   "id": "ondo-finance"
+  },
+  {
+   "rank": 51,
+   "symbol": "MORPHO",
+   "id": "morpho"
+  },
+  {
+   "rank": 53,
+   "symbol": "PEPE",
+   "id": "pepe"
+  },
+  {
+   "rank": 54,
+   "symbol": "SKY",
+   "id": "sky"
+  },
+  {
+   "rank": 57,
+   "symbol": "DOT",
+   "id": "polkadot"
+  },
+  {
+   "rank": 58,
+   "symbol": "ENA",
+   "id": "ethena"
+  },
+  {
+   "rank": 59,
+   "symbol": "WLD",
+   "id": "worldcoin-wld"
+  },
+  {
+   "rank": 61,
+   "symbol": "ICP",
+   "id": "internet-computer"
+  },
+  {
+   "rank": 66,
+   "symbol": "ETC",
+   "id": "ethereum-classic"
+  },
+  {
+   "rank": 68,
+   "symbol": "POL",
+   "id": "polygon-ecosystem-token"
+  },
+  {
+   "rank": 73,
+   "symbol": "QNT",
+   "id": "quant-network"
+  },
+  {
+   "rank": 79,
+   "symbol": "NEXO",
+   "id": "nexo"
+  },
+  {
+   "rank": 80,
+   "symbol": "JST",
+   "id": "just"
+  },
+  {
+   "rank": 82,
+   "symbol": "ALGO",
+   "id": "algorand"
+  },
+  {
+   "rank": 83,
+   "symbol": "RENDER",
+   "id": "render-token"
+  },
+  {
+   "rank": 84,
+   "symbol": "ATOM",
+   "id": "cosmos"
+  },
+  {
+   "rank": 86,
+   "symbol": "JUP",
+   "id": "jupiter-exchange-solana"
+  },
+  {
+   "rank": 92,
+   "symbol": "ARB",
+   "id": "arbitrum"
+  },
+  {
+   "rank": 93,
+   "symbol": "VET",
+   "id": "vechain"
+  },
+  {
+   "rank": 94,
+   "symbol": "TRUMP",
+   "id": "official-trump"
+  },
+  {
+   "rank": 95,
+   "symbol": "PENGU",
+   "id": "pudgy-penguins"
+  },
+  {
+   "rank": 96,
+   "symbol": "FIL",
+   "id": "filecoin"
+  },
+  {
+   "rank": 99,
+   "symbol": "ETHFI",
+   "id": "ether-fi"
+  }
+ ],
+ "excluded_stablecoins": [
+  "BFUSD",
+  "DAI",
+  "GHO",
+  "PYUSD",
+  "RLUSD",
+  "U",
+  "USD1",
+  "USDC",
+  "USDD",
+  "USDE",
+  "USDF",
+  "USDG",
+  "USDGO",
+  "USDS",
+  "USDT",
+  "YLDS"
+ ],
+ "excluded_no_binance_pair": [
+  {
+   "rank": 9,
+   "symbol": "FIGR_HELOC"
+  },
+  {
+   "rank": 10,
+   "symbol": "HYPE"
+  },
+  {
+   "rank": 13,
+   "symbol": "RAIN"
+  },
+  {
+   "rank": 16,
+   "symbol": "XMR"
+  },
+  {
+   "rank": 17,
+   "symbol": "WBT"
+  },
+  {
+   "rank": 18,
+   "symbol": "LEO"
+  },
+  {
+   "rank": 23,
+   "symbol": "CC"
+  },
+  {
+   "rank": 33,
+   "symbol": "CRO"
+  },
+  {
+   "rank": 34,
+   "symbol": "USYC"
+  },
+  {
+   "rank": 36,
+   "symbol": "BUIDL"
+  },
+  {
+   "rank": 39,
+   "symbol": "M"
+  },
+  {
+   "rank": 42,
+   "symbol": "OKB"
+  },
+  {
+   "rank": 43,
+   "symbol": "USDY"
+  },
+  {
+   "rank": 52,
+   "symbol": "MNT"
+  },
+  {
+   "rank": 55,
+   "symbol": "HTX"
+  },
+  {
+   "rank": 60,
+   "symbol": "BGB"
+  },
+  {
+   "rank": 67,
+   "symbol": "EURSAFO"
+  },
+  {
+   "rank": 69,
+   "symbol": "BTW"
+  },
+  {
+   "rank": 70,
+   "symbol": "PI"
+  },
+  {
+   "rank": 71,
+   "symbol": "KCS"
+  },
+  {
+   "rank": 72,
+   "symbol": "BCAP"
+  },
+  {
+   "rank": 74,
+   "symbol": "EUTBL"
+  },
+  {
+   "rank": 75,
+   "symbol": "JTRSY"
+  },
+  {
+   "rank": 76,
+   "symbol": "GT"
+  },
+  {
+   "rank": 77,
+   "symbol": "VVV"
+  },
+  {
+   "rank": 78,
+   "symbol": "LIT"
+  },
+  {
+   "rank": 81,
+   "symbol": "USTB"
+  },
+  {
+   "rank": 85,
+   "symbol": "KAS"
+  },
+  {
+   "rank": 87,
+   "symbol": "JAAA"
+  },
+  {
+   "rank": 88,
+   "symbol": "STABLE"
+  },
+  {
+   "rank": 91,
+   "symbol": "BDX"
+  },
+  {
+   "rank": 97,
+   "symbol": "FLR"
+  },
+  {
+   "rank": 98,
+   "symbol": "SPX"
+  },
+  {
+   "rank": 101,
+   "symbol": "XDC"
+  }
+ ]
+}

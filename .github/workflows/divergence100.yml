@@ -1,0 +1,44 @@
+name: Divergence 100 Daily Update
+
+# Rebuilds the Divergence 100 leaderboard once a day. This is a research
+# leaderboard, not a live monitor — it only needs to catch up on new closed
+# 2h candles since the last run (divergence100_update.py, live REST klines),
+# never the full 3-year bulk-archive backfill (divergence100_build.py, a
+# separate manual/one-off script for (re)building the initial roster+history).
+on:
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: divergence100
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - run: pip install requests
+
+      - name: Refresh Divergence 100
+        run: python divergence100_update.py
+
+      - name: Commit data
+        run: |
+          git config user.name "divergence100-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add divergence100.json data/divergence100/
+          git diff --cached --quiet && exit 0
+          git commit -m "divergence100: daily refresh [skip ci]"
+          git pull --rebase origin main || true
+          git push origin main
