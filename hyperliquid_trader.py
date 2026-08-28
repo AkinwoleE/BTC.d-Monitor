@@ -265,13 +265,20 @@ def main():
             trader.ensure_leverage()
             resp = trader.open_position(is_buy, sz, mid)
             state.setdefault("acted", []).append(sig["id"])
+            side_label = "LONG" if is_buy else "SHORT"
+            arrow = "🔼" if is_buy else "🔻"
             if not DRY_RUN:
                 state["position"] = {"side": "long" if is_buy else "short", "entry_px": mid,
                                       "sz": sz, "opened_ts": now, "signal_id": sig["id"]}
-                tg(f"{'🔼' if is_buy else '🔻'} <b>PUMP position opened — {('LONG' if is_buy else 'SHORT')}</b>\n"
+                tg(f"{arrow} <b>PUMP position opened — {side_label}</b>\n"
                    f"Size: {sz} PUMP (~${NOTIONAL_USD} @ {LEVERAGE}x isolated)\n"
                    f"Entry ~{mid:.6g}  TP +{TP_PCT}%  SL -{SL_PCT}%\n"
                    f"Response: {resp}")
+            else:
+                tg(f"🧪 <b>[DRY RUN] Would open PUMP position — {side_label}</b>\n"
+                   f"Size: {sz} PUMP (~${NOTIONAL_USD} @ {LEVERAGE}x isolated)\n"
+                   f"Entry ~{mid:.6g}  TP +{TP_PCT}%  SL -{SL_PCT}%\n"
+                   f"No real order placed — HL_DRY_RUN is still on.")
             print(f"  {'[DRY RUN] would open' if DRY_RUN else 'OPENED'}: {sig['id']}")
         else:
             print("  no open position, no fresh signal")
