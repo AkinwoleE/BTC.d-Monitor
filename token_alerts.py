@@ -14,7 +14,8 @@ often enough to justify tighter polling); alerts once per newly confirmed
 episode, same fresh-vs-backfilled distinction as the BTC monitor.
 
 Env: TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID (optional — prints instead if unset,
-via divergence_monitor.tg), ALERT_SYMBOLS (comma-separated, default below).
+via divergence_monitor.tg), ALERT_SYMBOLS (comma-separated, default below),
+TP_SL_CONFIG (JSON, per-symbol suggested exit levels — see TP_SL below).
 """
 import json, os, time, requests
 from datetime import datetime, timezone
@@ -27,6 +28,11 @@ LB_FILE    = os.path.join(HERE, "divergence100.json")
 SYMBOLS    = [s.strip().upper() for s in os.environ.get("ALERT_SYMBOLS", "PUMP,ASTER").split(",") if s.strip()]
 CANDLE_LIMIT = 400          # ~33 days of 2h candles: ample for RSI-14 warmup + max 60-bar pivot spacing
 FRESH_ALERT_SEC = 3 * 3600  # hourly cadence + one 2h candle period of slop
+
+# Suggested TP/SL, in percent, from the 2026-08-28 sweep of PUMP's 61 2h
+# episodes (48h forward window): the TP10/SL15 quadrant was the most robust
+# region, not an isolated spike (see conversation). ASTER not swept yet.
+TP_SL = json.loads(os.environ.get("TP_SL_CONFIG", '{"PUMP": {"tp": 10, "sl": 15}}'))
 
 def fetch_2h(symbol, limit=CANDLE_LIMIT):
     r = requests.get(f"https://api.binance.com/api/v3/klines?symbol={symbol}USDT&interval=2h&limit={limit}", timeout=15)
@@ -46,6 +52,17 @@ def backtest_note(symbol):
         pass
     return "No Divergence 100 backtest stats available for this token yet."
 
+def tp_sl_line(symbol, ep):
+    cfg = TP_SL.get(symbol)
+    if not cfg:
+        return ""
+    tp_pct, sl_pct = cfg["tp"], cfg["sl"]
+    short = ep["direction"] == "bearish"
+    ref = ep["confirm_price"]
+    tp_px = ref * (1 - tp_pct / 100) if short else ref * (1 + tp_pct / 100)
+    sl_px = ref * (1 + sl_pct / 100) if short else ref * (1 - sl_pct / 100)
+    return f"Suggested TP/SL: +{tp_pct}% ({tp_px:.6g}) / -{sl_pct}% ({sl_px:.6g})\n"
+
 def alert(symbol, ep):
     arrow = "🔻" if ep["direction"] == "bearish" else "🔼"
     p, legs = ep["pivots"], ep.get("legs", 3)
@@ -56,6 +73,7 @@ def alert(symbol, ep):
     tg(f"{arrow} <b>{ep['direction'].upper()} {label} — {symbol} 2h</b>\n"
        f"Price: {seq_p}\nRSI:   {seq_r}\n"
        f"Confirmed @ {ep['confirm_price']:.6g} (pivot printed {age_h:.0f}h ago)\n"
+       f"{tp_sl_line(symbol, ep)}"
        f"{backtest_note(symbol)}\n"
        f"Watchlist alert only — not traded automatically.")
 
