@@ -47,6 +47,7 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
 
       - name: Run Hyperliquid PUMP trader
+        if: always()
         run: python hyperliquid_trader.py
         env:
           HL_DRY_RUN: ${{ vars.HL_DRY_RUN || 'true' }}
@@ -56,6 +57,7 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
 
       - name: Commit data
+        if: always()
         run: |
           git config user.name "token-alerts-bot"
           git config user.email "actions@users.noreply.github.com"
