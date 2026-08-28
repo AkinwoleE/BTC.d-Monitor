@@ -35,7 +35,11 @@ FRESH_ALERT_SEC = 3 * 3600  # hourly cadence + one 2h candle period of slop
 TP_SL = json.loads(os.environ.get("TP_SL_CONFIG", '{"PUMP": {"tp": 10, "sl": 15}}'))
 
 def fetch_2h(symbol, limit=CANDLE_LIMIT):
-    r = requests.get(f"https://api.binance.com/api/v3/klines?symbol={symbol}USDT&interval=2h&limit={limit}", timeout=15)
+    # data-api.binance.vision, not api.binance.com: the latter 451s from
+    # GitHub Actions' IP ranges even on public GET endpoints (geo-blocked as
+    # a restricted-location trading API). This is Binance's own documented
+    # market-data-only mirror, no such restriction.
+    r = requests.get(f"https://data-api.binance.vision/api/v3/klines?symbol={symbol}USDT&interval=2h&limit={limit}", timeout=15)
     r.raise_for_status()
     now = int(time.time())
     return [{"ts": row[0] // 1000, "open": float(row[1]), "high": float(row[2]),

@@ -27,7 +27,14 @@ os.makedirs(DATA_DIR, exist_ok=True)
 INTERVAL = "2h"
 MONTHLY_URL = "https://data.binance.vision/data/spot/monthly/klines/{sym}/2h/{sym}-2h-{ym}.zip"
 DAILY_URL   = "https://data.binance.vision/data/spot/daily/klines/{sym}/2h/{sym}-2h-{d}.zip"
-LIVE_KLINES = "https://api.binance.com/api/v3/klines?symbol={sym}&interval=2h&limit={limit}"
+# data-api.binance.vision, NOT api.binance.com: Binance's documented public
+# "market data only" host — api.binance.com returns 451 from GitHub Actions'
+# IP ranges (geo-blocked as a restricted-location trading API), even for
+# read-only GET endpoints. This mirror serves the same public klines/ticker
+# data with no such restriction (discovered 2026-08-29 when the live
+# workflow run failed; local testing never caught it since dev IPs aren't
+# blocked).
+LIVE_KLINES = "https://data-api.binance.vision/api/v3/klines?symbol={sym}&interval=2h&limit={limit}"
 
 def token_file(symbol):
     return os.path.join(DATA_DIR, f"{symbol}.json")
