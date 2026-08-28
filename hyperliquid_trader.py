@@ -87,6 +87,24 @@ class Trader:
     def user_state(self):
         return self.info.user_state(ACCOUNT_ADDRESS)
 
+    def account_value(self, us):
+        # Hyperliquid's newer "Unified account" mode merges spot+perps into
+        # one balance; per their docs, clearinghouseState's marginSummary
+        # becomes "not meaningful" for unified accounts and the real balance
+        # lives in spotClearinghouseState's USDC entry instead. Standard
+        # (non-unified) accounts report a real value directly in
+        # marginSummary, so check both and use whichever is populated.
+        cross_val = float(us.get("marginSummary", {}).get("accountValue", 0))
+        if cross_val > 0:
+            return cross_val
+        try:
+            spot = self.info.spot_user_state(ACCOUNT_ADDRESS)
+            usdc = next((b for b in spot.get("balances", []) if b["coin"] == "USDC"), None)
+            return float(usdc["total"]) if usdc else 0.0
+        except Exception as e:
+            print(f"  could not fetch spot balance: {e}")
+            return cross_val
+
     def mid_price(self):
         return float(self.info.all_mids()[SYMBOL])
 
@@ -190,7 +208,7 @@ def main():
     equity = load(EQUITY_FILE, [])
 
     us = trader.user_state()
-    account_value = float(us["marginSummary"]["accountValue"])
+    account_value = trader.account_value(us)
     live_pos = trader.live_position(us)
     mid = trader.mid_price()
     now = int(time.time())
