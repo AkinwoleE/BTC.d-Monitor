@@ -6,6 +6,13 @@ name: Token Watchlist Alerts
 # daily leaderboard rebuild: own schedule, own concurrency group, own data
 # file (token_alerts.json). 2h timeframe only, hourly is plenty since a 2h
 # candle doesn't close any more often than that.
+#
+# Also runs hyperliquid_trader.py (added 2026-08-29): automated PUMP trading
+# on Hyperliquid off the same signal feed. Native exchange-side TP/SL means
+# this doesn't need tighter polling than the alert step already runs on —
+# see hyperliquid_trader.py's docstring for the full design. HL_DRY_RUN
+# defaults to true (no real orders) until explicitly switched off via the
+# repo variable.
 on:
   schedule:
     - cron: "23 * * * *"   # hourly, offset from the other workflows' marks
@@ -29,7 +36,7 @@ jobs:
         with:
           python-version: "3.11"
 
-      - run: pip install requests
+      - run: pip install requests hyperliquid-python-sdk
 
       - name: Run token watchlist alerts
         run: python token_alerts.py
@@ -39,11 +46,22 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
 
+      - name: Run Hyperliquid PUMP trader
+        run: python hyperliquid_trader.py
+        env:
+          HL_DRY_RUN: ${{ vars.HL_DRY_RUN || 'true' }}
+          HYPERLIQUID_API_PRIVATE_KEY: ${{ secrets.HYPERLIQUID_API_PRIVATE_KEY }}
+          HYPERLIQUID_ACCOUNT_ADDRESS: ${{ secrets.HYPERLIQUID_ACCOUNT_ADDRESS }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+
       - name: Commit data
         run: |
           git config user.name "token-alerts-bot"
           git config user.email "actions@users.noreply.github.com"
-          if [ -f token_alerts.json ]; then git add token_alerts.json; fi
+          for f in token_alerts.json hyperliquid_trader_state.json hyperliquid_trades.json hyperliquid_equity.json; do
+            if [ -f "$f" ]; then git add "$f"; fi
+          done
           git diff --cached --quiet && exit 0
           git commit -m "token-alerts: update data [skip ci]"
           git pull --rebase origin main || true
