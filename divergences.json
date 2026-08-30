@@ -15561,16 +15561,22 @@
      "high": 78300.0,
      "low": 78114.5,
      "close": 78260.5
+    },
+    {
+     "ts": 1788073200,
+     "high": 78293.5,
+     "low": 78127.0,
+     "close": 78127.1
     }
    ],
    "alerted": false,
    "alert_suppressed": "duplicate-structure",
    "stats": {
-    "complete": false,
+    "complete": true,
     "ret_6h": 0.435,
     "ret_12h": 2.661,
     "ret_24h": 2.566,
-    "ret_48h": 1.784,
+    "ret_48h": 1.951,
     "best_entry": {
      "ts": 1787904000,
      "price": 79846.0,
@@ -15587,5 +15593,5 @@
    }
   }
  ],
- "updated": "2026-08-30T07:30:21.496737+00:00"
+ "updated": "2026-08-30T08:00:23.197791+00:00"
 }
