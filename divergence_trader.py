@@ -161,6 +161,22 @@ def live_snapshot():
         pos = run_cli("get_positions", {}).get("positions", [])
         bal = run_cli("get_balances", {"subaccountAddress": DEC_SUB})
         equity = float(bal.get("perpEquityBalance", 0))
+        if equity <= 0.01:
+            # 2026-07-09 / 2026-09-01 incident class: Decibel's API occasionally
+            # returns a successful-looking but empty/zero balance transiently
+            # (see implausible(), which guards the trading path against this).
+            # This wicked the equity graph to $0 and back on 2026-09-01 because
+            # record_equity() runs before that guard is even reached. A single
+            # immediate retry distinguishes a real near-zero balance (which
+            # reproduces) from a one-off glitch (which doesn't), without
+            # risking ever permanently masking a genuine crash.
+            time.sleep(2)
+            bal2 = run_cli("get_balances", {"subaccountAddress": DEC_SUB})
+            equity2 = float(bal2.get("perpEquityBalance", 0))
+            if equity2 > 0.01:
+                print(f"  live_snapshot: retry recovered equity ${equity2:.2f} "
+                      f"(first read ${equity:.2f} — transient glitch, not recorded)")
+                equity = equity2
         btc = None
         for p in pos:
             if info and p.get("market") == info["address"]:
