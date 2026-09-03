@@ -4525,7 +4525,7 @@
    }
   ],
   "summary": {
-   "name": "System 1 (20-day entry / 10-day exit, skip filter + 55d failsafe)",
+   "name": "System 1 (20-day entry / 10-day exit, skip filter + 55d failsafe) - uncapped",
    "trades": 46,
    "win_rate": 21.7,
    "final_equity": 13835.68,
@@ -8884,7 +8884,7 @@
    }
   ],
   "summary": {
-   "name": "System 2 (55-day entry / 20-day exit, no filter)",
+   "name": "System 2 (55-day entry / 20-day exit, no filter) - uncapped",
    "trades": 24,
    "win_rate": 33.3,
    "final_equity": 28199.6,
@@ -8893,5 +8893,95 @@
    "max_dd_pct": 15.1
   }
  },
- "blend_final_equity": 21017.64
+ "blend_final_equity": 21017.64,
+ "leverage_sweep": [
+  {
+   "leverage": "1x",
+   "system": "System 1",
+   "name": "System 1 @ 1x",
+   "trades": 46,
+   "win_rate": 21.7,
+   "final_equity": 12163.58,
+   "total_return_pct": 21.6,
+   "cagr_pct": 6.8,
+   "max_dd_pct": 33.1
+  },
+  {
+   "leverage": "1x",
+   "system": "System 2",
+   "name": "System 2 @ 1x",
+   "trades": 24,
+   "win_rate": 33.3,
+   "final_equity": 20328.18,
+   "total_return_pct": 103.3,
+   "cagr_pct": 26.8,
+   "max_dd_pct": 15.3
+  },
+  {
+   "leverage": "2x",
+   "system": "System 1",
+   "name": "System 1 @ 2x",
+   "trades": 46,
+   "win_rate": 21.7,
+   "final_equity": 13835.68,
+   "total_return_pct": 38.4,
+   "cagr_pct": 11.5,
+   "max_dd_pct": 36.8
+  },
+  {
+   "leverage": "2x",
+   "system": "System 2",
+   "name": "System 2 @ 2x",
+   "trades": 24,
+   "win_rate": 33.3,
+   "final_equity": 28199.6,
+   "total_return_pct": 182.0,
+   "cagr_pct": 41.4,
+   "max_dd_pct": 15.1
+  },
+  {
+   "leverage": "3x",
+   "system": "System 1",
+   "name": "System 1 @ 3x",
+   "trades": 46,
+   "win_rate": 21.7,
+   "final_equity": 13835.68,
+   "total_return_pct": 38.4,
+   "cagr_pct": 11.5,
+   "max_dd_pct": 36.8
+  },
+  {
+   "leverage": "3x",
+   "system": "System 2",
+   "name": "System 2 @ 3x",
+   "trades": 24,
+   "win_rate": 33.3,
+   "final_equity": 28199.6,
+   "total_return_pct": 182.0,
+   "cagr_pct": 41.4,
+   "max_dd_pct": 15.1
+  },
+  {
+   "leverage": "uncapped",
+   "system": "System 1",
+   "name": "System 1 @ uncapped",
+   "trades": 46,
+   "win_rate": 21.7,
+   "final_equity": 13835.68,
+   "total_return_pct": 38.4,
+   "cagr_pct": 11.5,
+   "max_dd_pct": 36.8
+  },
+  {
+   "leverage": "uncapped",
+   "system": "System 2",
+   "name": "System 2 @ uncapped",
+   "trades": 24,
+   "win_rate": 33.3,
+   "final_equity": 28199.6,
+   "total_return_pct": 182.0,
+   "cagr_pct": 41.4,
+   "max_dd_pct": 15.1
+  }
+ ]
 }

@@ -112,7 +112,12 @@ def classify_breakout(candles, N, start_i, direction):
     return None
 
 
-def simulate(candles, N, entry_n, exit_n, use_skip_filter):
+def simulate(candles, N, entry_n, exit_n, use_skip_filter, leverage_cap=None):
+    """leverage_cap: max total notional (sum of unit sz * price) as a multiple
+    of equity. None = uncapped (the original, futures-style risk-only sizing).
+    When capped, a unit (initial entry or pyramid add) that would push total
+    notional over the cap is simply not taken - mirrors running out of
+    margin, not a resize-to-fit."""
     equity = STARTING_EQUITY
     equity_curve = []
     units = []
@@ -159,8 +164,10 @@ def simulate(candles, N, entry_n, exit_n, use_skip_filter):
                     add = (side == "long" and c["high"] >= trigger) or (side == "short" and c["low"] <= trigger)
                     if add:
                         sz = (RISK_PCT * equity) / (n * DOLLARS_PER_POINT)
-                        units.append({"side": side, "entry_px": trigger, "sz": sz,
-                                     "n_at_entry": n, "entry_ts": c["ts"]})
+                        current_notional = sum(u["sz"] for u in units) * c["close"]
+                        if leverage_cap is None or current_notional + sz * trigger <= leverage_cap * equity:
+                            units.append({"side": side, "entry_px": trigger, "sz": sz,
+                                         "n_at_entry": n, "entry_ts": c["ts"]})
             equity_curve.append({"ts": c["ts"], "equity": equity})
             continue
 
@@ -190,14 +197,15 @@ def simulate(candles, N, entry_n, exit_n, use_skip_filter):
         if take_long or take_short:
             side = "long" if take_long else "short"
             sz = (RISK_PCT * equity) / (n * DOLLARS_PER_POINT)
-            units = [{"side": side, "entry_px": entry_px, "sz": sz, "n_at_entry": n, "entry_ts": c["ts"]}]
+            if leverage_cap is None or sz * entry_px <= leverage_cap * equity:
+                units = [{"side": side, "entry_px": entry_px, "sz": sz, "n_at_entry": n, "entry_ts": c["ts"]}]
 
         equity_curve.append({"ts": c["ts"], "equity": equity})
 
     return trades, equity_curve
 
 
-def report(name, trades, equity_curve, candles):
+def report(name, trades, equity_curve, candles, verbose=True):
     final_eq = equity_curve[-1]["equity"] if equity_curve else STARTING_EQUITY
     total_ret = 100 * (final_eq / STARTING_EQUITY - 1)
     wins = [t for t in trades if t["pnl"] > 0]
@@ -210,23 +218,24 @@ def report(name, trades, equity_curve, candles):
         peak = max(peak, s["equity"])
         max_dd = max(max_dd, 100 * (peak - s["equity"]) / peak) if peak > 0 else max_dd
 
-    print(f"\n=== {name} ===")
-    print(f"Trades: {len(trades)}  Wins: {len(wins)}  Losses: {len(losses)}  "
-          f"Win rate: {100*len(wins)/len(trades):.1f}%" if trades else "No trades")
-    if trades:
-        avg_win = sum(t["pnl"] for t in wins) / len(wins) if wins else 0
-        avg_loss = sum(t["pnl"] for t in losses) / len(losses) if losses else 0
-        print(f"Avg win: ${avg_win:,.2f}  Avg loss: ${avg_loss:,.2f}  "
-              f"Win/loss $ ratio: {abs(avg_win/avg_loss):.2f}" if avg_loss else "")
-        by_reason = {}
-        for t in trades:
-            by_reason[t["reason"]] = by_reason.get(t["reason"], 0) + 1
-        print(f"Exit reasons: {by_reason}")
-        pyramided = sum(1 for t in trades if t["units"] > 1)
-        print(f"Trades that pyramided beyond 1 unit: {pyramided} ({100*pyramided/len(trades):.1f}%)")
-    print(f"Final equity: ${final_eq:,.2f}  Total return: {total_ret:+.1f}%  "
-          f"CAGR: {cagr:+.1f}%" if cagr is not None else f"Final equity: ${final_eq:,.2f}")
-    print(f"Max drawdown: {max_dd:.1f}%")
+    if verbose:
+        print(f"\n=== {name} ===")
+        print(f"Trades: {len(trades)}  Wins: {len(wins)}  Losses: {len(losses)}  "
+              f"Win rate: {100*len(wins)/len(trades):.1f}%" if trades else "No trades")
+        if trades:
+            avg_win = sum(t["pnl"] for t in wins) / len(wins) if wins else 0
+            avg_loss = sum(t["pnl"] for t in losses) / len(losses) if losses else 0
+            print(f"Avg win: ${avg_win:,.2f}  Avg loss: ${avg_loss:,.2f}  "
+                  f"Win/loss $ ratio: {abs(avg_win/avg_loss):.2f}" if avg_loss else "")
+            by_reason = {}
+            for t in trades:
+                by_reason[t["reason"]] = by_reason.get(t["reason"], 0) + 1
+            print(f"Exit reasons: {by_reason}")
+            pyramided = sum(1 for t in trades if t["units"] > 1)
+            print(f"Trades that pyramided beyond 1 unit: {pyramided} ({100*pyramided/len(trades):.1f}%)")
+        print(f"Final equity: ${final_eq:,.2f}  Total return: {total_ret:+.1f}%  "
+              f"CAGR: {cagr:+.1f}%" if cagr is not None else f"Final equity: ${final_eq:,.2f}")
+        print(f"Max drawdown: {max_dd:.1f}%")
     return {"name": name, "trades": len(trades), "win_rate": round(100*len(wins)/len(trades),1) if trades else None,
             "final_equity": round(final_eq,2), "total_return_pct": round(total_ret,1),
             "cagr_pct": round(cagr,1) if cagr is not None else None, "max_dd_pct": round(max_dd,1)}
@@ -240,20 +249,39 @@ def main():
     N = compute_N(candles)
 
     t1, eq1 = simulate(candles, N, entry_n=20, exit_n=10, use_skip_filter=True)
-    r1 = report("System 1 (20-day entry / 10-day exit, skip filter + 55d failsafe)", t1, eq1, candles)
+    r1 = report("System 1 (20-day entry / 10-day exit, skip filter + 55d failsafe) - uncapped", t1, eq1, candles)
 
     t2, eq2 = simulate(candles, N, entry_n=55, exit_n=20, use_skip_filter=False)
-    r2 = report("System 2 (55-day entry / 20-day exit, no filter)", t2, eq2, candles)
+    r2 = report("System 2 (55-day entry / 20-day exit, no filter) - uncapped", t2, eq2, candles)
 
-    # simple 50/50 blend for reference: each system trades half the capital independently
     blend_final = STARTING_EQUITY/2 * (eq1[-1]["equity"]/STARTING_EQUITY) + \
                   STARTING_EQUITY/2 * (eq2[-1]["equity"]/STARTING_EQUITY)
-    print(f"\n=== 50/50 Blend (reference only) ===")
+    print(f"\n=== 50/50 Blend (reference only, uncapped) ===")
     print(f"Final equity: ${blend_final:,.2f}  Total return: {100*(blend_final/STARTING_EQUITY-1):+.1f}%")
+
+    # leverage sweep
+    print("\n\n" + "="*78)
+    print("LEVERAGE CAP SWEEP")
+    print("="*78)
+    rows = []
+    for cap_label, cap in [("1x", 1), ("2x", 2), ("3x", 3), ("uncapped", None)]:
+        for sys_name, params in [("System 1", dict(entry_n=20, exit_n=10, use_skip_filter=True)),
+                                   ("System 2", dict(entry_n=55, exit_n=20, use_skip_filter=False))]:
+            tr, eq = simulate(candles, N, leverage_cap=cap, **params)
+            r = report(f"{sys_name} @ {cap_label}", tr, eq, candles, verbose=False)
+            rows.append({"leverage": cap_label, "system": sys_name, **r})
+
+    print(f"\n{'Leverage':<10}{'System':<10}{'Trades':<8}{'WinRate':<9}{'TotalRet':<11}{'CAGR':<9}{'MaxDD':<8}")
+    for r in rows:
+        wr = f"{r['win_rate']}%" if r['win_rate'] is not None else "-"
+        cagr_s = f"{r['cagr_pct']:+.1f}%" if r['cagr_pct'] is not None else "-"
+        print(f"{r['leverage']:<10}{r['system']:<10}{r['trades']:<8}{wr:<9}"
+              f"{r['total_return_pct']:+.1f}%{'':<4}{cagr_s:<9}{r['max_dd_pct']:.1f}%")
 
     json.dump({"system1": {"trades": t1, "equity_curve": eq1, "summary": r1},
                "system2": {"trades": t2, "equity_curve": eq2, "summary": r2},
-               "blend_final_equity": round(blend_final, 2)},
+               "blend_final_equity": round(blend_final, 2),
+               "leverage_sweep": rows},
               open("turtle_backtest_results.json", "w"), indent=1)
     print("\nSaved full results to turtle_backtest_results.json")
 
