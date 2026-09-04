@@ -28,7 +28,11 @@ def load_all():
     return data
 
 
-def simulate_portfolio(token_data, entry_n, exit_n, use_skip_filter, leverage_cap):
+def simulate_portfolio(token_data, entry_n, exit_n, use_skip_filter, leverage_cap, risk_capital_fraction=1.0):
+    """risk_capital_fraction: only this fraction of total equity is ever used
+    as the sizing/leverage-cap basis (e.g. 0.4 = "$2000 at risk of $5000
+    total") - the rest sits untouched as a buffer, never invested. equity
+    itself (P&L, reporting, drawdown) always tracks the TRUE total account."""
     equity = STARTING_EQUITY
     units = {tok: [] for tok in token_data}
     last_outcome = {tok: None for tok in token_data}
@@ -84,9 +88,10 @@ def simulate_portfolio(token_data, entry_n, exit_n, use_skip_filter, leverage_ca
                 trigger = last_fill + 0.5 * n if side == "long" else last_fill - 0.5 * n
                 add = (side == "long" and c["high"] >= trigger) or (side == "short" and c["low"] <= trigger)
                 if add:
-                    sz = (RISK_PCT * equity) / (n * DOLLARS_PER_POINT)
+                    risk_capital = risk_capital_fraction * equity
+                    sz = (RISK_PCT * risk_capital) / (n * DOLLARS_PER_POINT)
                     prospective = total_notional(ts) + sz * trigger
-                    if leverage_cap is None or prospective <= leverage_cap * equity:
+                    if leverage_cap is None or prospective <= leverage_cap * risk_capital:
                         units[tok].append({"side": side, "entry_px": trigger, "sz": sz,
                                            "n_at_entry": n, "entry_ts": ts})
 
@@ -122,9 +127,10 @@ def simulate_portfolio(token_data, entry_n, exit_n, use_skip_filter, leverage_ca
 
             if take_long or take_short:
                 side = "long" if take_long else "short"
-                sz = (RISK_PCT * equity) / (n * DOLLARS_PER_POINT)
+                risk_capital = risk_capital_fraction * equity
+                sz = (RISK_PCT * risk_capital) / (n * DOLLARS_PER_POINT)
                 prospective = total_notional(ts) + sz * entry_px
-                if leverage_cap is None or prospective <= leverage_cap * equity:
+                if leverage_cap is None or prospective <= leverage_cap * risk_capital:
                     units[tok] = [{"side": side, "entry_px": entry_px, "sz": sz, "n_at_entry": n, "entry_ts": ts}]
 
         equity_curve.append({"ts": ts, "equity": equity})
