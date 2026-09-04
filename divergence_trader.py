@@ -114,6 +114,26 @@ def cli_env():
     if DEC_GAS_KEY: e["DECIBEL_GAS_STATION_API_KEY"] = DEC_GAS_KEY
     return e
 
+def install_cli():
+    """Warm npx's package cache before the real calls: a fresh GitHub Actions
+    runner has nothing cached, so the FIRST npx invocation each run has to
+    resolve+download @decibeltrade/cli from scratch, which has been
+    intermittently exceeding run_cli()'s 90s budget (2026-09-04 incident —
+    live_snapshot failing on ~13 of 15 consecutive runs, alerting every 6h).
+    btcd_trader.py already had this exact fix; this just ports it over.
+    Best-effort: if the warm-up itself times out, run_cli() proceeds anyway
+    with its own full timeout budget rather than failing the whole cycle."""
+    print("  Caching @decibeltrade/cli via npx...")
+    try:
+        r = subprocess.run(
+            ["npx", "-y", "--package", "@decibeltrade/cli", "decibel-mcp", "--version"],
+            capture_output=True, text=True, timeout=60, env=cli_env())
+        print(f"  Cache result: {(r.stdout+r.stderr).strip()[:80]}")
+    except subprocess.TimeoutExpired:
+        print("  WARNING: install_cli timed out (60s) — skipping cache warm, run_cli will proceed independently")
+    except Exception as e:
+        print(f"  WARNING: install_cli failed ({e}) — skipping cache warm, run_cli will proceed independently")
+
 def run_cli(action, params):
     rpc = json.dumps({"jsonrpc": "2.0", "id": 1, "method": "tools/call",
                       "params": {"name": action, "arguments": params}}) + "\n"
@@ -380,6 +400,8 @@ def main():
           f"block_days={sorted(BLOCK_DAYS) or 'none'} state={os.path.basename(STATE_FILE)}")
     if not (DEC_PRIVATE_KEY and DEC_SUB and DEC_NODE_KEY):
         print(f"  [{ACCOUNT}] Decibel credentials missing — no-op."); return
+
+    install_cli()
 
     # equity graph samples are recorded whenever creds work, even with trading off
     live_pos, equity, api_ok = live_snapshot()
