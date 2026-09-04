@@ -19014,6 +19014,24 @@
      "high": 79730.8,
      "low": 78973.3,
      "close": 79370.6
+    },
+    {
+     "ts": 1788530400,
+     "high": 79553.6,
+     "low": 78632.3,
+     "close": 78896.2
+    },
+    {
+     "ts": 1788534000,
+     "high": 79563.1,
+     "low": 78783.1,
+     "close": 79421.1
+    },
+    {
+     "ts": 1788537600,
+     "high": 79870.6,
+     "low": 79376.0,
+     "close": 79753.0
     }
    ],
    "alerted": true,
@@ -19021,23 +19039,78 @@
     "complete": false,
     "ret_6h": 0.231,
     "ret_12h": 1.891,
-    "ret_24h": 1.981,
-    "ret_48h": 1.981,
+    "ret_24h": 1.508,
+    "ret_48h": 1.508,
     "best_entry": {
      "ts": 1788519600,
      "price": 81400.0,
      "hours_after": 10.0
     },
     "best_exit": {
-     "ts": 1788526800,
-     "price": 78973.3,
-     "hours_after": 12.0
+     "ts": 1788530400,
+     "price": 78632.3,
+     "hours_after": 13.0
     },
-    "best_pnl_pct": 2.981,
-    "mfe_pct": 2.471,
+    "best_pnl_pct": 3.4,
+    "mfe_pct": 2.892,
     "mae_pct": 0.526
+   }
+  },
+  {
+   "id": "1h-bearish2-1788519600",
+   "tf": "1h",
+   "direction": "bearish",
+   "legs": 2,
+   "pivots": [
+    {
+     "ts": 1788494400,
+     "price": 81275.1,
+     "rsi": 65.89
+    },
+    {
+     "ts": 1788519600,
+     "price": 81400.0,
+     "rsi": 64.12
+    }
+   ],
+   "confirmed_ts": 1788534000,
+   "confirm_price": 78896.2,
+   "forward": [
+    {
+     "ts": 1788534000,
+     "high": 79563.1,
+     "low": 78783.1,
+     "close": 79421.1
+    },
+    {
+     "ts": 1788537600,
+     "high": 79870.6,
+     "low": 79376.0,
+     "close": 79753.0
+    }
+   ],
+   "alerted": false,
+   "stats": {
+    "complete": false,
+    "ret_6h": -1.086,
+    "ret_12h": -1.086,
+    "ret_24h": -1.086,
+    "ret_48h": -1.086,
+    "best_entry": {
+     "ts": 1788537600,
+     "price": 79870.6,
+     "hours_after": 1.0
+    },
+    "best_exit": {
+     "ts": 1788537600,
+     "price": 79376.0,
+     "hours_after": 1.0
+    },
+    "best_pnl_pct": 0.619,
+    "mfe_pct": 0.143,
+    "mae_pct": 1.235
    }
   }
  ],
- "updated": "2026-09-04T14:55:55.688813+00:00"
+ "updated": "2026-09-04T17:52:33.894658+00:00"
 }
