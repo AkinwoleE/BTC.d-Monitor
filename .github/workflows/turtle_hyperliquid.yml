@@ -1,0 +1,61 @@
+name: Turtle Multi-Asset Trader (Hyperliquid)
+
+# Live multi-asset Turtle System 2 trading on Hyperliquid, 18-token roster
+# (turtle_multiasset_fetch.py). Fully independent of every other system in
+# this repo: own schedule, own concurrency group, own data files, own
+# credentials (same Hyperliquid secrets as the PUMP trader, since it's the
+# same account, but entirely separate state so the two never interfere).
+#
+# Runs once daily, shortly after the UTC daily candle closes - System 2's
+# exits are a rolling channel that must be recomputed daily (see
+# turtle_hyperliquid_trader.py's docstring for the full design rationale).
+# HL_DRY_RUN defaults to true - no real orders until explicitly switched
+# off via the repo variable, after dry-run verification against the real
+# account (same process used for the PUMP trader).
+on:
+  schedule:
+    - cron: "10 0 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: turtle-hyperliquid
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  trade:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - run: pip install requests hyperliquid-python-sdk
+
+      - name: Run Turtle multi-asset trader
+        run: python turtle_hyperliquid_trader.py
+        env:
+          HL_DRY_RUN: ${{ vars.TURTLE_HL_DRY_RUN || 'true' }}
+          HYPERLIQUID_API_PRIVATE_KEY: ${{ secrets.HYPERLIQUID_API_PRIVATE_KEY }}
+          HYPERLIQUID_ACCOUNT_ADDRESS: ${{ secrets.HYPERLIQUID_ACCOUNT_ADDRESS }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+
+      - name: Commit data
+        if: always()
+        run: |
+          git config user.name "turtle-hyperliquid-bot"
+          git config user.email "actions@users.noreply.github.com"
+          for f in turtle_hyperliquid_state.json turtle_hyperliquid_trades.json turtle_hyperliquid_equity.json; do
+            if [ -f "$f" ]; then git add "$f"; fi
+          done
+          if [ -d data/turtle_hyperliquid ]; then git add data/turtle_hyperliquid/; fi
+          git diff --cached --quiet && exit 0
+          git commit -m "turtle-hyperliquid: update data [skip ci]"
+          git pull --rebase origin main || true
+          git push origin main
