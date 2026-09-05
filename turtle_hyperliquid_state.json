@@ -1,0 +1,82 @@
+{
+ "positions": {
+  "AAVE": {
+   "units": []
+  },
+  "ADA": {
+   "units": []
+  },
+  "APT": {
+   "units": []
+  },
+  "AVAX": {
+   "units": []
+  },
+  "BNB": {
+   "units": [
+    {
+     "side": "long",
+     "entry_px": 728.0,
+     "sz": 0.047994080971559834,
+     "n_at_entry": 19.61003442398892,
+     "entry_ts": 1788581756
+    }
+   ]
+  },
+  "BTC": {
+   "units": []
+  },
+  "DOGE": {
+   "units": []
+  },
+  "ETH": {
+   "units": []
+  },
+  "LINK": {
+   "units": []
+  },
+  "NEAR": {
+   "units": [
+    {
+     "side": "long",
+     "entry_px": 2.147,
+     "sz": 6.9751423204493985,
+     "n_at_entry": 0.13493138014413475,
+     "entry_ts": 1788581756
+    }
+   ]
+  },
+  "SOL": {
+   "units": []
+  },
+  "SUI": {
+   "units": []
+  },
+  "TAO": {
+   "units": []
+  },
+  "TRUMP": {
+   "units": []
+  },
+  "TRX": {
+   "units": []
+  },
+  "WLFI": {
+   "units": []
+  },
+  "XRP": {
+   "units": []
+  },
+  "ZEC": {
+   "units": [
+    {
+     "side": "long",
+     "entry_px": 979.69,
+     "sz": 0.014725454559089966,
+     "n_at_entry": 63.914195397046136,
+     "entry_ts": 1788581756
+    }
+   ]
+  }
+ }
+}
