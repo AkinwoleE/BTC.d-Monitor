@@ -227,30 +227,45 @@ def main():
         bot_has_pos = bool(st["units"])
         live_has_pos = tok in live_pos
 
-        if bot_has_pos and not live_has_pos:
-            side = st["units"][0]["side"]
-            pnl = trader.realized_pnl_since(tok, st["units"][0]["entry_ts"])
-            held_h = (now - st["units"][0]["entry_ts"]) / 3600
-            trades.append({"token": tok, "side": side, "units": len(st["units"]),
-                           "entry_ts": st["units"][0]["entry_ts"], "exit_ts": now,
-                           "held_hours": round(held_h, 1), "pnl": pnl, "reason": "CLOSED_EXTERNALLY"})
-            tg(f"Turtle/{tok}: position no longer showing on Hyperliquid (closed via stop or externally). "
-               f"PnL: {'unknown' if pnl is None else f'${pnl:+.2f}'}")
-            st["units"] = []
-            continue
-
-        if not bot_has_pos and live_has_pos:
-            print(f"  {tok}: WARNING unrecognized live position — standing down")
-            tg(f"⚠️ Turtle/{tok}: found an open Hyperliquid position this bot didn't open. Standing down.")
-            continue
-
-        if bot_has_pos and live_has_pos:
-            side_expected = st["units"][0]["side"]
-            side_actual = "long" if float(live_pos[tok]["szi"]) > 0 else "short"
-            if side_expected != side_actual:
-                print(f"  {tok}: WARNING side mismatch — standing down")
-                tg(f"⚠️ Turtle/{tok}: live position side doesn't match bot state. Standing down.")
+        # Reconciliation against Hyperliquid's live position only makes sense
+        # in real trading — DRY_RUN never places a real order in the first
+        # place, so live_has_pos is always False for our own paper positions.
+        # Treating that as "closed externally" (2026-09-06 incident: wiped out
+        # a 3-token dry-run simulation after exactly one cycle, every time,
+        # regardless of real market activity) was the bug; skip all of this
+        # under DRY_RUN and let the normal stop/channel-exit/pyramid logic
+        # below run against price data alone, exactly like the backtest does.
+        if not DRY_RUN:
+            if bot_has_pos and not live_has_pos:
+                side = st["units"][0]["side"]
+                pnl = trader.realized_pnl_since(tok, st["units"][0]["entry_ts"])
+                held_h = (now - st["units"][0]["entry_ts"]) / 3600
+                trades.append({"token": tok, "side": side, "units": len(st["units"]),
+                               "entry_ts": st["units"][0]["entry_ts"], "exit_ts": now,
+                               "held_hours": round(held_h, 1), "pnl": pnl, "reason": "CLOSED_EXTERNALLY"})
+                tg(f"Turtle/{tok}: position no longer showing on Hyperliquid (closed via stop or externally). "
+                   f"PnL: {'unknown' if pnl is None else f'${pnl:+.2f}'}")
+                st["units"] = []
                 continue
+
+            if not bot_has_pos and live_has_pos:
+                print(f"  {tok}: WARNING unrecognized live position — standing down")
+                tg(f"⚠️ Turtle/{tok}: found an open Hyperliquid position this bot didn't open. Standing down.")
+                continue
+
+            if bot_has_pos and live_has_pos:
+                side_expected = st["units"][0]["side"]
+                side_actual = "long" if float(live_pos[tok]["szi"]) > 0 else "short"
+                if side_expected != side_actual:
+                    print(f"  {tok}: WARNING side mismatch — standing down")
+                    tg(f"⚠️ Turtle/{tok}: live position side doesn't match bot state. Standing down.")
+                    continue
+        elif not bot_has_pos and live_has_pos:
+            # still worth flagging in dry-run: a real position exists on a
+            # token this simulation is also tracking, so its notional isn't
+            # actually free for the leverage-cap math the way this code
+            # assumes. Doesn't block anything, just surfaces the conflict.
+            print(f"  {tok}: NOTE real position exists but this is a dry-run paper position, ignoring for simulation")
 
         if bot_has_pos:
             side = st["units"][0]["side"]
