@@ -1,1 +1,32 @@
-[]
+[
+ {
+  "token": "BNB",
+  "side": "long",
+  "units": 1,
+  "entry_ts": 1788581756,
+  "exit_ts": 1788668738,
+  "held_hours": 24.2,
+  "pnl": null,
+  "reason": "CLOSED_EXTERNALLY"
+ },
+ {
+  "token": "NEAR",
+  "side": "long",
+  "units": 1,
+  "entry_ts": 1788581756,
+  "exit_ts": 1788668738,
+  "held_hours": 24.2,
+  "pnl": null,
+  "reason": "CLOSED_EXTERNALLY"
+ },
+ {
+  "token": "ZEC",
+  "side": "long",
+  "units": 1,
+  "entry_ts": 1788581756,
+  "exit_ts": 1788668738,
+  "held_hours": 24.2,
+  "pnl": null,
+  "reason": "CLOSED_EXTERNALLY"
+ }
+]
