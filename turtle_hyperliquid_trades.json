@@ -1,1 +1,11 @@
-[]
+[
+ {
+  "token": "TAO",
+  "side": "long",
+  "units": 2,
+  "entry_ts": 1788755068,
+  "exit_ts": 1788822742,
+  "pnl": -3.1,
+  "reason": "STOP"
+ }
+]
