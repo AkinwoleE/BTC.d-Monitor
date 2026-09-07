@@ -12,7 +12,17 @@ name: Turtle Multi-Asset Trader (Hyperliquid)
 # HL_DRY_RUN defaults to true - no real orders until explicitly switched
 # off via the repo variable, after dry-run verification against the real
 # account (same process used for the PUMP trader).
+#
+# GitHub's own schedule trigger was observed running ~4h late every day
+# (2026-09-05/06/07) - harmless for a dry run, but not tight enough once
+# live. Primary trigger is now an external cron-job.org POST (same pattern
+# as btcd_trader.yml), with schedule kept as a fallback if that webhook
+# ever misses. Distinct event type (turtle-cron-trigger, not btcd_trader's
+# cron-trigger) so the two jobs' external webhooks can't cross-fire each
+# other's workflow.
 on:
+  repository_dispatch:
+    types: [turtle-cron-trigger]
   schedule:
     - cron: "10 0 * * *"
   workflow_dispatch:
