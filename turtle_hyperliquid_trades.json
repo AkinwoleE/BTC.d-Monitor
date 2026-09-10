@@ -7,5 +7,14 @@
   "exit_ts": 1788822742,
   "pnl": -3.1,
   "reason": "STOP"
+ },
+ {
+  "token": "LINK",
+  "side": "long",
+  "units": 3,
+  "entry_ts": 1788755068,
+  "exit_ts": 1789014514,
+  "pnl": -4.1,
+  "reason": "STOP"
  }
 ]
