@@ -16,5 +16,14 @@
   "exit_ts": 1789014514,
   "pnl": -4.1,
   "reason": "STOP"
+ },
+ {
+  "token": "BNB",
+  "side": "long",
+  "units": 3,
+  "entry_ts": 1788581756,
+  "exit_ts": 1789100884,
+  "pnl": -4.16,
+  "reason": "STOP"
  }
 ]
