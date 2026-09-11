@@ -22658,30 +22658,169 @@
      "high": 79329.1,
      "low": 77234.2,
      "close": 79173.2
+    },
+    {
+     "ts": 1789135200,
+     "high": 79832.3,
+     "low": 78476.3,
+     "close": 78774.3
+    },
+    {
+     "ts": 1789138800,
+     "high": 78815.5,
+     "low": 77276.7,
+     "close": 77704.7
+    },
+    {
+     "ts": 1789142400,
+     "high": 78041.0,
+     "low": 77380.4,
+     "close": 77898.5
+    },
+    {
+     "ts": 1789146000,
+     "high": 77943.5,
+     "low": 77475.5,
+     "close": 77508.7
     }
    ],
    "alerted": false,
    "stats": {
     "complete": false,
     "ret_6h": 0.681,
-    "ret_12h": 3.07,
-    "ret_24h": 3.07,
-    "ret_48h": 3.07,
+    "ret_12h": 2.551,
+    "ret_24h": 0.903,
+    "ret_48h": 0.903,
     "best_entry": {
      "ts": 1789128000,
      "price": 76000.0,
      "hours_after": 9.0
     },
     "best_exit": {
-     "ts": 1789131600,
-     "price": 79329.1,
-     "hours_after": 10.0
+     "ts": 1789135200,
+     "price": 79832.3,
+     "hours_after": 11.0
     },
-    "best_pnl_pct": 4.38,
-    "mfe_pct": 3.273,
+    "best_pnl_pct": 5.043,
+    "mfe_pct": 3.928,
     "mae_pct": 1.061
+   }
+  },
+  {
+   "id": "1h-bullish-1789128000",
+   "tf": "1h",
+   "direction": "bullish",
+   "legs": 3,
+   "pivots": [
+    {
+     "ts": 1789041600,
+     "price": 76677.0,
+     "rsi": 26.06
+    },
+    {
+     "ts": 1789081200,
+     "price": 76466.0,
+     "rsi": 29.01
+    },
+    {
+     "ts": 1789128000,
+     "price": 76000.0,
+     "rsi": 62.33
+    }
+   ],
+   "confirmed_ts": 1789142400,
+   "confirm_price": 77704.7,
+   "forward": [
+    {
+     "ts": 1789142400,
+     "high": 78041.0,
+     "low": 77380.4,
+     "close": 77898.5
+    },
+    {
+     "ts": 1789146000,
+     "high": 77943.5,
+     "low": 77475.5,
+     "close": 77508.7
+    }
+   ],
+   "alerted": false,
+   "stats": {
+    "complete": false,
+    "ret_6h": -0.252,
+    "ret_12h": -0.252,
+    "ret_24h": -0.252,
+    "ret_48h": -0.252,
+    "best_entry": {
+     "ts": 1789142400,
+     "price": 77380.4,
+     "hours_after": 0.0
+    },
+    "best_exit": {
+     "ts": 1789142400,
+     "price": 78041.0,
+     "hours_after": 0.0
+    },
+    "best_pnl_pct": 0.854,
+    "mfe_pct": 0.433,
+    "mae_pct": 0.417
+   }
+  },
+  {
+   "id": "1h-bullish2-1789128000",
+   "tf": "1h",
+   "direction": "bullish",
+   "legs": 2,
+   "pivots": [
+    {
+     "ts": 1789081200,
+     "price": 76466.0,
+     "rsi": 29.01
+    },
+    {
+     "ts": 1789128000,
+     "price": 76000.0,
+     "rsi": 62.33
+    }
+   ],
+   "confirmed_ts": 1789142400,
+   "confirm_price": 77704.7,
+   "forward": [
+    {
+     "ts": 1789142400,
+     "high": 78041.0,
+     "low": 77380.4,
+     "close": 77898.5
+    },
+    {
+     "ts": 1789146000,
+     "high": 77943.5,
+     "low": 77475.5,
+     "close": 77508.7
+    }
+   ],
+   "alerted": false,
+   "stats": {
+    "complete": false,
+    "ret_6h": -0.252,
+    "ret_12h": -0.252,
+    "ret_24h": -0.252,
+    "ret_48h": -0.252,
+    "best_entry": {
+     "ts": 1789142400,
+     "price": 77380.4,
+     "hours_after": 0.0
+    },
+    "best_exit": {
+     "ts": 1789142400,
+     "price": 78041.0,
+     "hours_after": 0.0
+    },
+    "best_pnl_pct": 0.854,
+    "mfe_pct": 0.433,
+    "mae_pct": 0.417
    }
   }
  ],
- "updated": "2026-09-11T14:59:30.810958+00:00"
+ "updated": "2026-09-11T18:10:16.351670+00:00"
 }
