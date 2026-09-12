@@ -25,5 +25,14 @@
   "exit_ts": 1789100884,
   "pnl": -4.16,
   "reason": "STOP"
+ },
+ {
+  "token": "WLFI",
+  "side": "short",
+  "units": 1,
+  "entry_ts": 1789187099,
+  "exit_ts": 1789254740,
+  "pnl": -1.77,
+  "reason": "STOP"
  }
 ]
