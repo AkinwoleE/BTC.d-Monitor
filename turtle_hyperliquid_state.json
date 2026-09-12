@@ -22,7 +22,15 @@
    "units": []
   },
   "ETH": {
-   "units": []
+   "units": [
+    {
+     "side": "long",
+     "entry_px": 2566.53,
+     "sz": 0.009318752932172204,
+     "n_at_entry": 95.17867410003889,
+     "entry_ts": 1789187099
+    }
+   ]
   },
   "LINK": {
    "units": []
@@ -75,7 +83,15 @@
    "units": []
   },
   "WLFI": {
-   "units": []
+   "units": [
+    {
+     "side": "short",
+     "entry_px": 0.0506,
+     "sz": 284.5205266157742,
+     "n_at_entry": 0.0031173376448433245,
+     "entry_ts": 1789187099
+    }
+   ]
   },
   "XRP": {
    "units": []
