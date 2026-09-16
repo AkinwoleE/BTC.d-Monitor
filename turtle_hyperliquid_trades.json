@@ -34,5 +34,14 @@
   "exit_ts": 1789254740,
   "pnl": -1.77,
   "reason": "STOP"
+ },
+ {
+  "token": "ETH",
+  "side": "long",
+  "units": 2,
+  "entry_ts": 1789187099,
+  "exit_ts": 1789533673,
+  "pnl": -3.1,
+  "reason": "STOP"
  }
 ]
