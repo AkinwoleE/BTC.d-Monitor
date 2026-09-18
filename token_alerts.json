@@ -3226,28 +3226,40 @@
       "high": 0.004378,
       "low": 0.004238,
       "close": 0.004325
+     },
+     {
+      "ts": 1789754400,
+      "high": 0.004452,
+      "low": 0.004309,
+      "close": 0.004401
+     },
+     {
+      "ts": 1789761600,
+      "high": 0.004413,
+      "low": 0.004374,
+      "close": 0.00439
      }
     ],
     "alerted": true,
     "stats": {
      "complete": false,
-     "ret_6h": -1.312,
-     "ret_12h": -1.312,
-     "ret_24h": -1.312,
-     "ret_48h": -1.312,
+     "ret_6h": -3.092,
+     "ret_12h": -2.834,
+     "ret_24h": -2.834,
+     "ret_48h": -2.834,
      "best_entry": {
-      "ts": 1789747200,
-      "price": 0.004378,
-      "hours_after": 2.0
+      "ts": 1789754400,
+      "price": 0.004452,
+      "hours_after": 4.0
      },
      "best_exit": {
-      "ts": 1789747200,
-      "price": 0.004238,
-      "hours_after": 2.0
+      "ts": 1789754400,
+      "price": 0.004309,
+      "hours_after": 4.0
      },
-     "best_pnl_pct": 3.198,
+     "best_pnl_pct": 3.212,
      "mfe_pct": 0.726,
-     "mae_pct": 2.553
+     "mae_pct": 4.287
     }
    }
   ]
@@ -5143,10 +5155,43 @@
     ],
     "confirmed_ts": 1789754400,
     "confirm_price": 0.751,
-    "forward": [],
-    "alerted": true
+    "forward": [
+     {
+      "ts": 1789754400,
+      "high": 0.756,
+      "low": 0.748,
+      "close": 0.756
+     },
+     {
+      "ts": 1789761600,
+      "high": 0.763,
+      "low": 0.753,
+      "close": 0.76
+     }
+    ],
+    "alerted": true,
+    "stats": {
+     "complete": false,
+     "ret_6h": -1.198,
+     "ret_12h": -1.198,
+     "ret_24h": -1.198,
+     "ret_48h": -1.198,
+     "best_entry": {
+      "ts": 1789761600,
+      "price": 0.763,
+      "hours_after": 2.0
+     },
+     "best_exit": {
+      "ts": 1789761600,
+      "price": 0.753,
+      "hours_after": 2.0
+     },
+     "best_pnl_pct": 1.311,
+     "mfe_pct": 0.399,
+     "mae_pct": 1.598
+    }
    }
   ]
  },
- "updated": "2026-09-18T19:43:55.738600+00:00"
+ "updated": "2026-09-18T22:39:31.669880+00:00"
 }
