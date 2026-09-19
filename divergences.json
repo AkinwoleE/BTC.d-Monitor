@@ -25341,6 +25341,18 @@
      "high": 81400.0,
      "low": 81054.3,
      "close": 81129.8
+    },
+    {
+     "ts": 1789851600,
+     "high": 81200.0,
+     "low": 80878.0,
+     "close": 81072.4
+    },
+    {
+     "ts": 1789855200,
+     "high": 81240.0,
+     "low": 80943.6,
+     "close": 81230.8
     }
    ],
    "alerted": true,
@@ -25348,23 +25360,72 @@
     "complete": false,
     "ret_6h": -0.236,
     "ret_12h": -1.0,
-    "ret_24h": -0.158,
-    "ret_48h": -0.158,
+    "ret_24h": -0.283,
+    "ret_48h": -0.283,
     "best_entry": {
      "ts": 1789830000,
      "price": 81915.0,
      "hours_after": 10.0
     },
     "best_exit": {
-     "ts": 1789848000,
-     "price": 81054.3,
-     "hours_after": 15.0
+     "ts": 1789851600,
+     "price": 80878.0,
+     "hours_after": 16.0
     },
-    "best_pnl_pct": 1.051,
-    "mfe_pct": 0.125,
+    "best_pnl_pct": 1.266,
+    "mfe_pct": 0.152,
     "mae_pct": 1.128
+   }
+  },
+  {
+   "id": "2h-bearish2-1789826400",
+   "tf": "2h",
+   "direction": "bearish",
+   "legs": 2,
+   "pivots": [
+    {
+     "ts": 1789776000,
+     "price": 81705.2,
+     "rsi": 81.67
+    },
+    {
+     "ts": 1789826400,
+     "price": 81915.0,
+     "rsi": 80.49
+    }
+   ],
+   "confirmed_ts": 1789855200,
+   "confirm_price": 81072.4,
+   "forward": [
+    {
+     "ts": 1789855200,
+     "high": 81240.0,
+     "low": 80943.6,
+     "close": 81230.8
+    }
+   ],
+   "alerted": true,
+   "stats": {
+    "complete": false,
+    "ret_6h": -0.195,
+    "ret_12h": -0.195,
+    "ret_24h": -0.195,
+    "ret_48h": -0.195,
+    "best_entry": {
+     "ts": 1789855200,
+     "price": 81240.0,
+     "hours_after": 0.0
+    },
+    "best_exit": {
+     "ts": 1789855200,
+     "price": 80943.6,
+     "hours_after": 0.0
+    },
+    "best_pnl_pct": 0.365,
+    "mfe_pct": 0.159,
+    "mae_pct": 0.207
    }
   }
  ],
- "updated": "2026-09-19T21:43:28.159855+00:00"
+ "updated": "2026-09-19T23:33:26.818745+00:00"
 }
