@@ -3244,27 +3244,45 @@
       "high": 0.004406,
       "low": 0.004226,
       "close": 0.004243
+     },
+     {
+      "ts": 1789776000,
+      "high": 0.004264,
+      "low": 0.00419,
+      "close": 0.004228
+     },
+     {
+      "ts": 1789783200,
+      "high": 0.004311,
+      "low": 0.004225,
+      "close": 0.00427
+     },
+     {
+      "ts": 1789790400,
+      "high": 0.00428,
+      "low": 0.004071,
+      "close": 0.00408
      }
     ],
     "alerted": true,
     "stats": {
      "complete": false,
      "ret_6h": -3.092,
-     "ret_12h": 0.609,
-     "ret_24h": 0.609,
-     "ret_48h": 0.609,
+     "ret_12h": 0.96,
+     "ret_24h": 4.427,
+     "ret_48h": 4.427,
      "best_entry": {
       "ts": 1789754400,
       "price": 0.004452,
       "hours_after": 4.0
      },
      "best_exit": {
-      "ts": 1789768800,
-      "price": 0.004226,
-      "hours_after": 8.0
+      "ts": 1789790400,
+      "price": 0.004071,
+      "hours_after": 14.0
      },
-     "best_pnl_pct": 5.076,
-     "mfe_pct": 1.007,
+     "best_pnl_pct": 8.558,
+     "mfe_pct": 4.638,
      "mae_pct": 4.287
     }
    }
@@ -5179,31 +5197,49 @@
       "high": 0.784,
       "low": 0.76,
       "close": 0.767
+     },
+     {
+      "ts": 1789776000,
+      "high": 0.792,
+      "low": 0.767,
+      "close": 0.777
+     },
+     {
+      "ts": 1789783200,
+      "high": 0.789,
+      "low": 0.773,
+      "close": 0.777
+     },
+     {
+      "ts": 1789790400,
+      "high": 0.783,
+      "low": 0.767,
+      "close": 0.772
      }
     ],
     "alerted": true,
     "stats": {
      "complete": false,
      "ret_6h": -2.13,
-     "ret_12h": -2.13,
-     "ret_24h": -2.13,
-     "ret_48h": -2.13,
+     "ret_12h": -2.796,
+     "ret_24h": -2.796,
+     "ret_48h": -2.796,
      "best_entry": {
-      "ts": 1789768800,
-      "price": 0.784,
-      "hours_after": 4.0
+      "ts": 1789776000,
+      "price": 0.792,
+      "hours_after": 6.0
      },
      "best_exit": {
-      "ts": 1789768800,
-      "price": 0.76,
-      "hours_after": 4.0
+      "ts": 1789776000,
+      "price": 0.767,
+      "hours_after": 6.0
      },
-     "best_pnl_pct": 3.061,
+     "best_pnl_pct": 3.157,
      "mfe_pct": 0.399,
-     "mae_pct": 4.394
+     "mae_pct": 5.459
     }
    }
   ]
  },
- "updated": "2026-09-19T01:16:49.268900+00:00"
+ "updated": "2026-09-19T06:00:15.871755+00:00"
 }
