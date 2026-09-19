@@ -56,6 +56,7 @@ FRESH_SIGNAL_SEC = 3 * 3600       # only act on signals confirmed this recently
 DRY_RUN = os.environ.get("HL_DRY_RUN", "true").strip().lower() != "false"
 PRIVATE_KEY = os.environ.get("HYPERLIQUID_API_PRIVATE_KEY", "")
 ACCOUNT_ADDRESS = os.environ.get("HYPERLIQUID_ACCOUNT_ADDRESS", "")
+NEW_SL_PX = os.environ.get("PUMP_NEW_SL_PX", "").strip()  # one-off manual SL adjustment, see move_stop_loss()
 
 
 def load(path, default):
@@ -155,6 +156,39 @@ class Trader:
             return {"dry_run": True}
         return self.exchange.bulk_orders(orders, grouping="normalTpsl")
 
+    def move_stop_loss(self, is_buy, sz, new_sl_trigger):
+        """Cancel the resting SL trigger order for the current position and
+        replace it with one at new_sl_trigger. Only ever touches the SL
+        order — TP is left exactly as-is. Aborts (no cancel, no new order)
+        if it can't find exactly one resting SL order to replace, so a bad
+        match never leaves the position without a stop."""
+        exit_is_buy = not is_buy
+        orders = self.info.frontend_open_orders(ACCOUNT_ADDRESS)
+        sl_orders = [o for o in orders if o.get("coin") == SYMBOL
+                     and "stop" in (o.get("orderType") or "").lower()]
+        if len(sl_orders) != 1:
+            raise RuntimeError(
+                f"expected exactly 1 resting SL order for {SYMBOL}, found {len(sl_orders)} "
+                f"({[o.get('oid') for o in sl_orders]}) — aborting, not touching anything")
+        sl_order = sl_orders[0]
+        sz_matched = float(sl_order["sz"])
+        new_sl_trigger = round_sig(new_sl_trigger)
+        new_sl_limit = slippage_px(new_sl_trigger, exit_is_buy, TRIGGER_SLIP)
+        print(f"  found resting SL: oid={sl_order['oid']} triggerPx={sl_order.get('triggerPx')} sz={sz_matched}")
+        print(f"  -> replacing with triggerPx={new_sl_trigger} limit_px={new_sl_limit}")
+        if DRY_RUN:
+            print(f"  [DRY RUN] would cancel oid={sl_order['oid']} then place: "
+                  f"is_buy={exit_is_buy} sz={sz_matched} trigger={new_sl_trigger} limit={new_sl_limit}")
+            return {"dry_run": True, "old_oid": sl_order["oid"], "old_trigger": sl_order.get("triggerPx"),
+                    "new_trigger": new_sl_trigger}
+        cancel_resp = self.exchange.cancel(SYMBOL, sl_order["oid"])
+        print(f"  cancel response: {cancel_resp}")
+        order_type = {"trigger": {"isMarket": True, "triggerPx": new_sl_trigger, "tpsl": "sl"}}
+        place_resp = self.exchange.order(SYMBOL, exit_is_buy, sz_matched, new_sl_limit,
+                                          order_type, reduce_only=True)
+        print(f"  new SL order response: {place_resp}")
+        return {"cancel": cancel_resp, "new_order": place_resp, "new_trigger": new_sl_trigger}
+
     def force_close(self, reason):
         print(f"  closing {SYMBOL} position (reason={reason})")
         if DRY_RUN:
@@ -215,7 +249,31 @@ def main():
     print(f"  account_value=${account_value:.2f}  {SYMBOL} mid={mid}  "
           f"live_position={'none' if not live_pos else live_pos['szi']}")
 
+    state["last_price"] = mid  # so the dashboard can show live unrealized PnL on the open position
     bot_pos = state.get("position")
+
+    if NEW_SL_PX:
+        if not (bot_pos and live_pos and bot_pos["side"] == ("long" if float(live_pos["szi"]) > 0 else "short")):
+            print("  PUMP_NEW_SL_PX set but no matching open position — aborting, not touching anything")
+            tg("⚠️ PUMP: asked to move SL but no matching open position found. Nothing changed.")
+        else:
+            is_buy = bot_pos["side"] == "long"
+            new_trigger = float(NEW_SL_PX)
+            # safety rail: the new SL must actually lock in profit relative to entry,
+            # never move the stop to something worse than where it already is
+            entry = bot_pos["entry_px"]
+            if (is_buy and new_trigger <= entry) or (not is_buy and new_trigger >= entry):
+                raise ValueError(
+                    f"new SL trigger {new_trigger} does not lock in profit vs entry {entry} "
+                    f"for a {'long' if is_buy else 'short'} — refusing to place it")
+            resp = trader.move_stop_loss(is_buy, bot_pos["sz"], new_trigger)
+            tg(f"🔧 <b>PUMP stop-loss moved</b>{' [DRY RUN]' if DRY_RUN else ''}\n"
+               f"{bot_pos['side'].upper()} {bot_pos['sz']} @ {entry:.6g}\n"
+               f"New SL trigger: {new_trigger:.6g}\nResponse: {resp}")
+        equity.append({"ts": now, "equity": account_value})
+        save(EQUITY_FILE, equity)
+        save(STATE_FILE, state)
+        return
 
     if bot_pos and not live_pos:
         # position we opened is now flat -> closed via TP, SL, or liquidation

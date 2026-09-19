@@ -186,7 +186,8 @@ const C={line:()=>dark?'#0C8FBA':'#3F6F73',green:()=>dark?'#4CAB58':'#2E7D52',re
   grid:()=>dark?'rgba(255,255,255,.08)':'rgba(60,50,35,.10)',
   tick:()=>dark?'#A9BAB4':'#7C7466',dash:()=>dark?'#A9BAB4':'#7C7466'};
 
-let EPS=[],EQ=[],TRADES=[],POSITION=null,sel=null,chDet=null,chEq=null;
+let EPS=[],EQ=[],TRADES=[],POSITION=null,LAST_PRICE=null,sel=null,chDet=null,chEq=null;
+const unrealizedPnl=p=>(LAST_PRICE==null||!p)?null:(p.side==='long'?(LAST_PRICE-p.entry_px):(p.entry_px-LAST_PRICE))*p.sz;
 const legsOf=e=>e.legs||3;
 
 function statsBlock(){
@@ -197,8 +198,10 @@ function statsBlock(){
 
   if(POSITION){
     const held=(Date.now()/1000-POSITION.opened_ts)/3600;
+    const upnl=unrealizedPnl(POSITION);
+    const upnlTxt=upnl==null?'':` · <span class="${pc(upnl)}">${upnl>=0?'+':''}$${fmt(upnl)}</span>`;
     $('s-pos').innerHTML=`<span class="${POSITION.side==='long'?'g':'r'}">${POSITION.side.toUpperCase()}</span>`;
-    $('s-pos-sub').textContent=`${POSITION.sz} @ ${px(POSITION.entry_px)} · held ${fmt(held,1)}h`;
+    $('s-pos-sub').innerHTML=`${POSITION.sz} @ ${px(POSITION.entry_px)} · held ${fmt(held,1)}h${upnlTxt}`;
   }else{
     $('s-pos').innerHTML='<span class="m">FLAT</span>';
     $('s-pos-sub').textContent='no open position';
@@ -272,7 +275,19 @@ function buildSigTable(){
 }
 
 function buildTradesTable(){
-  if(!TRADES.length){$('trades-tbl').innerHTML='<div class="empty">No trades yet — the bot opens a position the next time a fresh PUMP signal fires with no position already open.</div>';return;}
+  if(!TRADES.length&&!POSITION){$('trades-tbl').innerHTML='<div class="empty">No trades yet — the bot opens a position the next time a fresh PUMP signal fires with no position already open.</div>';return;}
+  const openRow=POSITION?(()=>{
+    const sideB=POSITION.side==='long'?'<span class="badge b-bull">▲ long</span>':'<span class="badge b-bear">▼ short</span>';
+    // held-hours is computed from opened_ts each render; the dashboard reloads
+    // its data every 60s and the bot itself only ever writes state hourly, so
+    // in practice this value is refreshed at least once an hour.
+    const heldH=(Date.now()/1000-POSITION.opened_ts)/3600;
+    const upnl=unrealizedPnl(POSITION);
+    const pnlCell=upnl==null?'<td class="m">—</td>':`<td class="${pc(upnl)}"><b>${upnl>=0?'+':''}$${fmt(upnl)}</b></td>`;
+    return `<tr>
+      <td>${fmtDate(POSITION.opened_ts)}</td><td>${sideB}</td><td>${px(POSITION.entry_px)}</td><td>${POSITION.sz}</td>
+      <td class="m">—</td><td><b>${fmt(heldH,1)}h</b></td>${pnlCell}<td><span class="badge b-track">open</span></td></tr>`;
+  })():'';
   const rows=[...TRADES].reverse().map(t=>{
     const sideB=t.side==='long'?'<span class="badge b-bull">▲ long</span>':'<span class="badge b-bear">▼ short</span>';
     const reasonB=`<span class="badge ${t.reason==='TP'?'b-bull':t.reason==='TIME'?'b-track':'b-bear'}">${t.reason||'?'}</span>`;
@@ -283,7 +298,7 @@ function buildTradesTable(){
   }).join('');
   $('trades-tbl').innerHTML=`<table><thead><tr>
     <th>Opened</th><th>Side</th><th>Entry</th><th>Size</th><th>Closed</th><th>Held</th><th>PnL</th><th>Reason</th>
-  </tr></thead><tbody>${rows}</tbody></table>`;
+  </tr></thead><tbody>${openRow}${rows}</tbody></table>`;
 }
 
 function buildEq(){
@@ -348,6 +363,7 @@ function loadAll(){
     EQ=Array.isArray(eq)?eq:[];
     TRADES=Array.isArray(trades)?trades:[];
     POSITION=state&&state.position?state.position:null;
+    LAST_PRICE=state&&state.last_price!=null?state.last_price:null;
     UPDATED=alerts.updated||null;freshness();
     document.fonts.ready.then(()=>{
       statsBlock();buildEq();buildTradesTable();buildSigTable();
