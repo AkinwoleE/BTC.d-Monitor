@@ -1,0 +1,12 @@
+[
+ {
+  "side": "short",
+  "entry_px": 0.004302,
+  "sz": 116225,
+  "opened_ts": 1789749161,
+  "closed_ts": 1789867049,
+  "held_hours": 32.7,
+  "pnl_usd": 5.70645,
+  "reason": "TP/SL (see pnl sign)"
+ }
+]
