@@ -1,16 +1,40 @@
 {
  "positions": {
   "AAVE": {
-   "units": []
+   "units": [
+    {
+     "side": "long",
+     "entry_px": 145.09,
+     "sz": 0.11227468356411079,
+     "n_at_entry": 8.02190796499292,
+     "entry_ts": 1789879518
+    }
+   ]
   },
   "ADA": {
    "units": []
   },
   "APT": {
-   "units": []
+   "units": [
+    {
+     "side": "long",
+     "entry_px": 0.747,
+     "sz": 18.667118023040924,
+     "n_at_entry": 0.048248325062192995,
+     "entry_ts": 1789879518
+    }
+   ]
   },
   "AVAX": {
-   "units": []
+   "units": [
+    {
+     "side": "long",
+     "entry_px": 8.341,
+     "sz": 1.989783550366635,
+     "n_at_entry": 0.4526407800406462,
+     "entry_ts": 1789879518
+    }
+   ]
   },
   "BNB": {
    "units": []
@@ -22,7 +46,15 @@
    "units": []
   },
   "ETH": {
-   "units": []
+   "units": [
+    {
+     "side": "long",
+     "entry_px": 2665.99,
+     "sz": 0.009169442420319184,
+     "n_at_entry": 98.22376727664195,
+     "entry_ts": 1789879518
+    }
+   ]
   },
   "LINK": {
    "units": []
