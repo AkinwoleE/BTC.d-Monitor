@@ -26238,9 +26238,48 @@
    ],
    "confirmed_ts": 1790103600,
    "confirm_price": 86460.1,
-   "forward": [],
-   "alerted": true
+   "forward": [
+    {
+     "ts": 1790103600,
+     "high": 86600.9,
+     "low": 86171.0,
+     "close": 86212.9
+    },
+    {
+     "ts": 1790107200,
+     "high": 86390.9,
+     "low": 86141.0,
+     "close": 86280.8
+    },
+    {
+     "ts": 1790110800,
+     "high": 86350.0,
+     "low": 86174.5,
+     "close": 86184.1
+    }
+   ],
+   "alerted": true,
+   "stats": {
+    "complete": false,
+    "ret_6h": 0.319,
+    "ret_12h": 0.319,
+    "ret_24h": 0.319,
+    "ret_48h": 0.319,
+    "best_entry": {
+     "ts": 1790103600,
+     "price": 86600.9,
+     "hours_after": 0.0
+    },
+    "best_exit": {
+     "ts": 1790107200,
+     "price": 86141.0,
+     "hours_after": 1.0
+    },
+    "best_pnl_pct": 0.531,
+    "mfe_pct": 0.369,
+    "mae_pct": 0.163
+   }
   }
  ],
- "updated": "2026-09-22T19:55:46.303924+00:00"
+ "updated": "2026-09-22T22:27:53.681981+00:00"
 }
