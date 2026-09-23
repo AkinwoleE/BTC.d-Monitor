@@ -118,5 +118,18 @@
   "pnl": -7.561247000000009,
   "held_hours": 49.7,
   "timestamp": "2026-09-13T22:37:29.540264+00:00"
+ },
+ {
+  "action": "OPEN",
+  "episode_id": "2h-bearish2-1790136000",
+  "direction": "bearish",
+  "side": "short",
+  "size": 0.01183,
+  "entry_price": 84510.2,
+  "equity": 222.239411,
+  "tp_price": 81636.9,
+  "sl_price": 86200.4,
+  "tp_sl_ok": true,
+  "timestamp": "2026-09-23T14:58:44.739062+00:00"
  }
 ]
