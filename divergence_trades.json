@@ -131,5 +131,15 @@
   "sl_price": 86200.4,
   "tp_sl_ok": true,
   "timestamp": "2026-09-23T14:58:44.739062+00:00"
+ },
+ {
+  "action": "CLOSE",
+  "episode_id": "2h-bearish2-1790136000",
+  "reason": "TIME_EXIT_48H",
+  "direction": "bearish",
+  "entry_price": 84510.2,
+  "pnl": 6.113121000000007,
+  "held_hours": 51.8,
+  "timestamp": "2026-09-25T18:45:27.952970+00:00"
  }
 ]
