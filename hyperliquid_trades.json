@@ -8,5 +8,15 @@
   "held_hours": 32.7,
   "pnl_usd": 5.70645,
   "reason": "TP/SL (see pnl sign)"
+ },
+ {
+  "side": "short",
+  "entry_px": 0.004792,
+  "sz": 104341,
+  "opened_ts": 1790647428,
+  "closed_ts": 1790697551,
+  "held_hours": 13.9,
+  "pnl_usd": -76.064589,
+  "reason": "TP/SL (see pnl sign)"
  }
 ]
