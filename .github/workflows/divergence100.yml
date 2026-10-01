@@ -5,6 +5,14 @@ name: Divergence 100 Daily Update
 # 2h candles since the last run (divergence100_update.py, live REST klines),
 # never the full 3-year bulk-archive backfill (divergence100_build.py, a
 # separate manual/one-off script for (re)building the initial roster+history).
+#
+# Also runs wlfi_trader.py (added 2026-10-01): automated WLFI trading on
+# Hyperliquid, re-deriving fresh episodes straight from the candle cache this
+# job just refreshed (see wlfi_trader.py's docstring — no hourly watchlist
+# feed exists for WLFI the way PUMP has one, so this step has to come right
+# after the refresh above, not run independently on its own schedule).
+# WLFI_HL_DRY_RUN defaults to true — no real orders until explicitly switched
+# off via the repo variable, same pattern as PUMP's HL_DRY_RUN.
 on:
   schedule:
     - cron: "17 3 * * *"
@@ -28,16 +36,30 @@ jobs:
         with:
           python-version: "3.11"
 
-      - run: pip install requests
+      - run: pip install requests hyperliquid-python-sdk
 
       - name: Refresh Divergence 100
         run: python divergence100_update.py
 
+      - name: Run WLFI trader
+        if: always()
+        run: python wlfi_trader.py
+        env:
+          WLFI_HL_DRY_RUN: ${{ vars.WLFI_HL_DRY_RUN || 'true' }}
+          HYPERLIQUID_API_PRIVATE_KEY: ${{ secrets.HYPERLIQUID_API_PRIVATE_KEY }}
+          HYPERLIQUID_ACCOUNT_ADDRESS: ${{ secrets.HYPERLIQUID_ACCOUNT_ADDRESS }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+
       - name: Commit data
+        if: always()
         run: |
           git config user.name "divergence100-bot"
           git config user.email "actions@users.noreply.github.com"
           git add divergence100.json data/divergence100/
+          for f in wlfi_trader_state.json wlfi_trades.json wlfi_equity.json; do
+            if [ -f "$f" ]; then git add "$f"; fi
+          done
           git diff --cached --quiet && exit 0
           git commit -m "divergence100: daily refresh [skip ci]"
           git pull --rebase origin main || true
