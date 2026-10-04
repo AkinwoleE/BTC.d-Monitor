@@ -30857,7 +30857,62 @@
     "mfe_pct": 1.709,
     "mae_pct": 0.212
    }
+  },
+  {
+   "id": "1h-bearish2-1791126000",
+   "tf": "1h",
+   "direction": "bearish",
+   "legs": 2,
+   "pivots": [
+    {
+     "ts": 1791108000,
+     "price": 85406.8,
+     "rsi": 68.44
+    },
+    {
+     "ts": 1791126000,
+     "price": 85459.5,
+     "rsi": 62.58
+    }
+   ],
+   "confirmed_ts": 1791140400,
+   "confirm_price": 85320.7,
+   "forward": [
+    {
+     "ts": 1791140400,
+     "high": 85551.2,
+     "low": 85320.6,
+     "close": 85412.8
+    },
+    {
+     "ts": 1791144000,
+     "high": 85850.0,
+     "low": 85378.0,
+     "close": 85817.8
+    }
+   ],
+   "alerted": false,
+   "stats": {
+    "complete": false,
+    "ret_6h": -0.583,
+    "ret_12h": -0.583,
+    "ret_24h": -0.583,
+    "ret_48h": -0.583,
+    "best_entry": {
+     "ts": 1791144000,
+     "price": 85850.0,
+     "hours_after": 1.0
+    },
+    "best_exit": {
+     "ts": 1791144000,
+     "price": 85378.0,
+     "hours_after": 1.0
+    },
+    "best_pnl_pct": 0.55,
+    "mfe_pct": 0.0,
+    "mae_pct": 0.62
+   }
   }
  ],
- "updated": "2026-10-04T18:41:43.003311+00:00"
+ "updated": "2026-10-04T21:55:39.503842+00:00"
 }
