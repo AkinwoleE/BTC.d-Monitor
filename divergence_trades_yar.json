@@ -149,5 +149,15 @@
   "sl_price": 80937.0,
   "tp_sl_ok": true,
   "timestamp": "2026-10-08T14:55:49.223108+00:00"
+ },
+ {
+  "action": "CLOSE",
+  "episode_id": "2h-bullish2-1791432000",
+  "reason": "TP_SL_FILLED",
+  "direction": "bullish",
+  "entry_price": 82588.8,
+  "pnl": -21.69026199999999,
+  "held_hours": 5.4,
+  "timestamp": "2026-10-08T20:17:07.358426+00:00"
  }
 ]
