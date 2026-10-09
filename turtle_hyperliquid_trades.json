@@ -43,5 +43,23 @@
   "exit_ts": 1789533673,
   "pnl": -3.1,
   "reason": "STOP"
+ },
+ {
+  "token": "ETH",
+  "side": "long",
+  "units": 1,
+  "entry_ts": 1789879518,
+  "exit_ts": 1791525467,
+  "pnl": -1.8,
+  "reason": "STOP"
+ },
+ {
+  "token": "ZEC",
+  "side": "long",
+  "units": 4,
+  "entry_ts": 1788581756,
+  "exit_ts": 1791525467,
+  "pnl": 12.46,
+  "reason": "CHANNEL_EXIT"
  }
 ]
