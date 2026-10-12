@@ -33515,7 +33515,135 @@
     "mfe_pct": 1.242,
     "mae_pct": 2.56
    }
+  },
+  {
+   "id": "1h-bearish2-1791788400",
+   "tf": "1h",
+   "direction": "bearish",
+   "legs": 2,
+   "pivots": [
+    {
+     "ts": 1791738000,
+     "price": 84125.5,
+     "rsi": 71.48
+    },
+    {
+     "ts": 1791788400,
+     "price": 84250.0,
+     "rsi": 58.45
+    }
+   ],
+   "confirmed_ts": 1791802800,
+   "confirm_price": 83421.0,
+   "forward": [
+    {
+     "ts": 1791802800,
+     "high": 83421.0,
+     "low": 83209.3,
+     "close": 83315.5
+    },
+    {
+     "ts": 1791806400,
+     "high": 83321.4,
+     "low": 82565.7,
+     "close": 82672.3
+    },
+    {
+     "ts": 1791810000,
+     "high": 82939.0,
+     "low": 82392.9,
+     "close": 82882.5
+    },
+    {
+     "ts": 1791813600,
+     "high": 83019.7,
+     "low": 82318.2,
+     "close": 82499.0
+    },
+    {
+     "ts": 1791817200,
+     "high": 82699.4,
+     "low": 82499.0,
+     "close": 82641.1
+    }
+   ],
+   "alerted": false,
+   "stats": {
+    "complete": false,
+    "ret_6h": 0.935,
+    "ret_12h": 0.935,
+    "ret_24h": 0.935,
+    "ret_48h": 0.935,
+    "best_entry": {
+     "ts": 1791802800,
+     "price": 83421.0,
+     "hours_after": 0.0
+    },
+    "best_exit": {
+     "ts": 1791813600,
+     "price": 82318.2,
+     "hours_after": 3.0
+    },
+    "best_pnl_pct": 1.322,
+    "mfe_pct": 1.322,
+    "mae_pct": 0.0
+   }
+  },
+  {
+   "id": "2h-bearish2-1791784800",
+   "tf": "2h",
+   "direction": "bearish",
+   "legs": 2,
+   "pivots": [
+    {
+     "ts": 1791734400,
+     "price": 84125.5,
+     "rsi": 66.31
+    },
+    {
+     "ts": 1791784800,
+     "price": 84250.0,
+     "rsi": 64.04
+    }
+   ],
+   "confirmed_ts": 1791813600,
+   "confirm_price": 82882.5,
+   "forward": [
+    {
+     "ts": 1791813600,
+     "high": 83019.7,
+     "low": 82318.2,
+     "close": 82499.0
+    },
+    {
+     "ts": 1791817200,
+     "high": 82699.4,
+     "low": 82499.0,
+     "close": 82641.1
+    }
+   ],
+   "alerted": true,
+   "stats": {
+    "complete": false,
+    "ret_6h": 0.291,
+    "ret_12h": 0.291,
+    "ret_24h": 0.291,
+    "ret_48h": 0.291,
+    "best_entry": {
+     "ts": 1791813600,
+     "price": 83019.7,
+     "hours_after": 0.0
+    },
+    "best_exit": {
+     "ts": 1791813600,
+     "price": 82318.2,
+     "hours_after": 0.0
+    },
+    "best_pnl_pct": 0.845,
+    "mfe_pct": 0.681,
+    "mae_pct": 0.166
+   }
   }
  ],
- "updated": "2026-10-12T07:30:27.701100+00:00"
+ "updated": "2026-10-12T16:59:09.036801+00:00"
 }
