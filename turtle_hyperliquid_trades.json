@@ -61,5 +61,14 @@
   "exit_ts": 1791525467,
   "pnl": 12.46,
   "reason": "CHANNEL_EXIT"
+ },
+ {
+  "token": "AVAX",
+  "side": "long",
+  "units": 1,
+  "entry_ts": 1789879518,
+  "exit_ts": 1792124440,
+  "pnl": 2.83,
+  "reason": "CHANNEL_EXIT"
  }
 ]
