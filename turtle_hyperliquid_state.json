@@ -1,15 +1,7 @@
 {
  "positions": {
   "AAVE": {
-   "units": [
-    {
-     "side": "long",
-     "entry_px": 145.09,
-     "sz": 0.11227468356411079,
-     "n_at_entry": 8.02190796499292,
-     "entry_ts": 1789879518
-    }
-   ]
+   "units": []
   },
   "ADA": {
    "units": []
