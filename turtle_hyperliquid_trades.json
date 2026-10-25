@@ -79,5 +79,14 @@
   "exit_ts": 1792730131,
   "pnl": 0.11,
   "reason": "CHANNEL_EXIT"
+ },
+ {
+  "token": "NEAR",
+  "side": "long",
+  "units": 4,
+  "entry_ts": 1788581756,
+  "exit_ts": 1792902543,
+  "pnl": 50.81,
+  "reason": "CHANNEL_EXIT"
  }
 ]
