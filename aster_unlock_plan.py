@@ -554,9 +554,15 @@ def decide_entry(*, now, state, account_value, free_margin, mark, mid, position_
         "prior_filled_sz": prior_filled,
     }
     if sized["below_min"] or sized["sz"] <= 0:
-        reason = "notional_cap" if sized["room_notional_usd"] < MIN_ORDER_NOTIONAL_USD else "below_min_notional"
-        if sized["binding"] == "free_margin" and sized["sz"] <= 0:
+        if (sized["live_notional_usd"] < MIN_ORDER_NOTIONAL_USD
+                and sized["notional_cap_usd"] < MIN_ORDER_NOTIONAL_USD):
+            reason = "account_below_min_notional"
+        elif sized["room_notional_usd"] < MIN_ORDER_NOTIONAL_USD:
+            reason = "notional_cap"
+        elif sized["binding"] == "free_margin" and sized["sz"] <= 0:
             reason = "no_free_margin"
+        else:
+            reason = "below_min_notional"
         base.update({
             "kind": "skip", "send": False, "reason": reason, "eligible_now": False,
             "leverage": None, "entry_order": None,

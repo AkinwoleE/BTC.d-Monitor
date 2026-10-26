@@ -162,25 +162,87 @@ def _f(value, default=0.0):
         return default
 
 
+def _spot_balances(info):
+    spot = info.spot_user_state(ACCOUNT_ADDRESS)
+    balances = []
+    usdc_total = 0.0
+    usdc_hold = 0.0
+    for row in spot.get("balances") or []:
+        total = _f(row.get("total"))
+        hold = _f(row.get("hold"))
+        if total == 0 and hold == 0:
+            continue
+        balances.append({"coin": row.get("coin"), "total": total, "hold": hold})
+        if row.get("coin") == "USDC":
+            usdc_total = total
+            usdc_hold = hold
+    return balances, usdc_total, usdc_hold
+
+
+def _abstraction(info):
+    try:
+        mode = info.query_user_abstraction_state(ACCOUNT_ADDRESS)
+    except Exception as exc:
+        return f"unavailable:{type(exc).__name__}"
+    if isinstance(mode, str):
+        return mode.strip().strip('"')
+    return str(mode)
+
+
+def _portfolio_latest(info):
+    """Latest point on Hyperliquid's portfolio curve. Not used for sizing."""
+    try:
+        data = info.portfolio(ACCOUNT_ADDRESS)
+    except Exception as exc:
+        return {"error": type(exc).__name__}
+    latest = None
+    if isinstance(data, list):
+        for item in data:
+            if not (isinstance(item, list) and len(item) == 2 and isinstance(item[1], dict)):
+                continue
+            history = item[1].get("accountValueHistory") or []
+            if not history:
+                continue
+            ts, value = history[-1]
+            if latest is None or int(ts) >= latest["ts"]:
+                latest = {"period": item[0], "ts": int(ts), "account_value": value}
+    return latest or {"latest": None}
+
+
 def _account(info):
     us = info.user_state(ACCOUNT_ADDRESS)
     margin = us.get("marginSummary") or {}
-    account_value = _f(margin.get("accountValue"))
-    source = "perp_margin_summary"
-    if account_value <= 0:
-        spot = info.spot_user_state(ACCOUNT_ADDRESS)
-        usdc = next((b for b in spot.get("balances") or [] if b.get("coin") == "USDC"), None)
-        account_value = _f(usdc.get("total")) if usdc else 0.0
+    cross = us.get("crossMarginSummary") or {}
+    perp_margin = _f(margin.get("accountValue"))
+    perp_cross = _f(cross.get("accountValue"))
+    perp_value = max(perp_margin, perp_cross)
+    balances, usdc_total, usdc_hold = _spot_balances(info)
+    mode = _abstraction(info)
+    # Unified and portfolio-margin accounts keep the tradable balance in the
+    # spot clearinghouse. Their perp marginSummary is not meaningful. Standard
+    # accounts report equity on the perp clearinghouse instead.
+    unified = mode in ("unifiedAccount", "portfolioMargin")
+    if unified:
+        account_value = usdc_total
+        source = "spot_usdc_unified"
+    elif perp_value > 0:
+        account_value = perp_value
+        source = "perp_margin_summary"
+    else:
+        account_value = usdc_total
         source = "spot_usdc"
-    margin_used = _f(margin.get("totalMarginUsed"))
+    margin_used = max(_f(margin.get("totalMarginUsed")), _f(cross.get("totalMarginUsed")))
     withdrawable = _f(us.get("withdrawable"))
     classic = account_value - margin_used
     if withdrawable > 0 and classic > 0:
-        free = min(withdrawable, classic)
+        free = min(withdrawable, max(classic, 0.0))
     elif withdrawable > 0:
         free = withdrawable
     else:
         free = max(0.0, classic)
+    # Spot USDC on hold is not free even when the perp withdrawable field is empty.
+    if unified:
+        free = max(0.0, usdc_total - usdc_hold)
     return {
         "user_state": us,
         "account_value": account_value,
@@ -188,6 +250,10 @@ def _account(info):
         "withdrawable": withdrawable,
         "free_margin": free,
         "source": source,
+        "abstraction": mode,
+        "perp_account_value": perp_value,
+        "spot_balances": balances,
+        "portfolio_latest": _portfolio_latest(info),
     }
 
 
@@ -449,9 +515,11 @@ def _header(action, live, reason, ctx, agent):
     direction = "longs pay shorts" if funding > 0 else "shorts pay longs" if funding < 0 else "flat"
     print(f"aster_unlock_short {_now().isoformat()} action={action} live={str(live).lower()}")
     print(f"live_gate: {reason or 'armed'}")
-    print(f"account_value={account.get('account_value')} source={account.get('source')}")
+    print(f"account_value={account.get('account_value')} source={account.get('source')} "
+          f"abstraction={account.get('abstraction')} perp_account_value={account.get('perp_account_value')}")
     print(f"free_margin={account.get('free_margin')} withdrawable={account.get('withdrawable')} "
           f"margin_used={account.get('margin_used')}")
+    print(f"spot_balances={account.get('spot_balances')} portfolio_latest={account.get('portfolio_latest')}")
     print(f"ASTER mark={ctx['mark']} mid={ctx['mid']} oracle={ctx['oracle']} "
           f"szDecimals={ctx['sz_decimals']} maxLeverage={ctx['max_leverage']}")
     print(f"funding_hourly={funding} ({direction}) funding_annualized={ctx['funding_annualized']:.6f} "
@@ -554,8 +622,11 @@ def run():
         elif decision["send"]:
             print("DRY RUN: eligible orders were not sent.")
         else:
-            print("DRY RUN: tranche is not eligible right now. Payload above is the order a due, "
-                  "live run would send from this same account snapshot. Nothing was sent.")
+            if decision.get("entry_order"):
+                print("DRY RUN: tranche is not eligible right now. Payload above is the order a due, "
+                      "live run would send from this same account snapshot. Nothing was sent.")
+            else:
+                print(f"DRY RUN: no order would be sent ({decision['reason']}). Nothing was sent.")
 
     elif action == "check_stop":
         decision = decide_check_stop(

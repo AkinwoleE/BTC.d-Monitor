@@ -108,6 +108,12 @@ class SizingTests(unittest.TestCase):
         self.assertIsNone(decision["entry_order"])
         self.assertLess(tranche_notional(100), MIN_ORDER_NOTIONAL_USD)
 
+    def test_dust_account_is_below_the_exchange_minimum(self):
+        decision = entry(account_value=1.34e-06, free_margin=1.34e-06)
+        self.assertFalse(decision["send"])
+        self.assertEqual(decision["reason"], "account_below_min_notional")
+        self.assertIsNone(decision["entry_order"])
+
     def test_no_free_margin(self):
         decision = entry(free_margin=0)
         self.assertFalse(decision["send"])
