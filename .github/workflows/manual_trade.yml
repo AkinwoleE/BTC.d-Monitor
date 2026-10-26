@@ -37,7 +37,7 @@ permissions:
 jobs:
   manual-trade:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
 
@@ -87,9 +87,13 @@ jobs:
         run: |
           git config user.name "divergence-bot"
           git config user.email "actions@users.noreply.github.com"
-          for f in divergence_trader_state.json divergence_trades.json divergence_equity.json \
+          for base in divergence_trader_state.json divergence_trades.json divergence_equity.json \
                    divergence_trader_state_yar.json divergence_trades_yar.json divergence_equity_yar.json; do
-            if [ -f "$f" ]; then git add "$f"; fi
+            if [ -f "$base" ]; then git add "$base"; fi
+            if [ -f "$base.bak" ]; then git add "$base.bak"; fi
+            for side in "$base".corrupt-*; do
+              if [ -f "$side" ]; then git add "$side"; fi
+            done
           done
           git diff --cached --quiet && exit 0
           git commit -m "manual-trade: update data [skip ci]"
