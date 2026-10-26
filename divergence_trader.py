@@ -406,7 +406,19 @@ def main():
     # equity graph samples are recorded whenever creds work, even with trading off
     live_pos, equity, api_ok = live_snapshot()
     if api_ok:
-        record_equity(equity)
+        # 2026-10-15/16 incident: a sustained Decibel cred/API failure returned
+        # successful-but-empty snapshots for ~8h straight (9 cycles) — api_ok
+        # stayed True (no exception, just zero balance), so this wrote $0.00
+        # into the equity graph every cycle even though implausible() was
+        # already catching the identical pattern down in the trading path.
+        # Reuse that same signature here: a known-open position + no live
+        # position + ~$0 equity is never a trustworthy equity sample.
+        peeked_pos = load_state().get("position")
+        if implausible(bool(peeked_pos), live_pos, equity):
+            print(f"  [{ACCOUNT}] record_equity: skipping — implausible empty snapshot "
+                  f"(state open, no live position, equity ${equity:.2f})")
+        else:
+            record_equity(equity)
 
     if MANUAL_SIDE in ("long", "short"):
         if not api_ok:
