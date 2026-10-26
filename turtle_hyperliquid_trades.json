@@ -88,5 +88,14 @@
   "exit_ts": 1792902543,
   "pnl": 50.81,
   "reason": "CHANNEL_EXIT"
+ },
+ {
+  "token": "APT",
+  "side": "long",
+  "units": 1,
+  "entry_ts": 1789879518,
+  "exit_ts": 1792989173,
+  "pnl": -1.05,
+  "reason": "CHANNEL_EXIT"
  }
 ]
