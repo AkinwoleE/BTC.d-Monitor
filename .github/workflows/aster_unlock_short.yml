@@ -45,12 +45,6 @@ on:
         required: true
         type: boolean
         default: true
-  # Temporary: a new workflow cannot be workflow_dispatch'd until it is on
-  # the default branch. This push job dry-runs status and enter_tranche on
-  # the PR branch. Remove it before merge.
-  push:
-    branches:
-      - cursor/aster-unlock-short-c106
 
 concurrency:
   group: aster-unlock-short
@@ -61,7 +55,6 @@ permissions:
 
 jobs:
   trade:
-    if: github.event_name != 'push'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -104,45 +97,3 @@ jobs:
           git commit -m "aster-unlock: update state [skip ci]"
           git pull --rebase origin "$GITHUB_REF_NAME" || true
           git push origin "HEAD:$GITHUB_REF_NAME"
-
-  # Dry-run proof for this branch. Same live gate as the real job: ASTER_LIVE
-  # is whatever the repo variable is (expected unset) and dry_run is forced true.
-  smoke:
-    if: github.event_name == 'push'
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      - run: pip install requests "hyperliquid-python-sdk==0.24.0"
-
-      - name: Unit tests
-        run: python -m unittest test_aster_unlock_plan.py
-
-      - name: Dry-run status
-        run: python aster_unlock_short.py
-        env:
-          ASTER_LIVE: ${{ vars.ASTER_LIVE }}
-          ASTER_EVENT_NAME: workflow_dispatch
-          ASTER_ACTION: status
-          ASTER_DISPATCH_DRY_RUN: "true"
-          HYPERLIQUID_API_PRIVATE_KEY: ${{ secrets.HYPERLIQUID_API_PRIVATE_KEY }}
-          HYPERLIQUID_ACCOUNT_ADDRESS: ${{ secrets.HYPERLIQUID_ACCOUNT_ADDRESS }}
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-
-      - name: Dry-run enter_tranche
-        run: python aster_unlock_short.py
-        env:
-          ASTER_LIVE: ${{ vars.ASTER_LIVE }}
-          ASTER_EVENT_NAME: workflow_dispatch
-          ASTER_ACTION: enter_tranche
-          ASTER_DISPATCH_DRY_RUN: "true"
-          HYPERLIQUID_API_PRIVATE_KEY: ${{ secrets.HYPERLIQUID_API_PRIVATE_KEY }}
-          HYPERLIQUID_ACCOUNT_ADDRESS: ${{ secrets.HYPERLIQUID_ACCOUNT_ADDRESS }}
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
