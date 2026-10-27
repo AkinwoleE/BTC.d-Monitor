@@ -40,7 +40,15 @@
    "units": []
   },
   "TRUMP": {
-   "units": []
+   "units": [
+    {
+     "side": "short",
+     "entry_px": 1.621,
+     "sz": 2.5208358897962082e-08,
+     "n_at_entry": 0.13289242721273792,
+     "entry_ts": 1793076681
+    }
+   ]
   },
   "TRX": {
    "units": []
