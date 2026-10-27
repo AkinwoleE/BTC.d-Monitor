@@ -23,8 +23,17 @@ entry within the first 12h, best exit after that entry). The dashboard
 
 Env: TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID (optional — prints instead if unset).
 """
-import os, json, time, requests
+import os, time, requests
 from datetime import datetime, timezone
+
+from divergence_reliability import (
+    DurableJsonError,
+    TransientError,
+    atomic_write_json,
+    closed_since,
+    read_json_durable,
+    retry_call,
+)
 
 KRAKEN     = "https://api.kraken.com/0/public"
 PAIR       = "XBTUSD"
@@ -45,15 +54,34 @@ FRESH_ALERT  = {"1h": 2 * 3600, "2h": 4 * 3600}   # alert only if confirmed this
 # ── data ──────────────────────────────────────────────────────────────────────
 
 def kraken_1h(n=700):
-    since = int(time.time()) - 3600 * (n + 5)
-    r = requests.get(f"{KRAKEN}/OHLC?pair={PAIR}&interval=60&since={since}", timeout=15)
-    r.raise_for_status()
-    d = r.json()
-    if d.get("error"):
-        raise ValueError(f"Kraken: {d['error']}")
-    key = next(k for k in d["result"] if k != "last")
-    return [{"ts": int(c[0]), "open": float(c[1]), "high": float(c[2]),
-             "low": float(c[3]), "close": float(c[4])} for c in d["result"][key]]
+    """1h OHLC. Retried: a single Kraken blip must not skip this candle's scan."""
+    def fetch():
+        since = int(time.time()) - 3600 * (n + 5)
+        r = requests.get(f"{KRAKEN}/OHLC?pair={PAIR}&interval=60&since={since}", timeout=15)
+        r.raise_for_status()
+        d = r.json()
+        if d.get("error"):
+            raise TransientError(f"Kraken: {d['error']}")
+        key = next(k for k in d["result"] if k != "last")
+        return [{"ts": int(c[0]), "open": float(c[1]), "high": float(c[2]),
+                 "low": float(c[3]), "close": float(c[4])} for c in d["result"][key]]
+    return retry_call(fetch, attempts=4, base_delay=2.0)
+
+def load_divergences():
+    """Load the signal file. Never replace a corrupt file with an empty one."""
+    if not os.path.exists(DATA_FILE):
+        return {"episodes": [], "scan": {}}
+    data = read_json_durable(DATA_FILE)
+    if not isinstance(data, dict):
+        raise DurableJsonError("divergences.json is not an object; left it untouched")
+    episodes = data.get("episodes")
+    if episodes is None:
+        data["episodes"] = []
+    elif not isinstance(episodes, list):
+        raise DurableJsonError("divergences.json episodes are unreadable; left the file untouched")
+    if not isinstance(data.get("scan"), dict):
+        data["scan"] = {}
+    return data
 
 def resample_2h(c1h):
     """Pair UTC-even-hour-anchored 1h candles into synthetic 2h candles."""
@@ -263,9 +291,10 @@ def main():
     print(f"  candles: {len(c1h)}x1h  {len(c2h)}x2h")
 
     try:
-        data = json.load(open(DATA_FILE))
-    except (FileNotFoundError, json.JSONDecodeError):
-        data = {"episodes": []}
+        data = load_divergences()
+    except DurableJsonError as e:
+        tg(f"🚨 divergences.json is corrupt and was not overwritten ({e}).")
+        raise
     known = {e["id"]: e for e in data["episodes"]}
 
     new_eps = []
@@ -309,9 +338,25 @@ def main():
         if not ep.get("stats", {}).get("complete"):
             update_forward(ep, c1h)
 
+    # The scan itself always covers the fetched history. The marker is what
+    # makes a gap visible: every closed 2h candle since the previous successful
+    # run is counted, and the marker advances only after this run got this far.
+    # A missing marker (first deploy) does not replay the archive.
+    scan = data.setdefault("scan", {})
+    if not isinstance(scan, dict):
+        scan = {}
+        data["scan"] = scan
+    missed = closed_since(c2h, scan.get("2h_last_open"), now, 7200)
+    if scan.get("2h_last_open") is not None and missed:
+        print(f"  catch-up: {len(missed)} closed 2h candle(s) since the last successful scan "
+              f"— included in this run")
+    if c2h:
+        scan["2h_last_open"] = c2h[-1]["ts"]
+        scan["2h_checked_at"] = now
+
     data["episodes"].sort(key=lambda e: e["confirmed_ts"])
     data["updated"] = datetime.now(timezone.utc).isoformat()
-    json.dump(data, open(DATA_FILE, "w"), indent=1)
+    atomic_write_json(DATA_FILE, data, indent=1)
     print(f"  saved {len(data['episodes'])} episodes ({fresh_alerts} new alerts)")
 
 if __name__ == "__main__":

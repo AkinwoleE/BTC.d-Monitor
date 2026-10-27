@@ -2,7 +2,12 @@ name: RSI Divergence Monitor
 
 on:
   schedule:
+    # Every 15 minutes, plus 7 minutes after each 2h candle close
+    # (00:07, 02:07, … UTC). The :07 run is the prompt path; if a run is
+    # skipped or late, the trader still evaluates every closed 2h candle
+    # since the last successful scan.
     - cron: "*/15 * * * *"
+    - cron: "7 */2 * * *"
   workflow_dispatch:
   repository_dispatch:
     types: [divergence-check]
@@ -19,7 +24,7 @@ permissions:
 jobs:
   check:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
 
@@ -34,12 +39,15 @@ jobs:
       - run: pip install requests
 
       - name: Run divergence monitor
+        id: monitor
+        continue-on-error: true
         run: python divergence_monitor.py
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
 
       - name: Run divergence trader
+        if: always()
         run: python divergence_trader.py
         env:
           # trading is ON by default (user decision 2026-08-04); set the repo
@@ -74,6 +82,7 @@ jobs:
       # touch the primary account's already-saved state — the two are only
       # connected by reading the same divergences.json.
       - name: Run divergence trader (Yar's account)
+        if: always()
         continue-on-error: true
         run: python divergence_trader.py
         env:
@@ -106,12 +115,22 @@ jobs:
           # add each file individually: a single `git add` with any missing
           # pathspec stages NOTHING (this silently blocked all data commits
           # 2026-07-30 → 08-04 while the trader files didn't exist yet)
-          for f in divergences.json \
+          for base in divergences.json \
                    divergence_trader_state.json divergence_trades.json divergence_equity.json \
                    divergence_trader_state_yar.json divergence_trades_yar.json divergence_equity_yar.json; do
-            if [ -f "$f" ]; then git add "$f"; fi
+            if [ -f "$base" ]; then git add "$base"; fi
+            if [ -f "$base.bak" ]; then git add "$base.bak"; fi
+            for side in "$base".corrupt-*; do
+              if [ -f "$side" ]; then git add "$side"; fi
+            done
           done
           git diff --cached --quiet && exit 0
           git commit -m "divergence: update data [skip ci]"
           git pull --rebase origin main || true
           git push origin main
+
+      # Data is already committed above. A Kraken failure must not skip the
+      # trader, but it should still turn the job red so it is not silent.
+      - name: Report monitor failure
+        if: always() && steps.monitor.outcome == 'failure'
+        run: exit 1
