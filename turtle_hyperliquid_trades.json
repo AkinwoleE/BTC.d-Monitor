@@ -97,5 +97,23 @@
   "exit_ts": 1792989173,
   "pnl": -1.05,
   "reason": "CHANNEL_EXIT"
+ },
+ {
+  "token": "BNB",
+  "side": "short",
+  "units": 1,
+  "entry_ts": 1793338485,
+  "exit_ts": 1793401938,
+  "pnl": -0.0,
+  "reason": "STOP"
+ },
+ {
+  "token": "TRX",
+  "side": "long",
+  "units": 1,
+  "entry_ts": 1793338485,
+  "exit_ts": 1793401938,
+  "pnl": -0.0,
+  "reason": "STOP"
  }
 ]
