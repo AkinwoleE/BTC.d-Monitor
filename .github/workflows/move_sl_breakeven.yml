@@ -1,0 +1,91 @@
+name: Move Stop to Breakeven
+
+# workflow_dispatch ONLY — this must never run on a schedule. It cancels the
+# open position's native Decibel TP/SL and places them again with the stop at
+# entry (0.5% limit through the trigger) and the existing take-profit kept.
+# It does not open, close, resize, or change leverage. If the live position
+# does not match the state file, it stops and sends nothing.
+#
+# The trader stamps sl_breakeven on the position. The hourly divergence
+# monitor re-places that entry stop if protection is later missing, instead
+# of the default 2% stop. New entries are unchanged.
+on:
+  workflow_dispatch:
+    inputs:
+      account:
+        description: "Which account"
+        required: true
+        type: choice
+        options: [primary, yar, both]
+      dry_run:
+        description: "Dry run (verify only — do not cancel or replace orders)"
+        required: true
+        type: boolean
+        default: true
+
+# Same group as divergence_monitor.yml so a move cannot overlap the hourly
+# path that would otherwise re-place protection mid-cancel.
+concurrency:
+  group: divergence-monitor
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  move-sl:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - run: pip install requests
+
+      - name: Move SL to breakeven — primary account
+        if: inputs.account == 'primary' || inputs.account == 'both'
+        run: python divergence_trader.py
+        env:
+          MOVE_SL_TO_BREAKEVEN: "true"
+          DIV_DRY_RUN: ${{ inputs.dry_run }}
+          DECIBEL_PRIVATE_KEY: ${{ secrets.DECIBEL_PRIVATE_KEY }}
+          DECIBEL_SUBACCOUNT: ${{ secrets.DECIBEL_SUBACCOUNT }}
+          DECIBEL_NODE_API_KEY: ${{ secrets.DECIBEL_NODE_API_KEY }}
+          DECIBEL_GAS_STATION_API_KEY: ${{ secrets.DECIBEL_GAS_STATION_API_KEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+
+      - name: Move SL to breakeven — Yar's account
+        if: always() && (inputs.account == 'yar' || inputs.account == 'both')
+        run: python divergence_trader.py
+        env:
+          TRADER_ACCOUNT: yar
+          MOVE_SL_TO_BREAKEVEN: "true"
+          DIV_DRY_RUN: ${{ inputs.dry_run }}
+          DECIBEL_PRIVATE_KEY: ${{ secrets.YAR_KEY }}
+          DECIBEL_SUBACCOUNT: ${{ secrets.YAR_SUBACCOUNT }}
+          DECIBEL_NODE_API_KEY: ${{ secrets.DECIBEL_NODE_API_KEY }}
+          DECIBEL_GAS_STATION_API_KEY: ${{ secrets.DECIBEL_GAS_STATION_API_KEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+
+      - name: Commit data
+        if: always()
+        run: |
+          git config user.name "divergence-bot"
+          git config user.email "actions@users.noreply.github.com"
+          for f in divergence_trader_state.json divergence_trades.json divergence_equity.json \
+                   divergence_trader_state_yar.json divergence_trades_yar.json divergence_equity_yar.json; do
+            if [ -f "$f" ]; then git add "$f"; fi
+          done
+          git diff --cached --quiet && exit 0
+          git commit -m "breakeven-sl: update data [skip ci]"
+          git pull --rebase origin main || true
+          git push origin main

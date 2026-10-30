@@ -32,6 +32,12 @@ workflow_dispatch path — that's an explicit human action, exempt by design.
 Added 2026-08-19 after the 3-year backtest showed Saturday/Sunday entries
 underperforming weekday ones on the 2h timeframe (the only one now live).
 
+move_sl_breakeven.yml (workflow_dispatch only) can move the OPEN position's
+stop to its entry without opening, closing, or resizing. It stamps
+sl_breakeven on that position so the hourly repair re-places entry rather
+than the 2% stop if the native order disappears. New entries never set the
+flag, and it goes away when the position is cleared.
+
 Multi-account: set TRADER_ACCOUNT to run this same script against a second
 person's Decibel account (e.g. a friend's), fully isolated from the primary
 account — separate state/log/equity files (suffixed by account name), and
@@ -47,7 +53,7 @@ never silently resets; that failure mode wiped trader history four times in
 the old bot).
 Log:   divergence_trades{_account}.json (append-only events).
 """
-import os, json, time, subprocess, requests
+import os, sys, json, time, subprocess, requests
 from datetime import datetime, timezone
 
 BASE    = os.path.dirname(os.path.abspath(__file__))
@@ -79,6 +85,12 @@ SLIPPAGE     = env_num("SLIPPAGE", 0.5)
 # (TP/SL/48h-exit) by every subsequent run exactly like a signal-driven trade
 MANUAL_SIDE     = os.environ.get("MANUAL_SIDE", "").strip().lower()   # "long" or "short"
 MANUAL_SIZE_USD = env_num("MANUAL_SIZE_USD", 0)
+# one-off: move the open position's stop to its entry (workflow_dispatch
+# only — never set on the hourly cron). Does not open, close, resize, or
+# change leverage. Stamps sl_breakeven on the position so a later hourly
+# re-place (the branch that calls tp_sl_prices when protection is missing)
+# keeps the entry stop instead of restoring the default 2% stop.
+MOVE_SL_TO_BREAKEVEN = os.environ.get("MOVE_SL_TO_BREAKEVEN", "").lower() == "true"
 SYMBOL       = "BTC/USD"
 TRADE_TF     = {t.strip() for t in os.environ.get("DIV_TRADE_TF", "1h,2h").split(",") if t.strip()}
 BLOCK_DAYS   = {d.strip()[:3].title() for d in os.environ.get("DIV_BLOCK_DAYS", "").split(",") if d.strip()}
@@ -218,15 +230,72 @@ def dec_price():
             return float(r[k])
     raise RuntimeError(f"no price in {r}")
 
+def _as_float(v):
+    if v is None or v == "":
+        return None
+    try:
+        return float(v)
+    except (TypeError, ValueError):
+        return None
+
+def _pick(d, *keys):
+    if not isinstance(d, dict):
+        return None
+    for k in keys:
+        if d.get(k) is not None and d.get(k) != "":
+            return d[k]
+    return None
+
+def tpsl_order_ids(snapshot):
+    """Order ids from get_tp_sl: fixed-size orders plus position-level ids.
+
+    Position-level TP/SL lives on the position object (tp_order_id /
+    sl_order_id). Those ids are not always repeated in `orders`, and a cancel
+    that only walks `orders` leaves the old stop in place."""
+    if not isinstance(snapshot, dict):
+        return []
+    ids = []
+    for o in snapshot.get("orders", snapshot.get("tpSlOrders", [])) or []:
+        if isinstance(o, dict):
+            oid = o.get("orderId") or o.get("id")
+            if oid:
+                ids.append(str(oid))
+    p = snapshot.get("position")
+    if isinstance(p, dict):
+        for k in ("tpOrderId", "slOrderId", "tp_order_id", "sl_order_id"):
+            if p.get(k):
+                ids.append(str(p[k]))
+    out = []
+    for i in ids:
+        if i not in out:
+            out.append(i)
+    return out
+
+def tpsl_trigger_prices(snapshot, kind):
+    """Trigger prices ('tp' or 'sl') from the position object and any orders."""
+    if not isinstance(snapshot, dict):
+        return []
+    pkeys = (("tpTriggerPrice", "tp_trigger_price") if kind == "tp"
+             else ("slTriggerPrice", "sl_trigger_price"))
+    vals = []
+    v = _as_float(_pick(snapshot.get("position"), *pkeys))
+    if v is not None:
+        vals.append(v)
+    for o in snapshot.get("orders", snapshot.get("tpSlOrders", [])) or []:
+        v = _as_float(_pick(o, *pkeys))
+        if v is not None and v not in vals:
+            vals.append(v)
+    return vals
+
 def cancel_all_tpsl():
     try:
         r = run_cli("get_tp_sl", {"symbol": SYMBOL})
-        orders = r.get("orders", r.get("tpSlOrders", [])) or []
-        for o in orders:
-            oid = o.get("orderId") or o.get("id")
-            if oid:
-                run_cli("cancel_tp_sl", {"symbol": SYMBOL, "orderId": str(oid)})
+        for oid in tpsl_order_ids(r):
+            try:
+                run_cli("cancel_tp_sl", {"symbol": SYMBOL, "orderId": oid})
                 print(f"  cancelled tp/sl {oid}")
+            except Exception as e:
+                print(f"  cancel tp/sl {oid}: {e}")
     except Exception as e:
         print(f"  cancel_all_tpsl: {e}")
 
@@ -288,14 +357,74 @@ def tp_sl_prices(direction, entry):
         sl_lim = sl * 1.005
     return round(tp, 1), round(sl, 1), round(sl_lim, 1)
 
-def place_protection(direction, entry):
-    tp, sl, sl_lim = tp_sl_prices(direction, entry)
+def protection_prices(direction, entry, tp=None, sl=None):
+    """TP/SL prices to send. No overrides → exactly tp_sl_prices(), including
+    the limit computed from the unrounded stop (rounding the stop first moves
+    the limit by a tick). An override is a 1-decimal trigger; its limit is
+    0.5% through that trigger so the stop can fill."""
+    def_tp, def_sl, def_lim = tp_sl_prices(direction, entry)
+    if tp is None and sl is None:
+        return def_tp, def_sl, def_lim
+    tp = def_tp if tp is None else round(float(tp), 1)
+    sl = def_sl if sl is None else round(float(sl), 1)
+    sl_lim = round(sl * (0.995 if direction == "bullish" else 1.005), 1)
+    return tp, sl, sl_lim
+
+def place_protection(direction, entry, tp=None, sl=None):
+    tp, sl, sl_lim = protection_prices(direction, entry, tp=tp, sl=sl)
     r = run_cli("place_tp_sl", {"symbol": SYMBOL,
                                 "tpTriggerPrice": tp, "tpLimitPrice": tp,
                                 "slTriggerPrice": sl, "slLimitPrice": sl_lim})
     ok = order_ok(r)
-    print(f"  tp/sl: tp={tp} sl={sl} ok={ok} {json.dumps(r)[:120]}")
+    print(f"  tp/sl: tp={tp} sl={sl} sl_lim={sl_lim} ok={ok} {json.dumps(r)[:120]}")
     return ok, tp, sl
+
+def position_match_problems(state_pos, live_pos, entry_tol=0.1):
+    """Why the live position must not be touched. Empty list means it matches.
+
+    Size is compared at the 5-decimal precision open_position() records.
+    Entry may differ by one 0.1 tick (the precision sl/tp prices use). A
+    short on Decibel is a negative size."""
+    if not state_pos:
+        return ["no open position in state"]
+    if live_pos is None:
+        return ["no live BTC position"]
+    live_size = _as_float(_pick(live_pos, "size"))
+    live_entry = _as_float(_pick(live_pos, "entry_price", "entryPrice"))
+    if live_size is None or live_entry is None:
+        keys = list(live_pos)[:12] if isinstance(live_pos, dict) else type(live_pos).__name__
+        return [f"live position missing size or entry (keys={keys})"]
+    problems = []
+    state_size = float(state_pos["size"])
+    state_entry = float(state_pos["entry_price"])
+    if round(abs(live_size), 5) != round(abs(state_size), 5):
+        problems.append(f"size live={live_size} state={state_size}")
+    if abs(live_entry - state_entry) > entry_tol:
+        problems.append(f"entry live={live_entry} state={state_entry}")
+    direction = state_pos.get("direction")
+    if direction == "bearish" and live_size >= 0:
+        problems.append(f"state short but live size {live_size} is not negative")
+    elif direction == "bullish" and live_size <= 0:
+        problems.append(f"state long but live size {live_size} is not positive")
+    elif direction not in ("bullish", "bearish"):
+        problems.append(f"unknown state direction {direction}")
+    return problems
+
+def breakeven_replace_args(pos):
+    """(tp, sl) the hourly repair sends for a position whose stop was moved
+    to entry. tp None falls through to the strategy take-profit."""
+    return pos.get("tp_price"), pos.get("entry_price")
+
+def breakeven_stop_valid(direction, mark, sl):
+    """Decibel rejects a trigger on the wrong side of mark (EINVALID_TRIGGER_PRICE).
+    A short stop must sit strictly above mark; a long stop strictly below."""
+    if mark is None or sl is None:
+        return False
+    if direction == "bearish":
+        return mark < sl
+    if direction == "bullish":
+        return mark > sl
+    return False
 
 def open_position(st, ep, equity, size_usd=None):
     size_usd = POSITION_USD if size_usd is None else size_usd
@@ -376,6 +505,175 @@ def close_position_now(st, reason):
     st["position"] = None
     return True
 
+def _near(values, target, tol=0.2):
+    return any(abs(v - target) <= tol for v in values)
+
+def move_sl_to_breakeven(st, live_pos, equity):
+    """Move the open position's exchange SL to its entry. Keep the current TP.
+
+    Returns a process exit code: 0 done, 2 refused before sending an order,
+    1 the cancel/place did not confirm. Never opens, closes, resizes, or
+    sets leverage. On a confirmed move (or a crash after cancel) the
+    position is stamped sl_breakeven so the hourly path cannot restore 2%.
+    """
+    pos = st.get("position")
+    if pos and live_pos is None and implausible(True, live_pos, equity):
+        print(f"SL_MOVE result=abort account={ACCOUNT} reason=implausible_snapshot "
+              f"equity={equity}")
+        tg("⚠️ Stop move aborted — implausible empty snapshot "
+           "(state open, no position, ~$0 equity). No orders sent.")
+        return 2
+    problems = position_match_problems(pos, live_pos)
+    if problems:
+        reason = "; ".join(problems)
+        print(f"SL_MOVE result=abort account={ACCOUNT} reason={reason}")
+        tg(f"⚠️ Stop move aborted — live position does not match state ({reason}). "
+           f"No orders sent.")
+        return 2
+
+    state_entry = float(pos["entry_price"])
+    sl = round(state_entry, 1)
+    mark = _as_float(_pick(live_pos, "markPrice", "mark_price", "markPx"))
+    if mark is None:
+        try:
+            mark = dec_price()
+        except Exception as e:
+            print(f"SL_MOVE result=abort account={ACCOUNT} reason=no_mark {e}")
+            tg("⚠️ Stop move aborted — could not read a mark price. No orders sent.")
+            return 2
+    print(f"  live size={_pick(live_pos, 'size')} entry={_pick(live_pos, 'entry_price', 'entryPrice')} "
+          f"mark={mark} state size={pos['size']} entry={state_entry} "
+          f"dir={pos['direction']} state_sl={pos.get('sl_price')} state_tp={pos.get('tp_price')}")
+    if not breakeven_stop_valid(pos["direction"], mark, sl):
+        print(f"SL_MOVE result=abort account={ACCOUNT} reason=stop_not_beyond_mark "
+              f"mark={mark} sl={sl} dir={pos['direction']}")
+        tg(f"⚠️ Stop move aborted — SL at entry {sl:,.1f} is not beyond mark {mark:,.1f} "
+           f"for a {pos['direction']} position. No orders sent.")
+        return 2
+
+    try:
+        before = run_cli("get_tp_sl", {"symbol": SYMBOL})
+    except Exception as e:
+        print(f"SL_MOVE result=abort account={ACCOUNT} reason=get_tp_sl_failed {e}")
+        tg(f"⚠️ Stop move aborted — get_tp_sl failed ({e}). No orders sent.")
+        return 2
+    print(f"  get_tp_sl BEFORE: {json.dumps(before)[:800]}")
+    tp_vals = tpsl_trigger_prices(before, "tp")
+    sl_vals = tpsl_trigger_prices(before, "sl")
+    state_tp = _as_float(pos.get("tp_price"))
+    tp = round(tp_vals[0], 1) if tp_vals else (round(state_tp, 1) if state_tp else None)
+    if tp is None:
+        print(f"SL_MOVE result=abort account={ACCOUNT} reason=no_tp_to_keep")
+        tg("⚠️ Stop move aborted — no take-profit on the position or in state to keep. "
+           "No orders sent.")
+        return 2
+    if state_tp is not None and abs(tp - state_tp) > 0.2:
+        print(f"  NOTE: keeping live TP {tp} (state tp_price is {state_tp})")
+    before_sl = sl_vals[0] if sl_vals else pos.get("sl_price")
+    _, _, sl_lim = protection_prices(pos["direction"], state_entry, tp=tp, sl=sl)
+    old_still_there = (before_sl is not None and abs(float(before_sl) - sl) > 0.2
+                       and _near(sl_vals, float(before_sl)))
+    already = _near(sl_vals, sl) and _near(tp_vals, tp) and not old_still_there
+    print(f"  plan: keep TP {tp}  SL {before_sl} → {sl} (limit {sl_lim}) already={already}")
+
+    if DRY_RUN:
+        print(f"SL_MOVE result=dry_run account={ACCOUNT} before_sl={before_sl} "
+              f"after_sl={sl} tp={tp} sl_limit={sl_lim} already={already}")
+        tg(f"🧪 DRY RUN — would move SL {before_sl} → breakeven {sl:,.1f} "
+           f"(limit {sl_lim:,.1f}), keep TP {tp:,.1f}."
+           + (" Exchange stop is already there." if already else ""))
+        return 0
+
+    if already:
+        pos["sl_breakeven"] = True
+        pos["sl_price"] = sl
+        pos["tp_price"] = tp
+        pos["tp_sl_ok"] = True
+        save_state(st)
+        print(f"SL_MOVE result=ok account={ACCOUNT} before_sl={before_sl} after_sl={sl} "
+              f"confirmed_sl={sl} confirmed_tp={tp} tp={tp} sl_limit={sl_lim} already=true")
+        tg(f"🟦 <b>Stop already at breakeven</b>\n"
+           f"{pos['direction']} {SYMBOL} · SL {sl:,.1f} · TP {tp:,.1f}\n"
+           f"State stamped so later runs keep this stop.")
+        return 0
+
+    # Stamp intent before cancel. If we die after the cancel, the next hourly
+    # run sees sl_breakeven and re-places entry rather than the 2% stop.
+    old_sl = pos.get("sl_price")
+    pos["sl_breakeven"] = True
+    pos["sl_price"] = sl
+    pos["tp_price"] = tp
+    save_state(st)
+
+    cancel_all_tpsl()
+    try:
+        ok, tp_sent, sl_sent = place_protection(pos["direction"], state_entry, tp=tp, sl=sl)
+    except Exception as e:
+        ok, tp_sent, sl_sent = False, tp, sl
+        print(f"  place_tp_sl raised: {e}")
+    if not ok:
+        pos["tp_sl_ok"] = False
+        save_state(st)
+        log_event({"action": "MOVE_SL_BREAKEVEN", "result": "PLACE_FAILED",
+                   "episode_id": pos.get("episode_id"), "direction": pos["direction"],
+                   "old_sl": old_sl, "sl_price": sl, "sl_limit": sl_lim, "tp_price": tp})
+        print(f"SL_MOVE result=fail account={ACCOUNT} before_sl={before_sl} "
+              f"after_sl={sl} tp={tp} sl_limit={sl_lim} stage=place")
+        tg(f"🚨 Stop move to breakeven FAILED after cancel. "
+           f"sl_breakeven is set, so the next run re-places SL {sl:,.1f} "
+           f"(not the 2% stop) and TP {tp:,.1f}.")
+        return 1
+
+    after = None
+    confirmed = False
+    for _ in range(4):
+        time.sleep(2)
+        try:
+            after = run_cli("get_tp_sl", {"symbol": SYMBOL})
+        except Exception as e:
+            print(f"  get_tp_sl confirm failed: {e}")
+            continue
+        print(f"  get_tp_sl AFTER: {json.dumps(after)[:800]}")
+        got_sl = tpsl_trigger_prices(after, "sl")
+        got_tp = tpsl_trigger_prices(after, "tp")
+        old_remains = _near(got_sl, float(before_sl)) if before_sl is not None and abs(float(before_sl) - sl) > 0.2 else False
+        if _near(got_sl, sl_sent) and _near(got_tp, tp_sent) and not old_remains:
+            confirmed = True
+            break
+    if not confirmed:
+        pos["tp_sl_ok"] = False
+        save_state(st)
+        log_event({"action": "MOVE_SL_BREAKEVEN", "result": "UNCONFIRMED",
+                   "episode_id": pos.get("episode_id"), "direction": pos["direction"],
+                   "old_sl": old_sl, "sl_price": sl, "sl_limit": sl_lim, "tp_price": tp})
+        print(f"SL_MOVE result=fail account={ACCOUNT} before_sl={before_sl} "
+              f"after_sl={sl_sent} tp={tp_sent} sl_limit={sl_lim} stage=confirm")
+        tg(f"🚨 Stop move placed but get_tp_sl did not confirm SL {sl_sent:,.1f} / TP {tp_sent:,.1f}. "
+           f"Next run will cancel and re-place the breakeven stop.")
+        return 1
+
+    got_sl = tpsl_trigger_prices(after, "sl")
+    got_tp = tpsl_trigger_prices(after, "tp")
+    confirmed_sl = min(got_sl, key=lambda v: abs(v - sl_sent))
+    confirmed_tp = min(got_tp, key=lambda v: abs(v - tp_sent))
+    pos["tp_sl_ok"] = True
+    pos["sl_breakeven"] = True
+    pos["sl_price"] = sl_sent
+    pos["tp_price"] = tp_sent
+    save_state(st)
+    log_event({"action": "MOVE_SL_BREAKEVEN", "result": "OK",
+               "episode_id": pos.get("episode_id"), "direction": pos["direction"],
+               "old_sl": old_sl, "sl_price": sl_sent, "sl_limit": sl_lim,
+               "tp_price": tp_sent, "confirmed_sl": confirmed_sl,
+               "confirmed_tp": confirmed_tp})
+    print(f"SL_MOVE result=ok account={ACCOUNT} before_sl={before_sl} after_sl={sl_sent} "
+          f"confirmed_sl={confirmed_sl} confirmed_tp={confirmed_tp} tp={tp_sent} sl_limit={sl_lim}")
+    tg(f"🟦 <b>Stop moved to breakeven</b>\n"
+       f"{pos['direction']} {SYMBOL}\n"
+       f"SL {old_sl} → {sl_sent:,.1f} (limit {sl_lim:,.1f})\n"
+       f"TP kept {tp_sent:,.1f}")
+    return 0
+
 def manual_trade(st, equity):
     """One-off test trade requested via workflow_dispatch inputs, independent
     of DIV_TRADING_ENABLED — an explicit ad-hoc action, not the strategy."""
@@ -402,6 +700,17 @@ def main():
         print(f"  [{ACCOUNT}] Decibel credentials missing — no-op."); return
 
     install_cli()
+
+    if MOVE_SL_TO_BREAKEVEN:
+        # Dispatch-only path. Returns before equity sampling and before any
+        # signal/entry/close logic — the only write it can make is a TP/SL
+        # replace on the position already in the state file.
+        live_pos, equity, api_ok = live_snapshot()
+        if not api_ok:
+            print(f"SL_MOVE result=abort account={ACCOUNT} reason=api_unavailable")
+            tg("⚠️ Stop move aborted — Decibel API unavailable. No orders sent.")
+            sys.exit(2)
+        sys.exit(move_sl_to_breakeven(load_state(), live_pos, equity))
 
     # equity graph samples are recorded whenever creds work, even with trading off
     live_pos, equity, api_ok = live_snapshot()
@@ -490,7 +799,18 @@ def main():
                 elif pos.get("tp_price") and breach_tp:
                     close_position_now(st, "TP_SOFTWARE"); pos = st.get("position")
                 else:
-                    ok, tp, sl = place_protection(pos["direction"], pos["entry_price"])
+                    if pos.get("sl_breakeven"):
+                        # Sticky breakeven stop (2026-10-30). Cancel first so a
+                        # retry cannot stack a second order, then re-place the
+                        # stored entry stop — not tp_sl_prices()'s 2% stop.
+                        # New trades never set sl_breakeven, so this branch is
+                        # not the path a future entry takes.
+                        cancel_all_tpsl()
+                        tp_ov, sl_ov = breakeven_replace_args(pos)
+                        ok, tp, sl = place_protection(
+                            pos["direction"], pos["entry_price"], tp=tp_ov, sl=sl_ov)
+                    else:
+                        ok, tp, sl = place_protection(pos["direction"], pos["entry_price"])
                     if ok:
                         pos["tp_sl_ok"], pos["tp_price"], pos["sl_price"] = True, tp, sl
                         tg(f"✅ Divergence bot: TP/SL now in place (TP {tp:,.0f} / SL {sl:,.0f})")
