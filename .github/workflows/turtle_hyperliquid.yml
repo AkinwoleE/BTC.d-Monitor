@@ -65,6 +65,7 @@ jobs:
             if [ -f "$f" ]; then git add "$f"; fi
           done
           if [ -d data/turtle_hyperliquid ]; then git add data/turtle_hyperliquid/; fi
+          if [ -d data/turtle_equity ]; then git add data/turtle_equity/; fi
           git diff --cached --quiet && exit 0
           git commit -m "turtle-hyperliquid: update data [skip ci]"
           git pull --rebase origin main || true

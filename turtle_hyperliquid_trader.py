@@ -42,7 +42,9 @@ from hyperliquid.utils import constants
 
 from divergence_monitor import tg
 from turtle_backtest import compute_N, hh, ll, RISK_PCT, DOLLARS_PER_POINT, MAX_UNITS
-from turtle_hyperliquid_lib import TOKENS, update_all
+from turtle_hyperliquid_lib import TOKENS as CRYPTO_TOKENS, update_all as crypto_update_all
+from turtle_equity_lib import TOKENS as EQUITY_TOKENS, HL_SYMBOL as EQUITY_HL_SYMBOL, \
+    update_all as equity_update_all
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 STATE_FILE  = os.path.join(HERE, "turtle_hyperliquid_state.json")
@@ -55,6 +57,40 @@ LEVERAGE_CAP = 3
 LEVERAGE_SETTING = 3              # per-market leverage set on Hyperliquid
 SLIPPAGE = 0.05
 TRIGGER_SLIP = 0.02
+
+# ── equity/macro leg (2026-11-01) ───────────────────────────────────────────
+# Added for portfolio diversification - see conversation for the full
+# liquidity-screened shortlist rationale and standalone/blended backtest
+# (turtle_equity_backtest.py): blended 28-asset run showed max drawdown
+# 31.8%->24.2% and total return +326.6%->+354.1% vs crypto-only over the
+# same window. Equities execute on Hyperliquid's "xyz" HIP-3 builder dex -
+# a SEPARATE, ISOLATED-MARGIN perp dex from the main crypto perp account
+# (confirmed via Hyperliquid docs: HIP-3 dexes have independent margining,
+# collateral kept separate from the main perp account and from each other).
+# That means: two independent account_value/risk_capital/leverage-cap pools,
+# not one shared pool - a crypto signal can never compete for margin with an
+# equity signal and vice versa. The user must separately fund the xyz dex
+# with its own collateral on Hyperliquid before any equity order can fill;
+# until then equity_account_value reads ~$0 and every equity entry hits the
+# existing insufficient-margin skip in open_position(), same fail-safe as an
+# underfunded crypto account - no code difference, just naturally inert.
+TOKENS = CRYPTO_TOKENS + EQUITY_TOKENS
+ASSET_CLASS = {tok: "crypto" for tok in CRYPTO_TOKENS}
+ASSET_CLASS.update({tok: "equity" for tok in EQUITY_TOKENS})
+HL_COIN = {tok: tok for tok in CRYPTO_TOKENS}
+HL_COIN.update(EQUITY_HL_SYMBOL)                      # e.g. "NVDA" -> "xyz:NVDA"
+REVERSE_HL_COIN = {v: k for k, v in HL_COIN.items()}  # "xyz:NVDA" -> "NVDA"
+
+# TURTLE_EQUITY_EXCLUDE: comma-separated signal symbols to never take NEW
+# entries on, same block-only-new-entries pattern as divergence_trader.py's
+# DIV_BLOCK_DAYS - an existing open position in an excluded token is still
+# fully managed (stop/channel-exit/pyramid). Default excludes CL: the
+# standalone shortlist backtest (turtle_equity_backtest.py) showed it the
+# clear outlier - 6% win rate on 17 trades, -$1,517 PnL, worst of all 28
+# tokens tested including crypto - crude oil whipsawed badly against this
+# rule set. Easy to re-include by setting the repo variable to "".
+EQUITY_EXCLUDE = {t.strip().upper() for t in
+                   os.environ.get("TURTLE_EQUITY_EXCLUDE", "CL").split(",") if t.strip()}
 
 DRY_RUN = os.environ.get("HL_DRY_RUN", "true").strip().lower() != "false"
 PRIVATE_KEY = os.environ.get("HYPERLIQUID_API_PRIVATE_KEY", "")
@@ -102,12 +138,21 @@ class Trader:
             wallet = Account.from_key(PRIVATE_KEY)
             self.exchange = Exchange(wallet, base_url=constants.MAINNET_API_URL, account_address=ACCOUNT_ADDRESS)
 
-    def user_state(self):
-        return with_retry(lambda: self.info.user_state(ACCOUNT_ADDRESS))
+    def user_state(self, dex=""):
+        return with_retry(lambda: self.info.user_state(ACCOUNT_ADDRESS, dex=dex))
 
-    def account_value(self, us):
+    def account_value(self, us, dex=""):
+        """dex="" (main perp dex) falls back to spot USDC balance when
+        accountValue reads 0 - the account's spot wallet is what backs a
+        first cross-margin deposit there, so that's a reasonable signal.
+        A named dex (e.g. "xyz") must NOT do this: HIP-3 dexes are
+        isolated-margin, a separate collateral pool from the main account
+        and from spot - reporting spot balance as that dex's equity would
+        make risk_capital look funded even when nothing has actually been
+        allocated to it, defeating the "inert until funded" safety this
+        relies on. 2026-11-01 bug found in review before this went live."""
         cross_val = float(us.get("marginSummary", {}).get("accountValue", 0))
-        if cross_val > 0:
+        if cross_val > 0 or dex:
             return cross_val
         try:
             spot = self.info.spot_user_state(ACCOUNT_ADDRESS)
@@ -118,18 +163,37 @@ class Trader:
             return cross_val
 
     def live_positions(self, us):
-        return {ap["position"]["coin"]: ap["position"] for ap in us.get("assetPositions", [])
-                if float(ap["position"]["szi"]) != 0}
+        """Keyed by OUR internal signal symbol, not whatever Hyperliquid's
+        coin field says. The HIP-3 dex-scoped clearinghouseState response's
+        exact coin format (bare "NVDA" vs prefixed "xyz:NVDA") isn't
+        documented - REVERSE_HL_COIN matches either. Unverified against a
+        live xyz position at build time; first real run's printed
+        'open live positions' line confirms it - see conversation."""
+        out = {}
+        for ap in us.get("assetPositions", []):
+            pos = ap["position"]
+            if float(pos["szi"]) == 0:
+                continue
+            coin = pos["coin"]
+            bare = coin.split(":", 1)[-1]
+            tok = REVERSE_HL_COIN.get(coin) or REVERSE_HL_COIN.get(f"xyz:{bare}") or \
+                  (bare if bare in CRYPTO_TOKENS else None)
+            if tok:
+                out[tok] = pos
+            else:
+                print(f"  NOTE: live position on unrecognized coin '{coin}' - not in TOKENS, ignoring")
+        return out
 
     def realized_pnl_since(self, tok, since_ts):
+        coin = HL_COIN[tok]
         try:
-            fills = self.info.user_fills(ACCOUNT_ADDRESS)
+            fills = self.info.user_fills(ACCOUNT_ADDRESS)  # account-wide, spans every dex
         except Exception as e:
-            print(f"  could not fetch fills for {tok}: {e}")
+            print(f"  could not fetch fills for {coin}: {e}")
             return None
         total, found = 0.0, False
         for f in fills:
-            if f.get("coin") != tok or f.get("time", 0) / 1000 < since_ts:
+            if f.get("coin") != coin or f.get("time", 0) / 1000 < since_ts:
                 continue
             pnl = f.get("closedPnl")
             if pnl is not None:
@@ -138,48 +202,57 @@ class Trader:
         return total if found else None
 
     def ensure_leverage(self, tok):
+        coin = HL_COIN[tok]
         if DRY_RUN:
-            print(f"  [DRY RUN] would set {tok} leverage={LEVERAGE_SETTING}x isolated")
+            print(f"  [DRY RUN] would set {coin} leverage={LEVERAGE_SETTING}x isolated")
             return
-        self.exchange.update_leverage(LEVERAGE_SETTING, tok, is_cross=False)
+        self.exchange.update_leverage(LEVERAGE_SETTING, coin, is_cross=False)
 
     def open_market(self, tok, is_buy, sz):
-        print(f"  {'[DRY RUN] would' if DRY_RUN else ''} market {'BUY' if is_buy else 'SELL'} {sz:.6g} {tok}")
+        coin = HL_COIN[tok]
+        print(f"  {'[DRY RUN] would' if DRY_RUN else ''} market {'BUY' if is_buy else 'SELL'} {sz:.6g} {coin}")
         if DRY_RUN:
             return {"dry_run": True}
-        return self.exchange.market_open(tok, is_buy, sz)
+        return self.exchange.market_open(coin, is_buy, sz)
 
     def close_market(self, tok):
-        print(f"  {'[DRY RUN] would' if DRY_RUN else ''} market_close {tok}")
+        coin = HL_COIN[tok]
+        print(f"  {'[DRY RUN] would' if DRY_RUN else ''} market_close {coin}")
         if DRY_RUN:
             return {"dry_run": True}
-        return self.exchange.market_close(tok)
+        return self.exchange.market_close(coin)
 
     def cancel_all(self, tok):
+        coin = HL_COIN[tok]
+        dex = "xyz" if ASSET_CLASS[tok] == "equity" else ""
         if DRY_RUN:
-            print(f"  [DRY RUN] would cancel resting orders for {tok}")
+            print(f"  [DRY RUN] would cancel resting orders for {coin}")
             return
-        for o in self.info.open_orders(ACCOUNT_ADDRESS):
-            if o.get("coin") == tok:
-                self.exchange.cancel(tok, o["oid"])
+        for o in self.info.open_orders(ACCOUNT_ADDRESS, dex=dex):
+            if o.get("coin") == coin:
+                self.exchange.cancel(coin, o["oid"])
 
     def place_stop(self, tok, side, sz, stop_px):
         """Native resting stop protecting the position between daily runs."""
+        coin = HL_COIN[tok]
         exit_is_buy = side != "long"
         limit_px = slippage_px(stop_px, exit_is_buy, TRIGGER_SLIP)
-        order = {"coin": tok, "is_buy": exit_is_buy, "sz": sz, "limit_px": limit_px,
+        order = {"coin": coin, "is_buy": exit_is_buy, "sz": sz, "limit_px": limit_px,
                  "order_type": {"trigger": {"isMarket": True, "triggerPx": round_sig(stop_px), "tpsl": "sl"}},
                  "reduce_only": True}
-        print(f"  {'[DRY RUN] would' if DRY_RUN else ''} place stop for {tok}: trigger={round_sig(stop_px)}")
+        print(f"  {'[DRY RUN] would' if DRY_RUN else ''} place stop for {coin}: trigger={round_sig(stop_px)}")
         if DRY_RUN:
             return {"dry_run": True}
         return self.exchange.bulk_orders([order], grouping="na")
 
 
-def portfolio_notional(state, mids):
+def portfolio_notional(state, mids, tokens):
+    """tokens: the subset to sum over - crypto and equity notionals are
+    checked against separate leverage caps (isolated-margin xyz dex, see
+    module docstring), so this is never called over the full roster."""
     total = 0.0
-    for tok, st in state["positions"].items():
-        units = st.get("units", [])
+    for tok in tokens:
+        units = state["positions"].get(tok, {}).get("units", [])
         if not units:
             continue
         px = float(mids.get(tok, units[-1]["entry_px"]))
@@ -201,17 +274,35 @@ def main():
     trades = load(TRADES_FILE, [])
     equity_log = load(EQUITY_FILE, [])
 
-    print("Updating daily candles from Binance...")
-    candle_data = update_all(now_ts=now)
+    print("Updating daily candles from Binance (crypto) and Yahoo (equity/macro)...")
+    candle_data = crypto_update_all(now_ts=now)
+    candle_data.update(equity_update_all(now_ts=now))
     N_data = {tok: compute_N(candle_data[tok]) for tok in TOKENS}
 
+    # Crypto and equity live on separate Hyperliquid perp dexes with
+    # independent, isolated margin (see module docstring) - two account
+    # snapshots, two risk-capital pools, merged live-position/mids dicts.
     us = trader.user_state()
     account_value = trader.account_value(us)
     live_pos = trader.live_positions(us)
-    mids = with_retry(lambda: trader.info.all_mids())
-    risk_capital = RISK_CAPITAL_FRACTION * account_value
-    print(f"account_value=${account_value:.2f}  risk_capital=${risk_capital:.2f}  "
-          f"open live positions: {sorted(live_pos.keys())}")
+    crypto_mids = with_retry(lambda: trader.info.all_mids())
+    crypto_risk_capital = RISK_CAPITAL_FRACTION * account_value
+
+    us_eq = trader.user_state(dex="xyz")
+    equity_account_value = trader.account_value(us_eq, dex="xyz")
+    live_pos.update(trader.live_positions(us_eq))
+    equity_mids_raw = with_retry(lambda: trader.info.all_mids(dex="xyz"))
+    equity_risk_capital = RISK_CAPITAL_FRACTION * equity_account_value
+
+    mids = dict(crypto_mids)
+    for k, v in equity_mids_raw.items():
+        bare = k.split(":", 1)[-1]
+        if bare in EQUITY_TOKENS:
+            mids[bare] = v
+
+    print(f"crypto: account_value=${account_value:.2f}  risk_capital=${crypto_risk_capital:.2f}")
+    print(f"equity: account_value=${equity_account_value:.2f}  risk_capital=${equity_risk_capital:.2f}")
+    print(f"open live positions: {sorted(live_pos.keys())}")
 
     for tok in TOKENS:
         candles, N = candle_data[tok], N_data[tok]
@@ -226,6 +317,8 @@ def main():
         st = state["positions"][tok]
         bot_has_pos = bool(st["units"])
         live_has_pos = tok in live_pos
+        risk_capital = crypto_risk_capital if ASSET_CLASS[tok] == "crypto" else equity_risk_capital
+        pool_tokens = CRYPTO_TOKENS if ASSET_CLASS[tok] == "crypto" else EQUITY_TOKENS
 
         # Reconciliation against Hyperliquid's live position only makes sense
         # in real trading — DRY_RUN never places a real order in the first
@@ -294,7 +387,7 @@ def main():
                 add = (side == "long" and c["high"] >= trigger) or (side == "short" and c["low"] <= trigger)
                 if add:
                     sz = (RISK_PCT * risk_capital) / (n * DOLLARS_PER_POINT)
-                    prospective = portfolio_notional(state, mids) + sz * trigger
+                    prospective = portfolio_notional(state, mids, pool_tokens) + sz * trigger
                     if prospective <= LEVERAGE_CAP * risk_capital:
                         trader.open_market(tok, side == "long", sz)
                         st["units"].append({"side": side, "entry_px": trigger, "sz": sz,
@@ -304,6 +397,8 @@ def main():
                         tg(f"Turtle/{tok}: pyramid unit {len(st['units'])} added @ ~{trigger:.6g}")
                     else:
                         print(f"  {tok}: pyramid triggered but portfolio leverage cap would be breached, skipping")
+        elif tok in EQUITY_EXCLUDE:
+            pass  # excluded from new entries - see EQUITY_EXCLUDE above
         else:
             hi_entry, lo_entry = hh(candles, i, ENTRY_N), ll(candles, i, ENTRY_N)
             long_sig, short_sig = c["high"] > hi_entry, c["low"] < lo_entry
@@ -311,7 +406,7 @@ def main():
                 side = "long" if long_sig else "short"
                 entry_px = hi_entry if side == "long" else lo_entry
                 sz = (RISK_PCT * risk_capital) / (n * DOLLARS_PER_POINT)
-                prospective = portfolio_notional(state, mids) + sz * entry_px
+                prospective = portfolio_notional(state, mids, pool_tokens) + sz * entry_px
                 if prospective <= LEVERAGE_CAP * risk_capital:
                     trader.ensure_leverage(tok)
                     trader.open_market(tok, side == "long", sz)
@@ -324,7 +419,7 @@ def main():
                 else:
                     print(f"  {tok}: signal fired but portfolio leverage cap would be breached, skipping")
 
-    equity_log.append({"ts": now, "equity": account_value})
+    equity_log.append({"ts": now, "equity": account_value, "equity_xyz": equity_account_value})
     save(EQUITY_FILE, equity_log)
     save(TRADES_FILE, trades)
     save(STATE_FILE, state)

@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="cream">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>BTC.D Trader · Turtle</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#E7DECF;--surface:#FAF6EE;--s2:#F0E8DA;--border:#DCD2C0;
+  --purple:#C15F3C;--cyan:#3F6F73;--green:#2E7D52;--red:#BC4A3C;--yellow:#B07D2B;
+  --text:#2B2722;--text2:#7C7466;--text3:#A89E8B;
+  --font:"Inter",sans-serif;--mono:"JetBrains Mono",monospace;
+}
+[data-theme=dark]{
+  --bg:#0A1210;--surface:#101C19;--s2:#16221E;--border:rgba(210,225,220,.14);
+  --purple:#C2653D;--cyan:#0C8FBA;--green:#4CAB58;--red:#C6493D;--yellow:#B08817;
+  --text:#F3FAF7;--text2:#A9BAB4;--text3:#7C8B86;
+}
+body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:100vh;font-size:14px}
+a{color:var(--cyan);text-decoration:none}a:hover{text-decoration:underline}
+.wrap{max-width:1280px;margin:0 auto;padding:24px 20px}
+header{display:flex;align-items:center;justify-content:space-between;margin-bottom:28px;flex-wrap:wrap;gap:12px}
+header h1{font-size:1.35rem;font-weight:700;letter-spacing:-.02em}
+header h1 span{color:var(--purple)}
+.hdr-right{display:flex;align-items:center;gap:10px}
+.btn{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:7px 14px;cursor:pointer;font-size:13px;color:var(--text);transition:border-color .15s;font-family:var(--font)}
+.btn:hover{border-color:var(--purple)}
+.stats{display:grid;grid-template-columns:repeat(6,1fr);gap:14px;margin-bottom:20px}
+@media(max-width:900px){.stats{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:560px){.stats{grid-template-columns:repeat(2,1fr)}}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 20px}
+.card.lp{border-left:3px solid var(--purple)}
+.card.lc{border-left:3px solid var(--cyan)}
+.card.lg{border-left:3px solid var(--green)}
+.card.lr{border-left:3px solid var(--red)}
+.card.ly{border-left:3px solid var(--yellow)}
+.lbl{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--text2);margin-bottom:7px}
+.val{font-family:var(--mono);font-size:1.4rem;font-weight:600;line-height:1}
+.sub{font-size:12px;color:var(--text2);margin-top:5px}
+.g{color:var(--green)}.r{color:var(--red)}.y{color:var(--yellow)}.c{color:var(--cyan)}.m{color:var(--text2)}
+section{margin-bottom:20px}
+.charts-row{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:800px){.charts-row{grid-template-columns:1fr}}
+.chart-wrap{position:relative;height:220px}
+.badge{display:inline-block;padding:2px 9px;border-radius:99px;font-size:11px;font-weight:600;white-space:nowrap}
+.b-long{background:rgba(46,125,82,.14);color:var(--green)}
+.b-short{background:rgba(188,74,60,.14);color:var(--red)}
+.b-stop{background:rgba(188,74,60,.14);color:var(--red)}
+.b-channel{background:rgba(46,125,82,.14);color:var(--green)}
+.b-ext{background:rgba(124,116,102,.14);color:var(--text2)}
+.tbl-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;padding:7px 10px;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--text2);border-bottom:1px solid var(--border);white-space:nowrap}
+td{padding:9px 10px;border-bottom:1px solid var(--border);font-family:var(--mono);white-space:nowrap}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:var(--s2)}
+.empty{text-align:center;padding:40px;color:var(--text2)}
+.units-dots{display:inline-flex;gap:3px;vertical-align:middle}
+.units-dots span{width:7px;height:7px;border-radius:50%;background:var(--border)}
+.units-dots span.on{background:var(--purple)}
+.note{display:flex;gap:10px;align-items:flex-start;padding:12px 16px;border-radius:10px;background:var(--s2);border:1px solid var(--border);font-size:12.5px;color:var(--text2);line-height:1.5}
+.note.warn{border-color:var(--yellow);background:rgba(176,125,43,.08)}
+.note .ico{font-size:15px;line-height:1.3}
+.strategy-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;font-size:12.5px}
+@media(max-width:800px){.strategy-grid{grid-template-columns:repeat(2,1fr)}}
+.strategy-grid div label{display:block;color:var(--text2);font-size:11px;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px}
+.strategy-grid div .v{font-family:var(--mono);font-size:13px}
+.topnav{position:sticky;top:0;z-index:50;background:color-mix(in srgb,var(--surface) 86%,transparent);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid var(--border)}
+.topnav-inner{max-width:1280px;margin:0 auto;padding:11px 20px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.nav-brand{display:flex;align-items:center;gap:9px;font-weight:700;font-size:15px;letter-spacing:-.01em;color:var(--text);text-decoration:none;white-space:nowrap}
+.nav-brand:hover{text-decoration:none}
+.nav-brand .mark{width:10px;height:10px;border-radius:2px;background:var(--purple);transform:rotate(45deg);flex-shrink:0}
+.nav-links{display:flex;gap:3px;background:var(--s2);border:1px solid var(--border);border-radius:11px;padding:3px}
+.nav-links a{padding:7px 15px;border-radius:8px;font-size:13px;font-weight:500;color:var(--text2);transition:color .15s,background .15s;text-decoration:none;white-space:nowrap}
+.nav-links a:hover{color:var(--text);text-decoration:none}
+.nav-links a.active{background:var(--surface);color:var(--text);box-shadow:0 1px 2px rgba(0,0,0,.05);font-weight:600}
+.nav-right{display:flex;align-items:center;gap:9px}
+.nav-more{position:relative}
+.nav-more-btn{display:flex;align-items:center;gap:5px;padding:7px 15px;border-radius:8px;font-size:13px;font-weight:500;color:var(--text2);background:none;border:none;cursor:pointer;font-family:var(--font);white-space:nowrap;transition:color .15s,background .15s}
+.nav-more-btn:hover{color:var(--text)}
+.nav-more-btn .caret{font-size:10px;line-height:1;transition:transform .15s}
+.nav-more-btn[aria-expanded=true] .caret{transform:rotate(180deg)}
+.nav-more-btn.here{background:var(--surface);color:var(--text);box-shadow:0 1px 2px rgba(0,0,0,.05);font-weight:600}
+.nav-more-menu{position:absolute;top:calc(100% + 9px);right:0;min-width:185px;background:var(--surface);border:1px solid var(--border);border-radius:11px;padding:4px;box-shadow:0 8px 24px rgba(0,0,0,.10);display:none;z-index:60}
+.nav-more-menu.open{display:block}
+.nav-more-menu a{display:block;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:500;color:var(--text2)}
+.nav-more-menu a:hover{color:var(--text);background:var(--s2);text-decoration:none}
+.nav-more-menu a.current{background:var(--s2);color:var(--text);font-weight:600}
+@media(max-width:560px){.nav-links a{padding:6px 11px;font-size:12px}.nav-more-btn{padding:6px 11px;font-size:12px}.nav-brand span.bn{display:none}}
+</style>
+</head>
+<body>
+<nav class="topnav"><div class="topnav-inner">
+  <a class="nav-brand" href="divergence.html"><span class="mark"></span><span class="bn">BTC.D Trader</span></a>
+  <div class="nav-links">
+    <a href="divergence.html">Divergence</a>
+    <a href="divergence100.html">Divergence 100</a>
+    <a href="pump.html">Pump</a>
+    <a href="turtle.html" class="active">Turtle</a>
+    <div class="nav-more">
+      <button class="nav-more-btn" id="nav-more-btn" aria-haspopup="true" aria-expanded="false" aria-controls="nav-more-menu">More <span class="caret">&#9662;</span></button>
+      <div class="nav-more-menu" id="nav-more-menu" role="menu">
+        <a href="unified.html" role="menuitem">Live Monitor</a>
+        <a href="btcd-monitor-15m-binance_8.html" role="menuitem">Signal Analysis</a>
+        <a href="performance.html" role="menuitem">Performance</a>
+      </div>
+    </div>
+  </div>
+  <div class="nav-right">
+    <button class="btn" id="tbtn">&#9728;&#65039;</button>
+  </div>
+</div></nav>
+<div class="wrap">
+<header>
+  <div><h1>Turtle System 2 &middot; <span>Multi-Asset</span></h1></div>
+  <div id="last-upd" style="font-size:12px;color:var(--text2);margin-bottom:4px"></div><div class="hdr-right">
+    <a href="performance.html" class="btn">&larr; Performance</a>
+  </div>
+</header>
+
+<div class="stats">
+  <div class="card lp"><div class="lbl">Closed Trades</div><div class="val" id="s-tot">&mdash;</div></div>
+  <div class="card lc"><div class="lbl">Win Rate</div><div class="val" id="s-wr">&mdash;</div></div>
+  <div class="card lg"><div class="lbl">Total PnL</div><div class="val" id="s-pnl">&mdash;</div></div>
+  <div class="card lg"><div class="lbl">Best Trade</div><div class="val" id="s-best">&mdash;</div></div>
+  <div class="card lr"><div class="lbl">Worst Trade</div><div class="val" id="s-worst">&mdash;</div></div>
+  <div class="card ly"><div class="lbl">Open Positions</div><div class="val" id="s-open">&mdash;</div></div>
+</div>
+
+<section id="equity-note-wrap" style="display:none">
+  <div class="note warn"><span class="ico">&#9888;&#65039;</span><div id="equity-note"></div></div>
+</section>
+
+<section>
+  <div class="charts-row">
+    <div class="card lp" style="padding:20px 24px">
+      <div class="lbl">Account Equity</div>
+      <div class="chart-wrap" style="margin-top:14px"><canvas id="ch-eq"></canvas></div>
+    </div>
+    <div class="card lc" style="padding:20px 24px">
+      <div class="lbl">Cumulative Trade PnL</div>
+      <div class="chart-wrap" style="margin-top:14px"><canvas id="ch-pnl"></canvas></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="card">
+    <div class="lbl" style="margin-bottom:14px">Open Positions</div>
+    <div class="tbl-wrap" id="pos-tbl">
+      <div class="empty">Loading&hellip;</div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="card">
+    <div class="lbl" style="margin-bottom:14px">Closed Trades</div>
+    <div class="tbl-wrap" id="tbl">
+      <div class="empty">No trades recorded yet &mdash; trades appear after the first entry/exit fires.</div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="card lp">
+    <div class="lbl" style="margin-bottom:14px">Strategy</div>
+    <div class="strategy-grid">
+      <div><label>System</label><div class="v">Turtle System 2</div></div>
+      <div><label>Entry / Exit Channel</label><div class="v">55d breakout / 20d exit</div></div>
+      <div><label>Risk per Unit</label><div class="v">1% equity (2% per 2N stop)</div></div>
+      <div><label>Max Pyramid Units</label><div class="v">4 / token</div></div>
+      <div><label>Portfolio Leverage Cap</label><div class="v">3&times; on 25% of equity, per pool</div></div>
+      <div><label>Exchange</label><div class="v">Hyperliquid (native + xyz dex)</div></div>
+      <div><label>Roster</label><div class="v">28 instruments (18 crypto + 10 equity/macro)</div></div>
+      <div><label>Run Cadence</label><div class="v">Daily, post UTC candle close</div></div>
+    </div>
+    <div class="note" style="margin-top:14px">
+      <span class="ico">&#8505;&#65039;</span>
+      <div>Crypto and equity/macro trade on separate, isolated-margin Hyperliquid perp dexes &mdash; each pool has its own account value and 3&times; leverage cap, so one side can never compete for the other's margin. Equity/macro signals are computed from real trading-day closes (Yahoo Finance), not the 24/7 perp price, to avoid weekend/after-hours drift triggering a breakout. CL (crude oil) is excluded from new entries by default &mdash; backtested the weakest of all 28 instruments (6% win rate).</div>
+    </div>
+  </div>
+</section>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+const $=id=>document.getElementById(id);
+const _q=new URLSearchParams(location.search).get('theme');
+let dark=_q?_q==='dark':localStorage.getItem('theme')==='dark';
+const tbtn=$("tbtn");
+function applyTheme(){
+  document.documentElement.setAttribute('data-theme',dark?'dark':'cream');
+  tbtn.textContent=dark?'☀️':'🌙';
+  localStorage.setItem('theme',dark?'dark':'cream');
+}
+tbtn.onclick=()=>{dark=!dark;applyTheme();rebuildCharts()};
+applyTheme();
+
+const fmt=(n,d=2)=>n==null?'—':(+n).toFixed(d);
+const fmtDate=ts=>{
+  const d=new Date(ts*1000);
+  return d.toLocaleDateString('en-GB',{month:'short',day:'numeric'})
+    +' '+d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+};
+const pc=n=>n>0?'g':n<0?'r':'';
+const fmtSmall=n=>{
+  if(n==null)return'—';
+  const a=Math.abs(n);
+  if(a===0)return'$0.00';
+  if(a<0.01)return'$'+n.toExponential(2);
+  return'$'+n.toFixed(2);
+};
+const fmtHeld=h=>{
+  if(h==null)return'—';
+  if(h<24)return h.toFixed(1)+'h';
+  return(h/24).toFixed(1)+'d';
+};
+
+let eqChart=null,pnlChart=null,lastEquity=[],lastTrades=[];
+
+function gridTick(){
+  return{grid:dark?'rgba(255,255,255,.08)':'rgba(60,50,35,.10)',tick:dark?'#A9BAB4':'#7C7466'};
+}
+
+function rebuildCharts(){
+  const {grid,tick}=gridTick();
+
+  if(eqChart)eqChart.destroy();
+  const eqLabels=lastEquity.map(s=>fmtDate(s.ts));
+  const eqData=lastEquity.map(s=>+s.equity.toFixed(6));
+  eqChart=new Chart($("ch-eq"),{
+    type:'line',
+    data:{labels:eqLabels,datasets:[{data:eqData,
+      borderColor:dark?'#C2653D':'#C15F3C',
+      backgroundColor:ctx=>{const g=ctx.chart.ctx.createLinearGradient(0,0,0,220);
+        const rgb=dark?'194,101,61':'193,95,60';
+        g.addColorStop(0,`rgba(${rgb},.20)`);g.addColorStop(1,`rgba(${rgb},0)`);return g},
+      fill:true,tension:.3,pointRadius:eqData.length<20?3:0,borderWidth:2}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>' $'+c.raw.toLocaleString(undefined,{maximumFractionDigits:2})}}},
+      scales:{
+        x:{ticks:{color:tick,font:{size:11},maxTicksLimit:7},grid:{color:grid}},
+        y:{ticks:{color:tick,font:{family:'JetBrains Mono',size:11},
+            callback:v=>'$'+v.toLocaleString(undefined,{maximumFractionDigits:0})},grid:{color:grid}}
+      }}
+  });
+
+  if(pnlChart)pnlChart.destroy();
+  const cl=lastTrades;
+  let cum=0;
+  const pnlLabels=['Start',...cl.map(t=>fmtDate(t.exit_ts))];
+  const pnlData=[0,...cl.map(t=>{cum+=t.pnl||0;return+cum.toFixed(2)})];
+  pnlChart=new Chart($("ch-pnl"),{
+    type:'line',
+    data:{labels:pnlLabels,datasets:[{data:pnlData,
+      borderColor:dark?'#0C8FBA':'#3F6F73',
+      backgroundColor:ctx=>{const g=ctx.chart.ctx.createLinearGradient(0,0,0,220);
+        const rgb=dark?'12,143,186':'63,111,115';
+        g.addColorStop(0,`rgba(${rgb},.20)`);g.addColorStop(1,`rgba(${rgb},0)`);return g},
+      fill:true,tension:.3,pointRadius:pnlData.length<20?4:2,borderWidth:2}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>' $'+c.raw.toFixed(2)}}},
+      scales:{
+        x:{ticks:{color:tick,font:{size:11},maxTicksLimit:7},grid:{color:grid}},
+        y:{ticks:{color:tick,font:{family:'JetBrains Mono',size:11},callback:v=>'$'+v.toFixed(0)},grid:{color:grid}}
+      }}
+  });
+}
+
+function stopPrice(units){
+  const last=units[units.length-1];
+  const n=last.n_at_entry;
+  return last.side==='long'?last.entry_px-2*n:last.entry_px+2*n;
+}
+
+function renderPositions(state){
+  const positions=Object.entries(state.positions||{}).filter(([,st])=>(st.units||[]).length>0);
+  if(!positions.length){
+    $("pos-tbl").innerHTML='<div class="empty">No open positions &mdash; flat across the roster.</div>';
+    $("s-open").textContent='0';
+    return;
+  }
+  $("s-open").textContent=positions.length;
+  const rows=positions.map(([tok,st])=>{
+    const units=st.units;
+    const side=units[0].side;
+    const opened=units[0].entry_ts;
+    const entries=units.map(u=>(+u.entry_px).toLocaleString(undefined,{maximumSignificantDigits:6})).join(', ');
+    const notional=units.reduce((a,u)=>a+u.sz*u.entry_px,0);
+    const dots=`<span class="units-dots">${[0,1,2,3].map(i=>`<span class="${i<units.length?'on':''}"></span>`).join('')}</span>`;
+    return`<tr>
+      <td><b>${tok}</b></td>
+      <td><span class="badge b-${side}">${side.toUpperCase()}</span></td>
+      <td>${units.length}/4 ${dots}</td>
+      <td>${entries}</td>
+      <td>${(+stopPrice(units)).toLocaleString(undefined,{maximumSignificantDigits:6})}</td>
+      <td>${fmtSmall(notional)}</td>
+      <td>${fmtDate(opened)}</td>
+    </tr>`;
+  }).join('');
+  $("pos-tbl").innerHTML=`<table><thead><tr>
+    <th>Token</th><th>Side</th><th>Units</th><th>Entries</th><th>Stop</th><th>Est. Notional</th><th>First Opened</th>
+  </tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+function exitBadge(reason){
+  if(reason==='STOP')return'<span class="badge b-stop">Stop</span>';
+  if(reason==='CHANNEL_EXIT')return'<span class="badge b-channel">Channel Exit</span>';
+  if(reason==='CLOSED_EXTERNALLY')return'<span class="badge b-ext">Closed Externally</span>';
+  return reason||'—';
+}
+
+function renderTable(trades){
+  if(!trades.length)return;
+  const rows=trades.slice().reverse().map((t,i)=>{
+    const held=t.held_hours!=null?t.held_hours:(t.exit_ts-t.entry_ts)/3600;
+    const pnl=t.pnl!=null?`<span class="${pc(t.pnl)}">$${fmt(t.pnl)}</span>`:'—';
+    return`<tr><td class="m">${trades.length-i}</td>
+      <td><b>${t.token}</b></td>
+      <td><span class="badge b-${t.side}">${t.side.toUpperCase()}</span></td>
+      <td>${t.units}/4</td>
+      <td>${fmtDate(t.entry_ts)}</td>
+      <td>${fmtDate(t.exit_ts)}</td>
+      <td>${fmtHeld(held)}</td>
+      <td>${pnl}</td>
+      <td>${exitBadge(t.reason)}</td></tr>`;
+  }).join('');
+  $("tbl").innerHTML=`<table><thead><tr>
+    <th>#</th><th>Token</th><th>Side</th><th>Units</th><th>Opened</th><th>Closed</th><th>Held</th><th>PnL</th><th>Exit</th>
+  </tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+function stats(trades){
+  const ps=trades.map(t=>t.pnl).filter(p=>p!=null);
+  const w=ps.filter(p=>p>0).length;
+  const tot=ps.reduce((a,b)=>a+b,0);
+  return{total:trades.length,
+    wr:ps.length?w/ps.length*100:null,
+    pnl:ps.length?tot:null,
+    best:ps.length?Math.max(...ps):null,
+    worst:ps.length?Math.min(...ps):null};
+}
+
+function renderEquityNote(equity){
+  if(equity.length<2)return;
+  const peak=equity.reduce((m,s)=>s.equity>m.equity?s:m,equity[0]);
+  const latest=equity[equity.length-1];
+  if(peak.equity>1&&latest.equity<peak.equity*0.01){
+    $("equity-note-wrap").style.display='block';
+    $("equity-note").innerHTML=
+      `Current account equity (<b>$${latest.equity.toLocaleString(undefined,{maximumFractionDigits:6})}</b>) `+
+      `is under 1% of its recorded peak (<b>$${peak.equity.toLocaleString(undefined,{maximumFractionDigits:2})}</b> on ${fmtDate(peak.ts)}). `+
+      `Position sizing (1% risk per unit) is computed against this near-zero capital base, so open units above are dust-sized and the recent PnL shown is not economically meaningful until capital is restored.`;
+  }else{
+    $("equity-note-wrap").style.display='none';
+  }
+}
+
+async function load(){
+  const[tr,sr,er]=await Promise.allSettled([
+    fetch('./turtle_hyperliquid_trades.json?t='+Date.now()).then(r=>r.ok?r.json():[]).catch(()=>[]),
+    fetch('./turtle_hyperliquid_state.json?t='+Date.now()).then(r=>r.ok?r.json():{positions:{}}).catch(()=>({positions:{}})),
+    fetch('./turtle_hyperliquid_equity.json?t='+Date.now()).then(r=>r.ok?r.json():[]).catch(()=>[])
+  ]);
+  lastTrades=tr.status==='fulfilled'?tr.value:[];
+  const state=sr.status==='fulfilled'?sr.value:{positions:{}};
+  lastEquity=er.status==='fulfilled'?er.value:[];
+
+  const st=stats(lastTrades);
+  $("s-tot").textContent=st.total;
+  $("s-wr").innerHTML=st.wr!=null?`<span class="${st.wr>=50?'g':'r'}">${st.wr.toFixed(1)}%</span>`:'—';
+  $("s-pnl").innerHTML=st.pnl!=null?`<span class="${pc(st.pnl)}">$${fmt(st.pnl)}</span>`:'—';
+  $("s-best").innerHTML=st.best!=null?`<span class="g">+$${fmt(st.best)}</span>`:'—';
+  $("s-worst").innerHTML=st.worst!=null?`<span class="r">$${fmt(st.worst)}</span>`:'—';
+
+  renderPositions(state);
+  renderTable(lastTrades);
+  renderEquityNote(lastEquity);
+  rebuildCharts();
+}
+async function loadAndStamp(){await load();const el=document.getElementById("last-upd");if(el)el.textContent="Updated "+new Date().toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit",second:"2-digit"});}
+loadAndStamp();
+setInterval(loadAndStamp,60000);
+
+// nav "More" dropdown — identical block on every page
+(()=>{
+  const btn=document.getElementById('nav-more-btn'),menu=document.getElementById('nav-more-menu');
+  if(!btn||!menu)return;
+  const setOpen=o=>{menu.classList.toggle('open',o);btn.setAttribute('aria-expanded',o)};
+  btn.addEventListener('click',e=>{e.stopPropagation();setOpen(!menu.classList.contains('open'))});
+  document.addEventListener('click',e=>{if(menu.classList.contains('open')&&!menu.contains(e.target)&&e.target!==btn)setOpen(false)});
+  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&menu.classList.contains('open')){setOpen(false);btn.focus()}});
+  menu.addEventListener('click',e=>{if(e.target.closest('a'))setOpen(false)});
+})();
+</script>
+</body></html>
