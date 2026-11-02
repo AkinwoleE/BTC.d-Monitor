@@ -124,5 +124,14 @@
   "exit_ts": 1793598617,
   "pnl": -0.0,
   "reason": "STOP"
+ },
+ {
+  "token": "AMZN",
+  "side": "short",
+  "units": 2,
+  "entry_ts": 1793574739,
+  "exit_ts": 1793661139,
+  "pnl": 0.0,
+  "reason": "STOP"
  }
 ]
