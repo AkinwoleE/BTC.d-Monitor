@@ -38295,6 +38295,12 @@
      "high": 78110.5,
      "low": 77161.3,
      "close": 77630.1
+    },
+    {
+     "ts": 1793772000,
+     "high": 77950.0,
+     "low": 77630.1,
+     "close": 77884.4
     }
    ],
    "alerted": true,
@@ -38302,8 +38308,8 @@
     "complete": false,
     "ret_6h": 0.828,
     "ret_12h": 1.113,
-    "ret_24h": 0.894,
-    "ret_48h": 0.894,
+    "ret_24h": 1.225,
+    "ret_48h": 1.225,
     "best_entry": {
      "ts": 1793700000,
      "price": 76845.6,
@@ -38318,7 +38324,57 @@
     "mfe_pct": 1.519,
     "mae_pct": 1.712
    }
+  },
+  {
+   "id": "1h-bullish-1793761200",
+   "tf": "1h",
+   "direction": "bullish",
+   "legs": 3,
+   "pivots": [
+    {
+     "ts": 1793646000,
+     "price": 76564.7,
+     "rsi": 30.56
+    },
+    {
+     "ts": 1793685600,
+     "price": 76254.4,
+     "rsi": 33.53
+    },
+    {
+     "ts": 1793761200,
+     "price": 75625.0,
+     "rsi": 36.46
+    }
+   ],
+   "confirmed_ts": 1793775600,
+   "confirm_price": 77884.4,
+   "forward": [],
+   "alerted": true
+  },
+  {
+   "id": "1h-bullish2-1793761200",
+   "tf": "1h",
+   "direction": "bullish",
+   "legs": 2,
+   "pivots": [
+    {
+     "ts": 1793685600,
+     "price": 76254.4,
+     "rsi": 33.53
+    },
+    {
+     "ts": 1793761200,
+     "price": 75625.0,
+     "rsi": 36.46
+    }
+   ],
+   "confirmed_ts": 1793775600,
+   "confirm_price": 77884.4,
+   "forward": [],
+   "alerted": false,
+   "alert_suppressed": "duplicate-structure"
   }
  ],
- "updated": "2026-11-04T06:30:25.937447+00:00"
+ "updated": "2026-11-04T07:00:26.957120+00:00"
 }
