@@ -133,5 +133,14 @@
   "exit_ts": 1793661139,
   "pnl": 0.0,
   "reason": "STOP"
+ },
+ {
+  "token": "TSLA",
+  "side": "long",
+  "units": 1,
+  "entry_ts": 1793661139,
+  "exit_ts": 1793833939,
+  "pnl": 0.0,
+  "reason": "STOP"
  }
 ]
