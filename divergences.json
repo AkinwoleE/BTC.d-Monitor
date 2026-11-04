@@ -38307,6 +38307,12 @@
      "high": 78241.6,
      "low": 77778.5,
      "close": 78019.0
+    },
+    {
+     "ts": 1793779200,
+     "high": 78402.8,
+     "low": 78019.0,
+     "close": 78378.9
     }
    ],
    "alerted": true,
@@ -38314,20 +38320,20 @@
     "complete": false,
     "ret_6h": 0.828,
     "ret_12h": 1.113,
-    "ret_24h": 1.4,
-    "ret_48h": 1.4,
+    "ret_24h": 1.868,
+    "ret_48h": 1.868,
     "best_entry": {
      "ts": 1793700000,
      "price": 76845.6,
      "hours_after": 0.0
     },
     "best_exit": {
-     "ts": 1793775600,
-     "price": 78241.6,
-     "hours_after": 21.0
+     "ts": 1793779200,
+     "price": 78402.8,
+     "hours_after": 22.0
     },
-    "best_pnl_pct": 1.817,
-    "mfe_pct": 1.689,
+    "best_pnl_pct": 2.026,
+    "mfe_pct": 1.899,
     "mae_pct": 1.712
    }
   },
@@ -38361,27 +38367,33 @@
      "high": 78241.6,
      "low": 77778.5,
      "close": 78019.0
+    },
+    {
+     "ts": 1793779200,
+     "high": 78402.8,
+     "low": 78019.0,
+     "close": 78378.9
     }
    ],
    "alerted": true,
    "stats": {
     "complete": false,
-    "ret_6h": 0.173,
-    "ret_12h": 0.173,
-    "ret_24h": 0.173,
-    "ret_48h": 0.173,
+    "ret_6h": 0.635,
+    "ret_12h": 0.635,
+    "ret_24h": 0.635,
+    "ret_48h": 0.635,
     "best_entry": {
      "ts": 1793775600,
      "price": 77778.5,
      "hours_after": 0.0
     },
     "best_exit": {
-     "ts": 1793775600,
-     "price": 78241.6,
-     "hours_after": 0.0
+     "ts": 1793779200,
+     "price": 78402.8,
+     "hours_after": 1.0
     },
-    "best_pnl_pct": 0.595,
-    "mfe_pct": 0.459,
+    "best_pnl_pct": 0.803,
+    "mfe_pct": 0.666,
     "mae_pct": 0.136
    }
   },
@@ -38410,31 +38422,37 @@
      "high": 78241.6,
      "low": 77778.5,
      "close": 78019.0
+    },
+    {
+     "ts": 1793779200,
+     "high": 78402.8,
+     "low": 78019.0,
+     "close": 78378.9
     }
    ],
    "alerted": false,
    "alert_suppressed": "duplicate-structure",
    "stats": {
     "complete": false,
-    "ret_6h": 0.173,
-    "ret_12h": 0.173,
-    "ret_24h": 0.173,
-    "ret_48h": 0.173,
+    "ret_6h": 0.635,
+    "ret_12h": 0.635,
+    "ret_24h": 0.635,
+    "ret_48h": 0.635,
     "best_entry": {
      "ts": 1793775600,
      "price": 77778.5,
      "hours_after": 0.0
     },
     "best_exit": {
-     "ts": 1793775600,
-     "price": 78241.6,
-     "hours_after": 0.0
+     "ts": 1793779200,
+     "price": 78402.8,
+     "hours_after": 1.0
     },
-    "best_pnl_pct": 0.595,
-    "mfe_pct": 0.459,
+    "best_pnl_pct": 0.803,
+    "mfe_pct": 0.666,
     "mae_pct": 0.136
    }
   }
  ],
- "updated": "2026-11-04T08:30:28.246046+00:00"
+ "updated": "2026-11-04T09:00:32.230288+00:00"
 }
