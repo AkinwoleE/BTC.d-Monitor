@@ -142,5 +142,23 @@
   "exit_ts": 1793833939,
   "pnl": 0.0,
   "reason": "STOP"
+ },
+ {
+  "token": "ETH",
+  "side": "short",
+  "units": 3,
+  "entry_ts": 1793338485,
+  "exit_ts": 1793860176,
+  "pnl": -0.0,
+  "reason": "STOP"
+ },
+ {
+  "token": "XRP",
+  "side": "short",
+  "units": 2,
+  "entry_ts": 1793338485,
+  "exit_ts": 1793860176,
+  "pnl": -0.0,
+  "reason": "STOP"
  }
 ]
