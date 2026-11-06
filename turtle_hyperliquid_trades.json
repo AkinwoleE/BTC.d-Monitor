@@ -169,5 +169,14 @@
   "exit_ts": 1793946281,
   "pnl": 0.0,
   "reason": "STOP"
+ },
+ {
+  "token": "MSFT",
+  "side": "long",
+  "units": 2,
+  "entry_ts": 1793833939,
+  "exit_ts": 1794006740,
+  "pnl": 0.0,
+  "reason": "STOP"
  }
 ]
