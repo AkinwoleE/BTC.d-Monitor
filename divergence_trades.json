@@ -269,5 +269,10 @@
   "sl_price": 74051.3,
   "tp_sl_ok": true,
   "timestamp": "2026-11-06T06:00:50.690110+00:00"
+ },
+ {
+  "action": "SKIP_SAME_DIRECTION",
+  "episode_id": "2h-bullish2-1793973600",
+  "timestamp": "2026-11-06T22:00:46.064590+00:00"
  }
 ]
