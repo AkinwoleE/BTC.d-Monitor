@@ -256,5 +256,18 @@
   "pnl": 2.5732189999999946,
   "held_hours": 48.5,
   "timestamp": "2026-11-01T00:30:58.930740+00:00"
+ },
+ {
+  "action": "OPEN",
+  "episode_id": "2h-bullish2-1793916000",
+  "direction": "bullish",
+  "side": "long",
+  "size": 0.01323,
+  "entry_price": 75562.6,
+  "equity": 160.930945,
+  "tp_price": 78131.7,
+  "sl_price": 74051.3,
+  "tp_sl_ok": true,
+  "timestamp": "2026-11-06T06:00:50.690110+00:00"
  }
 ]

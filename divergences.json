@@ -39118,6 +39118,12 @@
      "high": 75796.7,
      "low": 75507.0,
      "close": 75661.7
+    },
+    {
+     "ts": 1793941200,
+     "high": 75700.3,
+     "low": 75263.2,
+     "close": 75596.4
     }
    ],
    "alerted": true,
@@ -39126,7 +39132,7 @@
     "ret_6h": 0.4,
     "ret_12h": 3.077,
     "ret_24h": 3.441,
-    "ret_48h": -2.854,
+    "ret_48h": -2.938,
     "best_entry": {
      "ts": 1793775600,
      "price": 77778.5,
@@ -39437,6 +39443,12 @@
      "high": 75796.7,
      "low": 75507.0,
      "close": 75661.7
+    },
+    {
+     "ts": 1793941200,
+     "high": 75700.3,
+     "low": 75263.2,
+     "close": 75596.4
     }
    ],
    "alerted": false,
@@ -39446,7 +39458,7 @@
     "ret_6h": 0.4,
     "ret_12h": 3.077,
     "ret_24h": 3.441,
-    "ret_48h": -2.854,
+    "ret_48h": -2.938,
     "best_entry": {
      "ts": 1793775600,
      "price": 77778.5,
@@ -39493,30 +39505,59 @@
      "high": 75796.7,
      "low": 75507.0,
      "close": 75661.7
+    },
+    {
+     "ts": 1793941200,
+     "high": 75700.3,
+     "low": 75263.2,
+     "close": 75596.4
     }
    ],
    "alerted": true,
    "stats": {
     "complete": false,
-    "ret_6h": -0.547,
-    "ret_12h": -0.547,
-    "ret_24h": -0.547,
-    "ret_48h": -0.547,
+    "ret_6h": -0.632,
+    "ret_12h": -0.632,
+    "ret_24h": -0.632,
+    "ret_48h": -0.632,
     "best_entry": {
-     "ts": 1793937600,
-     "price": 75507.0,
-     "hours_after": 1.0
+     "ts": 1793941200,
+     "price": 75263.2,
+     "hours_after": 2.0
     },
     "best_exit": {
-     "ts": 1793937600,
-     "price": 75796.7,
-     "hours_after": 1.0
+     "ts": 1793941200,
+     "price": 75700.3,
+     "hours_after": 2.0
     },
-    "best_pnl_pct": 0.384,
+    "best_pnl_pct": 0.581,
     "mfe_pct": 0.107,
-    "mae_pct": 0.75
+    "mae_pct": 1.07
    }
+  },
+  {
+   "id": "2h-bullish2-1793916000",
+   "tf": "2h",
+   "direction": "bullish",
+   "legs": 2,
+   "pivots": [
+    {
+     "ts": 1793887200,
+     "price": 75420.5,
+     "rsi": 28.99
+    },
+    {
+     "ts": 1793916000,
+     "price": 75100.0,
+     "rsi": 33.01
+    }
+   ],
+   "confirmed_ts": 1793944800,
+   "confirm_price": 75596.4,
+   "forward": [],
+   "alerted": false,
+   "alert_suppressed": "duplicate-structure"
   }
  ],
- "updated": "2026-11-06T05:30:29.618825+00:00"
+ "updated": "2026-11-06T06:00:27.312335+00:00"
 }
