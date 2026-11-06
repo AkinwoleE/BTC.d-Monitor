@@ -39124,15 +39124,21 @@
      "high": 75700.3,
      "low": 75263.2,
      "close": 75596.4
+    },
+    {
+     "ts": 1793944800,
+     "high": 75689.2,
+     "low": 75350.1,
+     "close": 75600.2
     }
    ],
    "alerted": true,
    "stats": {
-    "complete": false,
+    "complete": true,
     "ret_6h": 0.4,
     "ret_12h": 3.077,
     "ret_24h": 3.441,
-    "ret_48h": -2.938,
+    "ret_48h": -2.933,
     "best_entry": {
      "ts": 1793775600,
      "price": 77778.5,
@@ -39449,16 +39455,22 @@
      "high": 75700.3,
      "low": 75263.2,
      "close": 75596.4
+    },
+    {
+     "ts": 1793944800,
+     "high": 75689.2,
+     "low": 75350.1,
+     "close": 75600.2
     }
    ],
    "alerted": false,
    "alert_suppressed": "duplicate-structure",
    "stats": {
-    "complete": false,
+    "complete": true,
     "ret_6h": 0.4,
     "ret_12h": 3.077,
     "ret_24h": 3.441,
-    "ret_48h": -2.938,
+    "ret_48h": -2.933,
     "best_entry": {
      "ts": 1793775600,
      "price": 77778.5,
@@ -39511,15 +39523,21 @@
      "high": 75700.3,
      "low": 75263.2,
      "close": 75596.4
+    },
+    {
+     "ts": 1793944800,
+     "high": 75689.2,
+     "low": 75350.1,
+     "close": 75600.2
     }
    ],
    "alerted": true,
    "stats": {
     "complete": false,
-    "ret_6h": -0.632,
-    "ret_12h": -0.632,
-    "ret_24h": -0.632,
-    "ret_48h": -0.632,
+    "ret_6h": -0.627,
+    "ret_12h": -0.627,
+    "ret_24h": -0.627,
+    "ret_48h": -0.627,
     "best_entry": {
      "ts": 1793941200,
      "price": 75263.2,
@@ -39554,10 +39572,37 @@
    ],
    "confirmed_ts": 1793944800,
    "confirm_price": 75596.4,
-   "forward": [],
+   "forward": [
+    {
+     "ts": 1793944800,
+     "high": 75689.2,
+     "low": 75350.1,
+     "close": 75600.2
+    }
+   ],
    "alerted": false,
-   "alert_suppressed": "duplicate-structure"
+   "alert_suppressed": "duplicate-structure",
+   "stats": {
+    "complete": false,
+    "ret_6h": 0.005,
+    "ret_12h": 0.005,
+    "ret_24h": 0.005,
+    "ret_48h": 0.005,
+    "best_entry": {
+     "ts": 1793944800,
+     "price": 75350.1,
+     "hours_after": 0.0
+    },
+    "best_exit": {
+     "ts": 1793944800,
+     "price": 75689.2,
+     "hours_after": 0.0
+    },
+    "best_pnl_pct": 0.45,
+    "mfe_pct": 0.123,
+    "mae_pct": 0.326
+   }
   }
  ],
- "updated": "2026-11-06T06:30:26.758177+00:00"
+ "updated": "2026-11-06T07:00:24.397234+00:00"
 }
