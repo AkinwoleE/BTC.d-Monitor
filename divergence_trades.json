@@ -274,5 +274,15 @@
   "action": "SKIP_SAME_DIRECTION",
   "episode_id": "2h-bullish2-1793973600",
   "timestamp": "2026-11-06T22:00:46.064590+00:00"
+ },
+ {
+  "action": "CLOSE",
+  "episode_id": "2h-bullish2-1793916000",
+  "reason": "TIME_EXIT_48H",
+  "direction": "bullish",
+  "entry_price": 75562.6,
+  "pnl": 0.9818389999999795,
+  "held_hours": 48.5,
+  "timestamp": "2026-11-08T06:30:46.640637+00:00"
  }
 ]

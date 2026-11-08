@@ -1,15 +1,5 @@
 {
- "position": {
-  "episode_id": "2h-bullish2-1793916000",
-  "direction": "bullish",
-  "size": 0.01324,
-  "entry_price": 75532.2,
-  "entry_ts": 1793944866,
-  "entry_equity": 199.429898,
-  "tp_price": 78100.3,
-  "sl_price": 74021.6,
-  "tp_sl_ok": true
- },
+ "position": null,
  "acted": {
   "2h-bullish2-1793916000": 1793944866,
   "2h-bullish2-1793973600": 1794002446
