@@ -1,0 +1,99 @@
+name: ASTER unlock short
+
+# Plan A for the 4 Nov 2026 ASTER unlock. Short the ASTER perp on Hyperliquid
+# in three tranches (29 Oct, 1 Nov, 3 Nov 2026, 12:00 UTC), isolated 2x, using
+# 10% of account value as margin. Native reduce-only triggers take half off
+# at 0.665 and the rest at 0.63, with a 0.835 stop-market backstop. A 4h
+# candle close above 0.785, or 5 Nov 2026 12:00 UTC, flattens the position.
+#
+# Dry run until BOTH of these are true:
+#   1. Repository variable ASTER_LIVE is exactly the string true.
+#      Settings → Secrets and variables → Actions → Variables → New variable.
+#      Do not set it in this file. Unset, empty, or any other value stays dry.
+#   2. For a manual run, the dry_run input is also false. Scheduled runs have
+#      no dry_run input; ASTER_LIVE alone arms them.
+#
+# The 16:05 UTC crons are idempotent retries. This repo has seen GitHub's
+# schedule trigger run hours late, and a missed 12:05 run would otherwise
+# skip a tranche until somebody dispatched it. Disable this workflow after
+# 8 Nov 2026; the script also no-ops scheduled runs outside the campaign.
+on:
+  schedule:
+    - cron: "5 12 29 10 *"    # tranche 1, 29 Oct 12:05 UTC
+    - cron: "5 16 29 10 *"    # tranche 1 retry
+    - cron: "5 12 1 11 *"     # tranche 2, 1 Nov 12:05 UTC
+    - cron: "5 16 1 11 *"
+    - cron: "5 12 3 11 *"     # tranche 3, 3 Nov 12:05 UTC
+    - cron: "5 16 3 11 *"
+    - cron: "10 0,4,8,12,16,20 * * *"  # after each 4h candle close
+    - cron: "5 12 5 11 *"     # time exit, 5 Nov 12:05 UTC
+    - cron: "5 16 5 11 *"     # time exit retry
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "status, enter_tranche, check_stop, or close_all"
+        required: true
+        type: choice
+        default: status
+        options:
+          - status
+          - enter_tranche
+          - check_stop
+          - close_all
+      dry_run:
+        description: "Dry run. Real orders also require repository variable ASTER_LIVE to be true."
+        required: true
+        type: boolean
+        default: true
+
+concurrency:
+  group: aster-unlock-short
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  trade:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - run: pip install requests "hyperliquid-python-sdk==0.24.0"
+
+      - name: Unit tests
+        run: python -m unittest test_aster_unlock_plan.py
+
+      - name: ASTER unlock short
+        run: python aster_unlock_short.py
+        env:
+          ASTER_LIVE: ${{ vars.ASTER_LIVE }}
+          ASTER_EVENT_NAME: ${{ github.event_name }}
+          ASTER_SCHEDULE: ${{ github.event.schedule }}
+          ASTER_ACTION: ${{ github.event_name == 'workflow_dispatch' && inputs.action || '' }}
+          # A bare `inputs.dry_run || ''` turns boolean false into "" because
+          # false is falsy, and the script would then refuse to go live.
+          # Force the strings "true" and "false".
+          ASTER_DISPATCH_DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && (inputs.dry_run && 'true' || 'false') || '' }}
+          HYPERLIQUID_API_PRIVATE_KEY: ${{ secrets.HYPERLIQUID_API_PRIVATE_KEY }}
+          HYPERLIQUID_ACCOUNT_ADDRESS: ${{ secrets.HYPERLIQUID_ACCOUNT_ADDRESS }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+
+      - name: Commit state
+        if: always()
+        run: |
+          git config user.name "aster-unlock-bot"
+          git config user.email "actions@users.noreply.github.com"
+          if [ -f aster_unlock_state.json ]; then git add aster_unlock_state.json; fi
+          git diff --cached --quiet && exit 0
+          git commit -m "aster-unlock: update state [skip ci]"
+          git pull --rebase origin "$GITHUB_REF_NAME" || true
+          git push origin "HEAD:$GITHUB_REF_NAME"
