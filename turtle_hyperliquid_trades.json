@@ -178,5 +178,14 @@
   "exit_ts": 1794006740,
   "pnl": 0.0,
   "reason": "STOP"
+ },
+ {
+  "token": "SP500",
+  "side": "short",
+  "units": 3,
+  "entry_ts": 1793920341,
+  "exit_ts": 1794438742,
+  "pnl": 0.0,
+  "reason": "STOP"
  }
 ]
