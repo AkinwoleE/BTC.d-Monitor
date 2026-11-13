@@ -29,7 +29,15 @@
    ]
   },
   "APT": {
-   "units": []
+   "units": [
+    {
+     "side": "short",
+     "entry_px": 0.5516,
+     "sz": 7.741274829909079,
+     "n_at_entry": 0.05367010117568449,
+     "entry_ts": 1794551185
+    }
+   ]
   },
   "AVAX": {
    "units": []
@@ -252,7 +260,15 @@
    "units": []
   },
   "GOLD": {
-   "units": []
+   "units": [
+    {
+     "side": "short",
+     "entry_px": 3879.300048828125,
+     "sz": 0.0,
+     "n_at_entry": 79.5772654506722,
+     "entry_ts": 1794551185
+    }
+   ]
   },
   "CL": {
    "units": []
