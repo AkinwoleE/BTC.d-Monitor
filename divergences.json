@@ -42846,30 +42846,36 @@
      "high": 66003.2,
      "low": 65010.1,
      "close": 65686.9
+    },
+    {
+     "ts": 1794672000,
+     "high": 65698.4,
+     "low": 64999.1,
+     "close": 65298.2
     }
    ],
    "alerted": true,
    "stats": {
     "complete": false,
-    "ret_6h": -2.267,
-    "ret_12h": -2.267,
-    "ret_24h": -2.267,
-    "ret_48h": -2.267,
+    "ret_6h": -2.846,
+    "ret_12h": -2.846,
+    "ret_24h": -2.846,
+    "ret_48h": -2.846,
     "best_entry": {
-     "ts": 1794668400,
-     "price": 65010.1,
-     "hours_after": 3.0
+     "ts": 1794672000,
+     "price": 64999.1,
+     "hours_after": 4.0
     },
     "best_exit": {
-     "ts": 1794668400,
-     "price": 66003.2,
-     "hours_after": 3.0
+     "ts": 1794672000,
+     "price": 65698.4,
+     "hours_after": 4.0
     },
-    "best_pnl_pct": 1.528,
+    "best_pnl_pct": 1.076,
     "mfe_pct": 0.068,
-    "mae_pct": 3.274
+    "mae_pct": 3.291
    }
   }
  ],
- "updated": "2026-11-14T16:30:24.125585+00:00"
+ "updated": "2026-11-14T17:00:24.085886+00:00"
 }
