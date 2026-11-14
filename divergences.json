@@ -42802,7 +42802,29 @@
     "mfe_pct": 0.431,
     "mae_pct": 3.134
    }
+  },
+  {
+   "id": "2h-bullish2-1794628800",
+   "tf": "2h",
+   "direction": "bullish",
+   "legs": 2,
+   "pivots": [
+    {
+     "ts": 1794542400,
+     "price": 67500.0,
+     "rsi": 12.12
+    },
+    {
+     "ts": 1794628800,
+     "price": 66402.4,
+     "rsi": 25.61
+    }
+   ],
+   "confirmed_ts": 1794657600,
+   "confirm_price": 67210.8,
+   "forward": [],
+   "alerted": true
   }
  ],
- "updated": "2026-11-14T11:30:32.226647+00:00"
+ "updated": "2026-11-14T12:00:24.464980+00:00"
 }
