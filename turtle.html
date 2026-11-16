@@ -27,6 +27,7 @@ header h1 span{color:var(--purple)}
 .hdr-right{display:flex;align-items:center;gap:10px}
 .btn{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:7px 14px;cursor:pointer;font-size:13px;color:var(--text);transition:border-color .15s;font-family:var(--font)}
 .btn:hover{border-color:var(--purple)}
+.btn.on{border-color:var(--purple);font-weight:600}
 .stats{display:grid;grid-template-columns:repeat(6,1fr);gap:14px;margin-bottom:20px}
 @media(max-width:900px){.stats{grid-template-columns:repeat(3,1fr)}}
 @media(max-width:560px){.stats{grid-template-columns:repeat(2,1fr)}}
@@ -115,10 +116,14 @@ tr:hover td{background:var(--s2)}
 <div class="wrap">
 <header>
   <div><h1>Turtle System 2 &middot; <span>Multi-Asset</span></h1></div>
-  <div id="last-upd" style="font-size:12px;color:var(--text2);margin-bottom:4px"></div><div class="hdr-right">
+  <div id="last-upd" style="font-size:12px;color:var(--text2);margin-bottom:4px"></div>  <div class="hdr-right">
+    <button class="btn" id="book-paper" type="button">Paper</button>
+    <button class="btn" id="book-live" type="button">Live</button>
     <a href="performance.html" class="btn">&larr; Performance</a>
   </div>
 </header>
+
+<section id="book-banner"></section>
 
 <div class="stats">
   <div class="card lp"><div class="lbl">Closed Trades</div><div class="val" id="s-tot">&mdash;</div></div>
@@ -148,7 +153,10 @@ tr:hover td{background:var(--s2)}
 
 <section>
   <div class="card">
-    <div class="lbl" style="margin-bottom:14px">Open Positions</div>
+    <div style="display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:14px">
+      <div class="lbl" style="margin-bottom:0">Open Positions</div>
+      <div id="pos-unrl-total" style="font-family:var(--mono);font-size:13px;color:var(--text2)"></div>
+    </div>
     <div class="tbl-wrap" id="pos-tbl">
       <div class="empty">Loading&hellip;</div>
     </div>
@@ -175,11 +183,11 @@ tr:hover td{background:var(--s2)}
       <div><label>Portfolio Leverage Cap</label><div class="v">3&times; on 25% of equity, per pool</div></div>
       <div><label>Exchange</label><div class="v">Hyperliquid (native + xyz dex)</div></div>
       <div><label>Roster</label><div class="v">28 instruments (18 crypto + 10 equity/macro)</div></div>
-      <div><label>Run Cadence</label><div class="v">Daily, post UTC candle close</div></div>
+      <div><label>Run Cadence</label><div class="v">00:12 UTC, once per daily candle</div></div>
     </div>
     <div class="note" style="margin-top:14px">
       <span class="ico">&#8505;&#65039;</span>
-      <div>Crypto and equity/macro trade on separate, isolated-margin Hyperliquid perp dexes &mdash; each pool has its own account value and 3&times; leverage cap, so one side can never compete for the other's margin. Equity/macro signals are computed from real trading-day closes (Yahoo Finance), not the 24/7 perp price, to avoid weekend/after-hours drift triggering a breakout. CL (crude oil) is excluded from new entries by default &mdash; backtested the weakest of all 28 instruments (6% win rate).</div>
+      <div>Crypto and equity/macro trade on separate, isolated-margin Hyperliquid perp dexes &mdash; each pool has its own account value and 3&times; leverage cap, so one side can never compete for the other's margin. Equity/macro signals are computed from real trading-day closes (Yahoo Finance), not the 24/7 perp price, to avoid weekend/after-hours drift triggering a breakout. CL (crude oil) is excluded from new entries by default &mdash; backtested the weakest of all 28 instruments (6% win rate). Each completed daily candle is acted on once. cron-job.org fires at 01:12 Africa/Lagos (00:12 UTC); GitHub's 00:10 UTC schedule is the backup. Paper and live are separate books.</div>
     </div>
   </div>
 </section>
@@ -230,7 +238,7 @@ function rebuildCharts(){
 
   if(eqChart)eqChart.destroy();
   const eqLabels=lastEquity.map(s=>fmtDate(s.ts));
-  const eqData=lastEquity.map(s=>+s.equity.toFixed(6));
+  const eqData=lastEquity.map(s=>+(Number(s.equity)||0).toFixed(6));
   eqChart=new Chart($("ch-eq"),{
     type:'line',
     data:{labels:eqLabels,datasets:[{data:eqData,
@@ -276,14 +284,16 @@ function stopPrice(units){
   return last.side==='long'?last.entry_px-2*n:last.entry_px+2*n;
 }
 
-function renderPositions(state){
+function renderPositions(state, mids){
   const positions=Object.entries(state.positions||{}).filter(([,st])=>(st.units||[]).length>0);
   if(!positions.length){
     $("pos-tbl").innerHTML='<div class="empty">No open positions &mdash; flat across the roster.</div>';
     $("s-open").textContent='0';
+    $("pos-unrl-total").textContent='';
     return;
   }
   $("s-open").textContent=positions.length;
+  let grandUnrl=0, haveAnyMark=false;
   const rows=positions.map(([tok,st])=>{
     const units=st.units;
     const side=units[0].side;
@@ -291,19 +301,32 @@ function renderPositions(state){
     const entries=units.map(u=>(+u.entry_px).toLocaleString(undefined,{maximumSignificantDigits:6})).join(', ');
     const notional=units.reduce((a,u)=>a+u.sz*u.entry_px,0);
     const dots=`<span class="units-dots">${[0,1,2,3].map(i=>`<span class="${i<units.length?'on':''}"></span>`).join('')}</span>`;
+    const mark=mids?.[tok];
+    let pnlCell='—', markCell='—';
+    if(mark!=null){
+      const unrl=units.reduce((a,u)=>a+(side==='long'?(mark-u.entry_px):(u.entry_px-mark))*u.sz,0);
+      grandUnrl+=unrl; haveAnyMark=true;
+      markCell=(+mark).toLocaleString(undefined,{maximumSignificantDigits:6});
+      pnlCell=`<span class="${pc(unrl)}">${unrl>=0?'+':''}$${fmt(unrl)}</span>`;
+    }
     return`<tr>
       <td><b>${tok}</b></td>
       <td><span class="badge b-${side}">${side.toUpperCase()}</span></td>
       <td>${units.length}/4 ${dots}</td>
       <td>${entries}</td>
       <td>${(+stopPrice(units)).toLocaleString(undefined,{maximumSignificantDigits:6})}</td>
+      <td>${markCell}</td>
+      <td>${pnlCell}</td>
       <td>${fmtSmall(notional)}</td>
       <td>${fmtDate(opened)}</td>
     </tr>`;
   }).join('');
   $("pos-tbl").innerHTML=`<table><thead><tr>
-    <th>Token</th><th>Side</th><th>Units</th><th>Entries</th><th>Stop</th><th>Est. Notional</th><th>First Opened</th>
+    <th>Token</th><th>Side</th><th>Units</th><th>Entries</th><th>Stop</th><th>Mark</th><th>Unrl. PnL</th><th>Est. Notional</th><th>First Opened</th>
   </tr></thead><tbody>${rows}</tbody></table>`;
+  $("pos-unrl-total").innerHTML=haveAnyMark
+    ?`Unrealized: <span class="${pc(grandUnrl)}">${grandUnrl>=0?'+':''}$${fmt(grandUnrl)}</span>`
+    :'<span class="m">live price unavailable</span>';
 }
 
 function exitBadge(reason){
@@ -317,7 +340,8 @@ function renderTable(trades){
   if(!trades.length)return;
   const rows=trades.slice().reverse().map((t,i)=>{
     const held=t.held_hours!=null?t.held_hours:(t.exit_ts-t.entry_ts)/3600;
-    const pnl=t.pnl!=null?`<span class="${pc(t.pnl)}">$${fmt(t.pnl)}</span>`:'—';
+    const feeBit=t.fees!=null?` <span class="m">fee $${fmt(t.fees,4)}</span>`:'';
+    const pnl=t.pnl!=null?`<span class="${pc(t.pnl)}">$${fmt(t.pnl)}</span>${feeBit}`:'—';
     return`<tr><td class="m">${trades.length-i}</td>
       <td><b>${t.token}</b></td>
       <td><span class="badge b-${t.side}">${t.side.toUpperCase()}</span></td>
@@ -359,15 +383,93 @@ function renderEquityNote(equity){
   }
 }
 
+async function fetchMids(dex){
+  const body={type:'allMids'};
+  if(dex)body.dex=dex;
+  const r=await fetch('https://api.hyperliquid.xyz/info',{
+    method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)
+  });
+  if(!r.ok)throw new Error('HTTP '+r.status);
+  return r.json();
+}
+async function fetchAllMids(){
+  // Hyperliquid's public /info endpoint, CORS-open, no auth - crypto on the
+  // default dex, equity/macro on "xyz". Merge into one map keyed by OUR
+  // internal signal symbol (strip any "xyz:" prefix - mirrors the same
+  // normalization turtle_hyperliquid_trader.py does server-side).
+  const[cr,er]=await Promise.allSettled([fetchMids(), fetchMids('xyz')]);
+  const mids={};
+  if(cr.status==='fulfilled')for(const[k,v] of Object.entries(cr.value))mids[k]=+v;
+  if(er.status==='fulfilled')for(const[k,v] of Object.entries(er.value))mids[k.split(':').pop()]=+v;
+  return mids;
+}
+
+function bookFiles(book){
+  const suffix=book==='live'?'.live.json':'.json';
+  return {
+    trades:'./turtle_hyperliquid_trades'+suffix,
+    state:'./turtle_hyperliquid_state'+suffix,
+    equity:'./turtle_hyperliquid_equity'+suffix
+  };
+}
+async function fetchJson(url, fallback){
+  try{
+    const r=await fetch(url+'?t='+Date.now());
+    if(!r.ok) return {data:fallback, missing:true};
+    return {data:await r.json(), missing:false};
+  }catch(e){
+    return {data:fallback, missing:true};
+  }
+}
+function renderBanner(book, stateMissing){
+  const el=$('book-banner');
+  if(!el) return;
+  if(book==='live'){
+    el.innerHTML=`<div class="note${stateMissing?' warn':''}"><span class="ico">&#128308;</span><div><b>LIVE.</b> This book is the Hyperliquid account. It is a separate set of files from the paper simulation${stateMissing?' and has not been created yet — the first live run starts flat and does not import paper positions':''}.</div></div>`;
+  }else{
+    el.innerHTML='<div class="note warn"><span class="ico">&#128221;</span><div><b>DRY RUN / PAPER.</b> Simulated book. Live orders stay off while the repo variable TURTLE_HL_DRY_RUN is not <b>false</b>. The Live button reads the separate live files.</div></div>';
+  }
+}
+let activeBook='paper';
 async function load(){
-  const[tr,sr,er]=await Promise.allSettled([
-    fetch('./turtle_hyperliquid_trades.json?t='+Date.now()).then(r=>r.ok?r.json():[]).catch(()=>[]),
-    fetch('./turtle_hyperliquid_state.json?t='+Date.now()).then(r=>r.ok?r.json():{positions:{}}).catch(()=>({positions:{}})),
-    fetch('./turtle_hyperliquid_equity.json?t='+Date.now()).then(r=>r.ok?r.json():[]).catch(()=>[])
+  const q=new URLSearchParams(location.search).get('book');
+  let book=q==='live'||q==='paper'?q:null;
+  if(!book){
+    try{
+      const r=await fetch('./turtle_hyperliquid_active.json?t='+Date.now());
+      if(r.ok){
+        const j=await r.json();
+        if(j.mode==='live'||j.mode==='paper') book=j.mode;
+      }
+    }catch(e){}
+    if(!book) book='paper';
+  }
+  activeBook=book;
+  for(const name of ['paper','live']){
+    const btn=$('book-'+name);
+    if(!btn) continue;
+    btn.classList.toggle('on', name===book);
+    btn.onclick=()=>{
+      const url=new URL(location.href);
+      url.searchParams.set('book', name);
+      location.href=url.toString();
+    };
+  }
+  const files=bookFiles(book);
+  const[tr,sr,er,mr]=await Promise.allSettled([
+    fetchJson(files.trades, []),
+    fetchJson(files.state, {positions:{}}),
+    fetchJson(files.equity, []),
+    fetchAllMids().catch(()=>null)
   ]);
-  lastTrades=tr.status==='fulfilled'?tr.value:[];
-  const state=sr.status==='fulfilled'?sr.value:{positions:{}};
-  lastEquity=er.status==='fulfilled'?er.value:[];
+  const tradesWrap=tr.status==='fulfilled'?tr.value:{data:[],missing:true};
+  const stateWrap=sr.status==='fulfilled'?sr.value:{data:{positions:{}},missing:true};
+  const equityWrap=er.status==='fulfilled'?er.value:{data:[],missing:true};
+  lastTrades=Array.isArray(tradesWrap.data)?tradesWrap.data:[];
+  const state=stateWrap.data&&typeof stateWrap.data==='object'?stateWrap.data:{positions:{}};
+  lastEquity=Array.isArray(equityWrap.data)?equityWrap.data:[];
+  const mids=mr.status==='fulfilled'?mr.value:null;
+  renderBanner(book, book==='live'&&stateWrap.missing);
 
   const st=stats(lastTrades);
   $("s-tot").textContent=st.total;
@@ -376,7 +478,7 @@ async function load(){
   $("s-best").innerHTML=st.best!=null?`<span class="g">+$${fmt(st.best)}</span>`:'—';
   $("s-worst").innerHTML=st.worst!=null?`<span class="r">$${fmt(st.worst)}</span>`:'—';
 
-  renderPositions(state);
+  renderPositions(state, mids);
   renderTable(lastTrades);
   renderEquityNote(lastEquity);
   rebuildCharts();
