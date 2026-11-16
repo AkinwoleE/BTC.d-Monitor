@@ -42,18 +42,29 @@ def fetch_live_daily(tok, limit=1000):
              "low": float(row[3]), "close": float(row[4])} for row in rows]
 
 
+def merge_crypto(existing, fresh, now_ts):
+    """Append unseen daily bars and drop the one that is still forming.
+    A Binance 1d candle opens at its `ts` and closes at ts+86400 UTC."""
+    by = {c["ts"]: c for c in existing}
+    for c in fresh:
+        by.setdefault(c["ts"], c)
+    return [by[t] for t in sorted(by) if t + 86400 <= now_ts]
+
+
 def update_all(now_ts=None):
     """Refresh every token's persisted daily history with newly-closed candles.
-    Returns {tok: candles}."""
+    Returns {tok: candles}. One symbol failing to fetch does not abort the rest."""
     now_ts = now_ts or int(time.time())
     out = {}
     for tok in TOKENS:
         existing = load_candles(tok)
-        fresh = fetch_live_daily(tok)
-        have = {c["ts"] for c in existing}
-        merged = existing + [c for c in fresh if c["ts"] not in have]
-        merged = sorted(merged, key=lambda c: c["ts"])
-        merged = [c for c in merged if c["ts"] + 86400 <= now_ts]   # drop still-forming candle
+        try:
+            fresh = fetch_live_daily(tok)
+        except Exception as e:
+            print(f"  {tok:<6} fetch FAILED ({e}) - keeping existing {len(existing)} bars")
+            out[tok] = [c for c in existing if c["ts"] + 86400 <= now_ts]
+            continue
+        merged = merge_crypto(existing, fresh, now_ts)
         save_candles(tok, merged)
         out[tok] = merged
         print(f"  {tok:<6} {len(merged):>5} daily bars (updated)")

@@ -55,6 +55,35 @@ HL_SYMBOL = {tok: hl for tok, (_, hl) in EQUITY_ROSTER.items()}
 
 CHART_URL = "https://query1.finance.yahoo.com/v8/finance/chart/{sym}?range={rng}&interval=1d"
 
+# A Yahoo daily bar is stamped at 00:00 UTC on the session date. US cash
+# equities close at 16:00 America/New_York, which is 21:00 UTC in winter and
+# 20:00 UTC in summer. 21:00 UTC is after both, and it is also after the
+# COMEX/NYMEX daily settlement the gold and crude bars are built from, so a
+# bar is final once that instant has passed. The 00:12 UTC run then sees
+# yesterday's finished session and does not see today's still-unopened one.
+EQUITY_BAR_READY_SEC = 21 * 3600
+
+
+def bar_is_complete(ts, now_ts, ready_sec=EQUITY_BAR_READY_SEC):
+    return now_ts >= ts + ready_sec
+
+
+def merge_daily(existing, fresh, now_ts, refresh_sec=5 * 86400):
+    """Merge a fresh Yahoo window onto persisted bars.
+
+    The trailing `refresh_sec` is overwritten from `fresh` so a partial bar
+    saved by an older build can be replaced once the session is final. Bars
+    whose session is still open are left out of the result entirely — saving
+    them would freeze the partial OHLC, because a later merge used to keep
+    the first copy of a timestamp forever.
+    """
+    by = {c["ts"]: dict(c) for c in existing}
+    cutoff = (max(by) - refresh_sec) if by else None
+    for c in fresh:
+        if cutoff is None or c["ts"] not in by or c["ts"] >= cutoff:
+            by[c["ts"]] = dict(c)
+    return [by[t] for t in sorted(by) if bar_is_complete(t, now_ts)]
+
 
 def token_file(tok):
     return os.path.join(DATA_DIR, f"{tok}.json")
@@ -111,9 +140,7 @@ def update_all(now_ts=None):
             print(f"  {tok:<8} fetch FAILED ({e}) - keeping existing {len(existing)} bars")
             out[tok] = existing
             continue
-        have = {c["ts"] for c in existing}
-        merged = existing + [c for c in fresh if c["ts"] not in have]
-        merged = sorted(merged, key=lambda c: c["ts"])
+        merged = merge_daily(existing, fresh, now_ts)
         save_candles(tok, merged)
         out[tok] = merged
         print(f"  {tok:<8} {len(merged):>5} daily bars (updated)")
