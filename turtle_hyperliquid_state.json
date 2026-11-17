@@ -9,7 +9,8 @@
      "n_at_entry": 9.287878181358392,
      "entry_ts": 1794697946
     }
-   ]
+   ],
+   "last_candle_ts": 1794787200
   },
   "ADA": {
    "units": [
@@ -34,7 +35,8 @@
      "n_at_entry": 0.012486641220963577,
      "entry_ts": 1794204243
     }
-   ]
+   ],
+   "last_candle_ts": 1794787200
   },
   "APT": {
    "units": [
@@ -52,16 +54,20 @@
      "n_at_entry": 0.05291159611690026,
      "entry_ts": 1794697946
     }
-   ]
+   ],
+   "last_candle_ts": 1794787200
   },
   "AVAX": {
-   "units": []
+   "units": [],
+   "last_candle_ts": 1794787200
   },
   "BNB": {
-   "units": []
+   "units": [],
+   "last_candle_ts": 1794787200
   },
   "BTC": {
-   "units": []
+   "units": [],
+   "last_candle_ts": 1794787200
   },
   "DOGE": {
    "units": [
@@ -86,10 +92,12 @@
      "n_at_entry": 0.004047428817053848,
      "entry_ts": 1793946281
     }
-   ]
+   ],
+   "last_candle_ts": 1794787200
   },
   "ETH": {
-   "units": []
+   "units": [],
+   "last_candle_ts": 1794787200
   },
   "LINK": {
    "units": [
@@ -100,10 +108,12 @@
      "n_at_entry": 0.6998923217068596,
      "entry_ts": 1793338485
     }
-   ]
+   ],
+   "last_candle_ts": 1794787200
   },
   "NEAR": {
-   "units": []
+   "units": [],
+   "last_candle_ts": 1794787200
   },
   "SOL": {
    "units": [
@@ -135,10 +145,12 @@
      "n_at_entry": 4.76743475206182,
      "entry_ts": 1793946281
     }
-   ]
+   ],
+   "last_candle_ts": 1794787200
   },
   "SUI": {
-   "units": []
+   "units": [],
+   "last_candle_ts": 1794787200
   },
   "TAO": {
    "units": [
@@ -149,7 +161,8 @@
      "n_at_entry": 17.064816615813488,
      "entry_ts": 1793946281
     }
-   ]
+   ],
+   "last_candle_ts": 1794787200
   },
   "TRUMP": {
    "units": [
@@ -181,7 +194,8 @@
      "n_at_entry": 0.14438042114600966,
      "entry_ts": 1794006740
     }
-   ]
+   ],
+   "last_candle_ts": 1794787200
   },
   "TRX": {
    "units": [
@@ -213,7 +227,8 @@
      "n_at_entry": 0.008288972086754116,
      "entry_ts": 1793598617
     }
-   ]
+   ],
+   "last_candle_ts": 1794787200
   },
   "WLFI": {
    "units": [
@@ -231,13 +246,16 @@
      "n_at_entry": 0.0022376588545174377,
      "entry_ts": 1793920341
     }
-   ]
+   ],
+   "last_candle_ts": 1794787200
   },
   "XRP": {
-   "units": []
+   "units": [],
+   "last_candle_ts": 1794787200
   },
   "ZEC": {
-   "units": []
+   "units": [],
+   "last_candle_ts": 1794787200
   },
   "XYZ100": {
    "units": [
@@ -269,10 +287,12 @@
      "n_at_entry": 509.37918306045515,
      "entry_ts": 1793687610
     }
-   ]
+   ],
+   "last_candle_ts": 1794787200
   },
   "SP500": {
-   "units": []
+   "units": [],
+   "last_candle_ts": 1794787200
   },
   "GOLD": {
    "units": [
@@ -290,10 +310,12 @@
      "n_at_entry": 76.94548463270823,
      "entry_ts": 1794809441
     }
-   ]
+   ],
+   "last_candle_ts": 1794787200
   },
   "CL": {
-   "units": []
+   "units": [],
+   "last_candle_ts": 1794787200
   },
   "NVDA": {
    "units": [
@@ -325,10 +347,12 @@
      "n_at_entry": 7.005262441156843,
      "entry_ts": 1793920341
     }
-   ]
+   ],
+   "last_candle_ts": 1794787200
   },
   "TSLA": {
-   "units": []
+   "units": [],
+   "last_candle_ts": 1794787200
   },
   "AAPL": {
    "units": [
@@ -353,13 +377,16 @@
      "n_at_entry": 7.981154927738056,
      "entry_ts": 1794611542
     }
-   ]
+   ],
+   "last_candle_ts": 1794787200
   },
   "GOOGL": {
-   "units": []
+   "units": [],
+   "last_candle_ts": 1794787200
   },
   "MSFT": {
-   "units": []
+   "units": [],
+   "last_candle_ts": 1794787200
   },
   "AMZN": {
    "units": [
@@ -370,7 +397,9 @@
      "n_at_entry": 8.836281085605226,
      "entry_ts": 1794265942
     }
-   ]
+   ],
+   "last_candle_ts": 1794787200
   }
- }
+ },
+ "mode": "paper"
 }
