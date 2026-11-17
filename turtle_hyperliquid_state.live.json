@@ -1,0 +1,117 @@
+{
+ "positions": {
+  "AAVE": {
+   "units": [],
+   "last_candle_ts": 1794787200
+  },
+  "ADA": {
+   "units": [],
+   "last_candle_ts": 1794787200
+  },
+  "APT": {
+   "units": [],
+   "last_candle_ts": 1794787200
+  },
+  "AVAX": {
+   "units": [],
+   "last_candle_ts": 1794787200
+  },
+  "BNB": {
+   "units": [],
+   "last_candle_ts": 1794787200
+  },
+  "BTC": {
+   "units": [],
+   "last_candle_ts": 1794787200
+  },
+  "DOGE": {
+   "units": [],
+   "last_candle_ts": 1794787200
+  },
+  "ETH": {
+   "units": [],
+   "last_candle_ts": 1794787200
+  },
+  "LINK": {
+   "units": [],
+   "last_candle_ts": 1794787200
+  },
+  "NEAR": {
+   "units": [],
+   "last_candle_ts": 1794787200
+  },
+  "SOL": {
+   "units": [],
+   "last_candle_ts": 1794787200
+  },
+  "SUI": {
+   "units": [],
+   "last_candle_ts": 1794787200
+  },
+  "TAO": {
+   "units": [],
+   "last_candle_ts": 1794787200
+  },
+  "TRUMP": {
+   "units": [],
+   "last_candle_ts": 1794787200
+  },
+  "TRX": {
+   "units": [],
+   "last_candle_ts": 1794787200
+  },
+  "WLFI": {
+   "units": [],
+   "last_candle_ts": 1794787200
+  },
+  "XRP": {
+   "units": [],
+   "last_candle_ts": 1794787200
+  },
+  "ZEC": {
+   "units": [],
+   "last_candle_ts": 1794787200
+  },
+  "XYZ100": {
+   "units": [],
+   "last_candle_ts": 1794787200
+  },
+  "SP500": {
+   "units": [],
+   "last_candle_ts": 1794787200
+  },
+  "GOLD": {
+   "units": [],
+   "last_candle_ts": 1794787200
+  },
+  "CL": {
+   "units": [],
+   "last_candle_ts": 1794787200
+  },
+  "NVDA": {
+   "units": [],
+   "last_candle_ts": 1794787200
+  },
+  "TSLA": {
+   "units": [],
+   "last_candle_ts": 1794787200
+  },
+  "AAPL": {
+   "units": [],
+   "last_candle_ts": 1794787200
+  },
+  "GOOGL": {
+   "units": [],
+   "last_candle_ts": 1794787200
+  },
+  "MSFT": {
+   "units": [],
+   "last_candle_ts": 1794787200
+  },
+  "AMZN": {
+   "units": [],
+   "last_candle_ts": 1794787200
+  }
+ },
+ "mode": "live"
+}
