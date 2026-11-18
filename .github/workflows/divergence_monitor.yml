@@ -2,6 +2,11 @@ name: RSI Divergence Monitor
 
 on:
   schedule:
+    # Backup. GitHub's own cron is often late; the primary trigger is the
+    # cron-job.org job "BTC.d Trader" (repository_dispatch divergence-check).
+    # 2026-11-18: that job moved from every 30 min to every 15 min
+    # (:00/:15/:30/:45 Africa/Lagos). Entries 1–3h after the signal bar were
+    # about $15 worse than the backtest's bar-open fill.
     - cron: "*/15 * * * *"
   workflow_dispatch:
   repository_dispatch:
@@ -54,6 +59,12 @@ jobs:
           # no new entries Sat/Sun UTC (2026-08-19) -- existing positions still
           # managed every day; manual-trade workflow is exempt by design
           DIV_BLOCK_DAYS: ${{ vars.DIV_BLOCK_DAYS || 'Sat,Sun' }}
+          # 2026-11-18: risk sizing (notional = equity × risk% / stop%). Unset → 2.5.
+          # A set DIV_POSITION_USD overrides this and forces that fixed notional.
+          # DIV_TP_USD / DIV_SL_USD override the PERCENT only
+          # (usd / DIV_POSITION_USD, or / 1000 when position is unset), not a
+          # fixed dollar target. Leave them unset for the backtest +3.4% / −2%.
+          DIV_RISK_PCT: ${{ vars.DIV_RISK_PCT }}
           DIV_POSITION_USD: ${{ vars.DIV_POSITION_USD }}
           DIV_TP_USD: ${{ vars.DIV_TP_USD }}
           DIV_SL_USD: ${{ vars.DIV_SL_USD }}
@@ -85,6 +96,11 @@ jobs:
           # same 2h-only restriction as the primary account (2026-08-19)
           DIV_TRADE_TF: ${{ vars.YAR_TRADE_TF || '2h' }}
           DIV_BLOCK_DAYS: ${{ vars.YAR_BLOCK_DAYS || 'Sat,Sun' }}
+          # Same risk-sizing rules as the primary account. The repo variable
+          # is YAR_RISK_PCT; this step maps it onto DIV_RISK_PCT, which is the
+          # only name divergence_trader.py reads. YAR_POSITION_USD, if set,
+          # forces a fixed notional and ignores the risk percent.
+          DIV_RISK_PCT: ${{ vars.YAR_RISK_PCT }}
           DIV_POSITION_USD: ${{ vars.YAR_POSITION_USD }}
           DIV_TP_USD: ${{ vars.YAR_TP_USD }}
           DIV_SL_USD: ${{ vars.YAR_SL_USD }}

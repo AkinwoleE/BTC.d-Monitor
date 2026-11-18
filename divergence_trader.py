@@ -6,11 +6,26 @@ Runs as a workflow step AFTER divergence_monitor.py. Consumes divergences.json;
 never detects patterns itself.
 
 Rule set (derived from the 13-trade 2-pt backfill, 2026-07-29):
-  entry      market order at signal confirmation ($DIV_POSITION_USD notional)
-  take-profit +$34 per $1000 (3.4% move), native exchange TP order
-  stop-loss   -$20 per $1000 (2.0% move), native exchange SL order
+  entry      market order at signal confirmation. Notional is
+             equity × DIV_RISK_PCT / stop-distance (default risk 2.5%, stop
+             2% → notional = 1.25 × equity). DIV_POSITION_USD, when the
+             variable is actually set, forces that fixed notional instead
+             and the risk percent is ignored.
+  take-profit +3.4% (default $34 per $1000), native exchange TP order.
+             DIV_TP_USD / DIV_SL_USD still override the PERCENT
+             (usd / DIV_POSITION_USD, or / 1000 when position is unset);
+             the dollar distance scales with the computed notional so the
+             price levels stay the backtest percents.
+  stop-loss   −2.0% (default $20 per $1000), native exchange SL order
   time-exit   close after 48h if neither TP nor SL fired
   overlap     same-direction signal while open: skip; opposite: close & flip
+
+Observability (does not change the rules): Telegram if this process has not
+run for over an hour, or if an entry is more than 30 minutes after the signal
+bar closed. Each fill logs signal time/price, entry delay, fill, slippage,
+and the fee get_trade_history reports. A flat account whose equity jumps by
+$1 or more with no open position is alerted (the 2026-10-06 primary-account
+drop was this shape).
 
 Gating: trades ONLY when DIV_TRADING_ENABLED=true AND Decibel creds are set.
 DIV_DRY_RUN=true logs+alerts every decision without placing orders.
@@ -52,6 +67,9 @@ State: divergence_trader_state{_account}.json (fails LOUD on corruption —
 never silently resets; that failure mode wiped trader history four times in
 the old bot).
 Log:   divergence_trades{_account}.json (append-only events).
+
+See docs/DIVERGENCE.md for the rules, the 2026-11-18 changelog, and which
+repository variables override risk sizing.
 """
 import os, sys, json, time, subprocess, requests
 from datetime import datetime, timezone
@@ -66,16 +84,71 @@ STATE_FILE = os.path.join(BASE, f"divergence_trader_state{SUFFIX}.json")
 LOG_FILE   = os.path.join(BASE, f"divergence_trades{SUFFIX}.json")
 EQ_FILE    = os.path.join(BASE, f"divergence_equity{SUFFIX}.json")
 
+# 2026-11-18: size from equity instead of a fixed $1,000. At 20x a 2% stop on
+# $1,000 is ~$20, about 15% of a ~$141 account, which is how single stops
+# dominated the live loss. Dollar TP/SL scale with the computed notional so
+# the price percents stay +3.4% / −2%. A set DIV_POSITION_USD still forces
+# that fixed notional (see docs/DIVERGENCE.md).
+_DEFAULT_POSITION_USD = 1000.0
+_DEFAULT_TP_USD = 34.0          # +3.4%
+_DEFAULT_SL_USD = 20.0          # −2.0%
+_DEFAULT_RISK_PCT = 2.5         # percent of equity lost if the stop fills
+# 2026-11-18: alert when the fill is >30 min after the signal bar closed.
+# GitHub/cron lag of 1–3h was about $15 worse than the backtest's bar-open fill.
+LATE_ENTRY_SEC = 30 * 60
+# 2026-11-18: alert when the previous saved run is more than an hour behind.
+RUN_GAP_SEC = 60 * 60
+# 2026-11-18: alert on a flat-account equity jump of at least $1. Primary
+# equity fell 228.35 → 207.12 on 6 Oct 15:00–20:00 UTC with no position.
+UNEXPLAINED_EQUITY_USD = 1.0
+
 def env_num(name, default, cast=float):
     """GitHub Actions injects '' for undefined ${{ vars.X }} — treat as unset."""
     v = os.environ.get(name, "").strip()
     return cast(v) if v else cast(default)
 
+def env_set(name):
+    return os.environ.get(name, "").strip() != ""
+
+def price_fractions():
+    """(take-profit fraction, stop fraction) of the entry price.
+
+    Unset variables reproduce +3.4% / −2%. A set DIV_TP_USD, DIV_SL_USD, or
+    DIV_POSITION_USD changes the ratio the same way the old fixed-dollar
+    formula did: fraction = usd / position, and an unset position is 1000.
+    """
+    pos = env_num("DIV_POSITION_USD", _DEFAULT_POSITION_USD)
+    tp = env_num("DIV_TP_USD", _DEFAULT_TP_USD)
+    sl = env_num("DIV_SL_USD", _DEFAULT_SL_USD)
+    if pos <= 0 or tp <= 0 or sl <= 0:
+        return _DEFAULT_TP_USD / _DEFAULT_POSITION_USD, _DEFAULT_SL_USD / _DEFAULT_POSITION_USD
+    return tp / pos, sl / pos
+
+def risk_pct():
+    """Percent of equity the stop is allowed to lose. Non-positive falls back to 2.5."""
+    pct = env_num("DIV_RISK_PCT", _DEFAULT_RISK_PCT)
+    return pct if pct > 0 else _DEFAULT_RISK_PCT
+
+def order_notional(equity, size_usd=None):
+    """(notional USD, mode).
+
+    explicit — caller passed a size (manual trade); risk sizing is not applied.
+    fixed    — DIV_POSITION_USD is set, so that notional wins over DIV_RISK_PCT.
+    risk     — equity × risk% / stop-distance%. A 2.5% risk and a 2% stop is
+               1.25× equity.
+    """
+    if size_usd is not None:
+        return float(size_usd), "explicit"
+    if env_set("DIV_POSITION_USD"):
+        return float(env_num("DIV_POSITION_USD", _DEFAULT_POSITION_USD)), "fixed"
+    _, frac_sl = price_fractions()
+    eq = float(equity or 0)
+    if eq <= 0 or frac_sl <= 0:
+        return 0.0, "risk"
+    return eq * (risk_pct() / 100.0) / frac_sl, "risk"
+
 ENABLED      = os.environ.get("DIV_TRADING_ENABLED", "").lower() == "true"
 DRY_RUN      = os.environ.get("DIV_DRY_RUN", "").lower() == "true"
-POSITION_USD = env_num("DIV_POSITION_USD", 1000)
-TP_USD       = env_num("DIV_TP_USD", 34)    # per POSITION_USD
-SL_USD       = env_num("DIV_SL_USD", 20)
 MAX_HOURS    = env_num("DIV_MAX_HOURS", 48)
 LEVERAGE     = env_num("DIV_LEVERAGE", 20, int)
 SLIPPAGE     = env_num("SLIPPAGE", 0.5)
@@ -348,7 +421,7 @@ def log_event(ev):
 
 # ── trade actions ─────────────────────────────────────────────────────────────
 def tp_sl_prices(direction, entry):
-    frac_tp, frac_sl = TP_USD / POSITION_USD, SL_USD / POSITION_USD
+    frac_tp, frac_sl = price_fractions()
     if direction == "bullish":   # long
         tp, sl = entry * (1 + frac_tp), entry * (1 - frac_sl)
         sl_lim = sl * 0.995      # limit through the trigger so the stop fills
@@ -356,6 +429,231 @@ def tp_sl_prices(direction, entry):
         tp, sl = entry * (1 - frac_tp), entry * (1 + frac_sl)
         sl_lim = sl * 1.005
     return round(tp, 1), round(sl, 1), round(sl_lim, 1)
+
+def adverse_slippage(side, reference, fill):
+    """(price points, percent), positive when the fill is worse than `reference`.
+
+    A long that pays above the reference and a short that sells below it are
+    both positive. Returns (None, None) when either price is missing.
+    """
+    try:
+        reference = float(reference)
+        fill = float(fill)
+    except (TypeError, ValueError):
+        return None, None
+    if reference <= 0:
+        return None, None
+    sign = 1.0 if side == "long" else -1.0
+    per = sign * (fill - reference)
+    return round(per, 4), round(100.0 * per / reference, 4)
+
+def iter_trade_rows(payload):
+    if isinstance(payload, list):
+        rows = payload
+    elif isinstance(payload, dict):
+        rows = None
+        for key in ("trades", "items", "fills", "history"):
+            if isinstance(payload.get(key), list):
+                rows = payload[key]
+                break
+        rows = rows or []
+    else:
+        rows = []
+    return [r for r in rows if isinstance(r, dict)]
+
+def _fill_kind(row):
+    """('long'|'short', 'open'|'close') from a get_trade_history row, or (None, None)."""
+    action = str(row.get("action") or "").replace("_", "").replace("-", "").lower()
+    kinds = {
+        "openlong": ("long", "open"), "openshort": ("short", "open"),
+        "closelong": ("long", "close"), "closeshort": ("short", "close"),
+    }
+    if action in kinds:
+        return kinds[action]
+    side = str(row.get("side") or "").lower()
+    if side in ("buy", "long"):
+        return "long", "open"
+    if side in ("sell", "short"):
+        return "short", "open"
+    return None, None
+
+def _row_time_ms(row):
+    raw = row.get("transaction_unix_ms", row.get("timestamp", row.get("ts")))
+    try:
+        ts = float(raw)
+    except (TypeError, ValueError):
+        return None
+    if ts < 10 ** 12:          # seconds
+        ts *= 1000.0
+    return ts
+
+def summarize_fills(payload, side, kind, since_ms=None, order_id=None):
+    """Fees and VWAP for fills matching this order.
+
+    When `order_id` is known, a row with a different id is ignored. Rows with
+    no id are kept only if their timestamp is not clearly before `since_ms`.
+    Returns None when nothing matched.
+    """
+    matched = []
+    want_id = str(order_id) if order_id else ""
+    for row in iter_trade_rows(payload):
+        row_side, row_kind = _fill_kind(row)
+        if row_side != side or row_kind != kind:
+            continue
+        oid = str(row.get("order_id") or row.get("orderId") or "")
+        if want_id and oid and oid != want_id:
+            continue
+        if want_id and not oid:
+            ts = _row_time_ms(row)
+            if since_ms and ts is not None and ts + 5000 < since_ms:
+                continue
+        elif since_ms:
+            ts = _row_time_ms(row)
+            if ts is not None and ts + 5000 < since_ms and not (want_id and oid == want_id):
+                continue
+        matched.append(row)
+    if not matched:
+        return None
+    fees = 0.0
+    saw_fee = False
+    notion = 0.0
+    qty = 0.0
+    for row in matched:
+        raw_fee = row.get("fee_amount", row.get("fee", row.get("feeAmount")))
+        if raw_fee is not None:
+            try:
+                fees += float(raw_fee)
+                saw_fee = True
+            except (TypeError, ValueError):
+                pass
+        try:
+            px = float(row["price"])
+            q = abs(float(row["size"]))
+            notion += px * q
+            qty += q
+        except (TypeError, ValueError, KeyError):
+            pass
+    return {
+        "fees": round(fees, 6) if saw_fee else None,
+        "fill_price": (notion / qty) if qty else None,
+        "n": len(matched),
+    }
+
+def dig_order_id(result):
+    if not isinstance(result, dict):
+        return None
+    for key in ("orderId", "order_id", "id"):
+        if result.get(key):
+            return str(result[key])
+    for key in ("order", "data", "result"):
+        found = dig_order_id(result.get(key))
+        if found:
+            return found
+    return None
+
+def lookup_fills(side, kind, since_ms, order_id=None):
+    """Best-effort get_trade_history lookup. Never raises; None if no fill is visible yet."""
+    if DRY_RUN:
+        return None
+    for attempt in range(2):
+        if attempt:
+            time.sleep(2)
+        try:
+            payload = run_cli("get_trade_history", {"limit": 50})
+        except Exception as e:
+            print(f"  get_trade_history failed: {e}")
+            continue
+        summary = summarize_fills(payload, side, kind, since_ms, order_id)
+        if summary:
+            return summary
+    print("  fees unavailable: no matching fill in get_trade_history")
+    return None
+
+def entry_audit(ep, side, decision, fill, fees, notional, mode, now=None):
+    """Fields stored on the OPEN event: signal, delay, fill, slippage, fees.
+
+    2026-11-18: live logs had none of these, so a late fill and the exchange
+    fee could not be compared with the backtest. Fees come from
+    get_trade_history (fee_amount); slippage is adverse vs the pre-order price.
+    """
+    now = int(time.time()) if now is None else int(now)
+    delay = None
+    if ep.get("confirmed_ts"):
+        delay = now - int(ep["confirmed_ts"])
+    _, slip_pct = adverse_slippage(side, decision, fill)
+    _, slip_sig = adverse_slippage(side, ep.get("confirm_price"), fill)
+    return {
+        "signal_ts": ep.get("confirmed_ts"),
+        "signal_price": ep.get("confirm_price"),
+        "entry_delay_sec": delay,
+        "decision_price": decision,
+        "fill_price": fill,
+        "slippage_pct": slip_pct,
+        "slippage_vs_signal_pct": slip_sig,
+        "fees": fees,
+        "notional_usd": None if notional is None else round(float(notional), 2),
+        "sizing": mode,
+        "risk_pct": risk_pct() if mode == "risk" else None,
+    }
+
+def note_run_gap(st, now):
+    """Alert when the previous saved run is more than an hour behind. Stamps now."""
+    prev = st.get("last_run_ts")
+    st["last_run_ts"] = int(now)
+    if not prev:
+        return None
+    gap = int(now) - int(prev)
+    if gap <= RUN_GAP_SEC:
+        return None
+    when = datetime.fromtimestamp(int(prev), timezone.utc).strftime("%Y-%m-%d %H:%M")
+    return (f"⚠️ Divergence bot has not run for {gap / 3600:.1f}h "
+            f"(last run {when} UTC). The schedule is every 15 min — "
+            "check the GitHub Actions workflow.")
+
+def observe_flat_equity(st, equity, suppress):
+    """Alert when equity moves by >= $1 while no position is open.
+
+    `suppress` is true when a position is open or this cycle just opened or
+    closed one — that change is the trade, and the flat baseline is cleared
+    so the next flat sample starts clean (no false alert on the trade's PnL).
+    A ~$0 read is the known empty-snapshot glitch and is ignored.
+    Returns the alert text, or None.
+    """
+    if suppress:
+        st.pop("flat_equity", None)
+        return None
+    try:
+        equity = float(equity)
+    except (TypeError, ValueError):
+        return None
+    if equity <= 0.01:
+        return None
+    prev = st.get("flat_equity")
+    st["flat_equity"] = round(equity, 2)
+    if prev is None:
+        return None
+    delta = equity - float(prev)
+    if abs(delta) < UNEXPLAINED_EQUITY_USD:
+        return None
+    return (f"⚠️ Unexplained equity change with no open position: "
+            f"${float(prev):.2f} → ${equity:.2f} ({delta:+.2f}). "
+            "No bot position explains this (the primary account dropped this way "
+            "on 2026-10-06, 15:00–20:00 UTC).")
+
+def actionable_signals(eps, now, acted):
+    """Signals the trader may still enter. Stale, wrong-tf, blocked-day, and
+    already-acted ids are left out.
+
+    2026-11-18: this gate is unchanged. Warm-up episodes are no longer written
+    down, and anything still older than FRESH (4h on 2h) is not traded.
+    """
+    fresh = [e for e in eps
+             if e.get("tf") in TRADE_TF
+             and datetime.fromtimestamp(e["confirmed_ts"], tz=timezone.utc).strftime("%a") not in BLOCK_DAYS
+             and now - e["confirmed_ts"] <= FRESH.get(e.get("tf"), 7200)
+             and e.get("id") not in acted]
+    fresh.sort(key=lambda e: e["confirmed_ts"])
+    return fresh
 
 def protection_prices(direction, entry, tp=None, sl=None):
     """TP/SL prices to send. No overrides → exactly tp_sl_prices(), including
@@ -427,30 +725,45 @@ def breakeven_stop_valid(direction, mark, sl):
     return False
 
 def open_position(st, ep, equity, size_usd=None):
-    size_usd = POSITION_USD if size_usd is None else size_usd
+    size_usd, mode = order_notional(equity, size_usd)
     direction = ep["direction"]
     side = "long" if direction == "bullish" else "short"
+    frac_tp, frac_sl = price_fractions()
+    if size_usd <= 0:
+        tg(f"⚠️ Divergence trade SKIPPED — computed notional is ${size_usd:.2f} "
+           f"(equity ${float(equity or 0):.2f}, sizing={mode}).")
+        st["acted"][ep["id"]] = int(time.time())
+        return
     need = size_usd / LEVERAGE * 1.15
     if equity < need:
         tg(f"⚠️ Divergence trade SKIPPED — insufficient margin: equity ${equity:.2f} &lt; ${need:.2f} "
-           f"needed for ${size_usd:.0f} @ {LEVERAGE}x. Deposit to enable.")
+           f"needed for ${size_usd:.0f} @ {LEVERAGE}x ({mode}). Deposit to enable.")
         st["acted"][ep["id"]] = int(time.time())
         return
     price = dec_price()
     size = round(size_usd / price, 5)
     info = market_info()
     if info and size < info["min_size"]:
-        tg(f"⚠️ Divergence trade SKIPPED — size {size} below market min {info['min_size']}")
+        tg(f"⚠️ Divergence trade SKIPPED — size {size} below market min {info['min_size']} "
+           f"(notional ${size_usd:.2f} at {price:,.0f}, sizing={mode}). Not rounded up.")
         st["acted"][ep["id"]] = int(time.time())
         return
+    now = int(time.time())
+    delay = (now - int(ep["confirmed_ts"])) if ep.get("confirmed_ts") else None
+    late = delay is not None and delay > LATE_ENTRY_SEC
+    tp_usd, sl_usd = size_usd * frac_tp, size_usd * frac_sl
     if DRY_RUN:
-        tg(f"🧪 DRY RUN — would OPEN {side.upper()} {SYMBOL} sz={size} @ ~{price:,.0f} on {ep['id']}")
-        st["acted"][ep["id"]] = int(time.time())
+        late_txt = f" LATE by {delay / 60:.0f} min." if late else ""
+        tg(f"🧪 DRY RUN — would OPEN {side.upper()} {SYMBOL} sz={size} "
+           f"(${size_usd:.2f} {mode}, TP ${tp_usd:.2f} / SL ${sl_usd:.2f}) "
+           f"@ ~{price:,.0f} on {ep['id']}.{late_txt}")
+        st["acted"][ep["id"]] = now
         return
     try:
         run_cli("set_leverage", {"symbol": SYMBOL, "leverage": LEVERAGE, "marginType": "cross"})
     except Exception as e:
         print(f"  set_leverage warning: {e}")
+    ordered_ms = int(time.time() * 1000) - 60_000
     r = run_cli("place_market_order", {"symbol": SYMBOL, "side": side, "size": size,
                                        "slippage": SLIPPAGE, "reduceOnly": False})
     if not order_ok(r):
@@ -462,24 +775,70 @@ def open_position(st, ep, equity, size_usd=None):
         entry = float(r.get("fillPrice") or r.get("avgPrice") or price)
     except Exception:
         pass
+    filled_at = int(time.time())
     tpsl_ok, tp, sl = False, None, None
     try:
         tpsl_ok, tp, sl = place_protection(direction, entry)
     except Exception as e:
         print(f"  place_tp_sl raised: {e}")
+    # Protection is already on. The history lookup may sleep; it must not move
+    # the TP/SL anchor, only the audit fields.
+    fill_info = lookup_fills(side, "open", ordered_ms, dig_order_id(r))
+    fill_price = entry
+    fees = None
+    if fill_info:
+        if fill_info.get("fill_price"):
+            fill_price = fill_info["fill_price"]
+        fees = fill_info.get("fees")
+    audit = entry_audit(ep, side, price, fill_price, fees, size_usd, mode, now=now)
     st["position"] = {"episode_id": ep["id"], "direction": direction, "size": size,
-                      "entry_price": entry, "entry_ts": int(time.time()),
+                      "entry_price": entry, "entry_ts": filled_at,
                       "entry_equity": equity, "tp_price": tp, "sl_price": sl,
-                      "tp_sl_ok": tpsl_ok}
+                      "tp_sl_ok": tpsl_ok, "notional_usd": round(size_usd, 2),
+                      "sizing": mode, "signal_ts": audit["signal_ts"],
+                      "signal_price": audit["signal_price"],
+                      "entry_delay_sec": audit["entry_delay_sec"],
+                      "fees": fees}
     st["acted"][ep["id"]] = int(time.time())
     log_event({"action": "OPEN", "episode_id": ep["id"], "direction": direction,
                "side": side, "size": size, "entry_price": entry, "equity": equity,
-               "tp_price": tp, "sl_price": sl, "tp_sl_ok": tpsl_ok})
+               "tp_price": tp, "sl_price": sl, "tp_sl_ok": tpsl_ok,
+               "tp_usd": round(tp_usd, 2), "sl_usd": round(sl_usd, 2), **audit})
+    print(f"  OPEN audit signal_ts={audit['signal_ts']} signal_price={audit['signal_price']} "
+          f"delay_sec={audit['entry_delay_sec']} decision={price} fill={fill_price} "
+          f"slippage_pct={audit['slippage_pct']} fees={fees} notional={size_usd:.2f} mode={mode}")
     arrow = "🔼" if side == "long" else "🔻"
     warn = "" if tpsl_ok else "\n🚨 TP/SL placement FAILED — will retry every run + software fallback active."
+    late_line = ""
+    if late:
+        late_line = f"\n⚠️ LATE ENTRY — signal bar closed {delay / 60:.0f} min ago (&gt;30 min)."
+    fee_txt = f"${fees:.4f}" if fees is not None else "n/a"
+    slip_txt = f"{audit['slippage_pct']:+.3f}%" if audit["slippage_pct"] is not None else "n/a"
+    sig = audit["signal_price"]
+    sig_txt = f"{sig:,.0f}" if isinstance(sig, (int, float)) else "n/a"
+    risk_txt = f", risk {risk_pct():.2f}% of equity" if mode == "risk" else ""
     tg(f"{arrow} <b>Divergence bot OPENED {side.upper()} {SYMBOL}</b>\n"
-       f"Signal: {ep['id']}\nSize: {size} (${size_usd:.0f} @ {LEVERAGE}x)\n"
-       f"Entry ~{entry:,.0f} · TP {tp:,.0f} · SL {sl:,.0f} · time-exit {MAX_HOURS:.0f}h{warn}")
+       f"Signal: {ep['id']} @ {sig_txt}\n"
+       f"Size: {size} (${size_usd:.2f} @ {LEVERAGE}x, {mode}{risk_txt})\n"
+       f"TP ${tp_usd:.2f} ({frac_tp * 100:.2f}%) · SL ${sl_usd:.2f} ({frac_sl * 100:.2f}%)\n"
+       f"Entry ~{entry:,.0f} · fill {fill_price:,.1f} · slippage {slip_txt} · fees {fee_txt}\n"
+       f"TP {tp:,.0f} · SL {sl:,.0f} · time-exit {MAX_HOURS:.0f}h{late_line}{warn}")
+
+def _exit_audit(pos, decision_price, close_result):
+    """Fill price, slippage, and fees for a close. Missing history leaves the keys null."""
+    side = "long" if pos.get("direction") == "bullish" else "short"
+    since_ms = int(pos.get("entry_ts") or time.time()) * 1000
+    info = lookup_fills(side, "close", since_ms, dig_order_id(close_result))
+    fill = None
+    fees = None
+    if info:
+        fill = info.get("fill_price")
+        fees = info.get("fees")
+    _, slip = adverse_slippage(side, decision_price, fill if fill is not None else decision_price)
+    if fill is None or decision_price is None:
+        slip = None
+    return {"exit_fill_price": fill, "exit_fees": fees, "exit_slippage_pct": slip,
+            "exit_decision_price": decision_price}
 
 def close_position_now(st, reason):
     pos = st["position"]
@@ -487,6 +846,11 @@ def close_position_now(st, reason):
         tg(f"🧪 DRY RUN — would CLOSE ({reason})")
         st["position"] = None
         return True
+    decision = None
+    try:
+        decision = dec_price()
+    except Exception as e:
+        print(f"  close decision price unavailable: {e}")
     cancel_all_tpsl()
     r = run_cli("close_position", {"symbol": SYMBOL, "slippage": SLIPPAGE})
     if not order_ok(r):
@@ -495,13 +859,22 @@ def close_position_now(st, reason):
     time.sleep(2)
     _, equity, ok = live_snapshot()
     pnl = (equity - pos["entry_equity"]) if ok else None
+    audit = _exit_audit(pos, decision, r)
     log_event({"action": "CLOSE", "episode_id": pos["episode_id"], "reason": reason,
                "direction": pos["direction"], "entry_price": pos["entry_price"],
-               "pnl": pnl, "held_hours": round((time.time() - pos["entry_ts"]) / 3600, 1)})
+               "signal_ts": pos.get("signal_ts"), "signal_price": pos.get("signal_price"),
+               "entry_delay_sec": pos.get("entry_delay_sec"), "entry_fees": pos.get("fees"),
+               "pnl": pnl, "held_hours": round((time.time() - pos["entry_ts"]) / 3600, 1),
+               **audit})
+    print(f"  CLOSE audit reason={reason} fill={audit['exit_fill_price']} "
+          f"slippage_pct={audit['exit_slippage_pct']} fees={audit['exit_fees']}")
     ptxt = f"{pnl:+.2f}" if pnl is not None else "?"
+    fee_txt = f"${audit['exit_fees']:.4f}" if audit["exit_fees"] is not None else "n/a"
+    fill_txt = f"{audit['exit_fill_price']:,.1f}" if audit["exit_fill_price"] else "n/a"
     tg(f"✅ <b>Divergence bot CLOSED</b> ({reason})\n"
        f"{pos['direction']} from {pos['entry_price']:,.0f}, held "
-       f"{(time.time()-pos['entry_ts'])/3600:.1f}h · equity-based PnL ${ptxt}")
+       f"{(time.time()-pos['entry_ts'])/3600:.1f}h · equity-based PnL ${ptxt}\n"
+       f"Exit fill {fill_txt} · fees {fee_txt}")
     st["position"] = None
     return True
 
@@ -693,9 +1066,13 @@ def manual_trade(st, equity):
 # ── main ──────────────────────────────────────────────────────────────────────
 def main():
     now = int(time.time())
+    frac_tp, frac_sl = price_fractions()
+    sizing = "fixed DIV_POSITION_USD" if env_set("DIV_POSITION_USD") else f"risk {risk_pct():.2f}%"
     print(f"divergence_trader[{ACCOUNT}] {datetime.now(timezone.utc).isoformat()} "
           f"enabled={ENABLED} dry_run={DRY_RUN} trade_tf={sorted(TRADE_TF)} "
-          f"block_days={sorted(BLOCK_DAYS) or 'none'} state={os.path.basename(STATE_FILE)}")
+          f"block_days={sorted(BLOCK_DAYS) or 'none'} sizing={sizing} "
+          f"tp={frac_tp * 100:.2f}% sl={frac_sl * 100:.2f}% "
+          f"state={os.path.basename(STATE_FILE)}")
     if not (DEC_PRIVATE_KEY and DEC_SUB and DEC_NODE_KEY):
         print(f"  [{ACCOUNT}] Decibel credentials missing — no-op."); return
 
@@ -739,10 +1116,14 @@ def main():
         print("  DIV_TRADING_ENABLED != true — equity sampled, no trading."); return
 
     st = load_state()
+    gap_msg = note_run_gap(st, now)
+    if gap_msg:
+        tg(gap_msg)
     try:
         eps = json.load(open(DIV_FILE)).get("episodes", [])
     except Exception as e:
-        print(f"  cannot read divergences.json ({e}) — skipping cycle."); return
+        print(f"  cannot read divergences.json ({e}) — skipping cycle.")
+        save_state(st); return
 
     if not api_ok:
         # loud but rate-limited: silent credential death is how the old bot
@@ -756,6 +1137,7 @@ def main():
         save_state(st); return
 
     pos = st.get("position")
+    had_position = bool(pos)
 
     # ── reconcile state vs exchange ──
     if pos and live_pos is None:
@@ -767,13 +1149,19 @@ def main():
             # TP or SL fired server-side (or manual/liquidation close)
             pnl = equity - pos["entry_equity"]
             cancel_all_tpsl()
+            audit = _exit_audit(pos, None, None)
             log_event({"action": "CLOSE", "episode_id": pos["episode_id"],
                        "reason": "TP_SL_FILLED", "direction": pos["direction"],
                        "entry_price": pos["entry_price"], "pnl": pnl,
-                       "held_hours": round(age / 3600, 1)})
+                       "signal_ts": pos.get("signal_ts"), "signal_price": pos.get("signal_price"),
+                       "entry_delay_sec": pos.get("entry_delay_sec"), "entry_fees": pos.get("fees"),
+                       "held_hours": round(age / 3600, 1), **audit})
+            fee_txt = f"${audit['exit_fees']:.4f}" if audit["exit_fees"] is not None else "n/a"
+            fill_txt = f"{audit['exit_fill_price']:,.1f}" if audit["exit_fill_price"] else "n/a"
             tg(f"🎯 <b>Divergence bot: position closed on-exchange</b> (TP/SL/other)\n"
                f"{pos['direction']} from {pos['entry_price']:,.0f}, held {age/3600:.1f}h · "
-               f"equity-based PnL ${pnl:+.2f}")
+               f"equity-based PnL ${pnl:+.2f}\n"
+               f"Exit fill {fill_txt} · fees {fee_txt}")
             st["position"] = pos = None
     elif pos is None and live_pos is not None:
         tg(f"⚠️ Divergence bot: found a {SYMBOL} position it didn't open "
@@ -817,13 +1205,8 @@ def main():
             except Exception as e:
                 print(f"  fallback management failed: {e}")
 
-    # ── act on fresh signals ──
-    fresh = [e for e in eps
-             if e["tf"] in TRADE_TF
-             and datetime.fromtimestamp(e["confirmed_ts"], tz=timezone.utc).strftime("%a") not in BLOCK_DAYS
-             and now - e["confirmed_ts"] <= FRESH.get(e["tf"], 7200)
-             and e["id"] not in st["acted"]]
-    fresh.sort(key=lambda e: e["confirmed_ts"])
+    # ── act on fresh signals (stale ones stay ignored) ──
+    fresh = actionable_signals(eps, now, st["acted"])
     for ep in fresh:
         pos = st.get("position")
         if pos is None:
@@ -840,6 +1223,12 @@ def main():
                 if api_ok:
                     open_position(st, ep, equity)
             # on close failure: acted not stamped — retried next run while fresh
+
+    # A position, or a cycle that just closed one, explains an equity change.
+    # The next flat cycle establishes a new baseline instead of alerting on the trade.
+    flat_msg = observe_flat_equity(st, equity, suppress=bool(had_position or st.get("position")))
+    if flat_msg:
+        tg(flat_msg)
 
     # prune acted entries older than 7d
     st["acted"] = {k: v for k, v in st["acted"].items() if now - v < 7 * 86400}
