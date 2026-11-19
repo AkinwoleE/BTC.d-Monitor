@@ -1,2 +1,2 @@
-requests>=2.31
+requests>=2.31,<3
 hyperliquid-python-sdk==0.24.0

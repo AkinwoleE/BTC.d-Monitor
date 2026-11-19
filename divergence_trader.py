@@ -1047,13 +1047,12 @@ def move_sl_to_breakeven(st, live_pos, equity):
        f"TP kept {tp_sent:,.1f}")
     return 0
 
-def _hedge_rows():
+def _hedge_book():
     bot = os.path.join(os.path.dirname(os.path.abspath(__file__)), "bot")
     if bot not in sys.path:
         sys.path.insert(0, bot)
     from hedge_book import load_book
-    rows, _source = load_book()
-    return rows
+    return load_book()
 
 def _hedge_orders():
     """Resting Decibel orders. Failures stay quiet: the book match still works."""
@@ -1075,14 +1074,23 @@ def _hedge_orders():
         return []
 
 def _ignore_hedge_btc(live_pos):
-    """The funding hedge shares this subaccount. It is not a divergence trade."""
+    """True only when this BTC position is positively the funding hedge.
+
+    A size match against config.json fallback_book is not enough. That path
+    keeps the original stand-down alert.
+    """
     bot = os.path.join(os.path.dirname(os.path.abspath(__file__)), "bot")
     if bot not in sys.path:
         sys.path.insert(0, bot)
-    from hedge_book import ignore_for_other_bot
+    from hedge_book import hl_signed_size, ignore_for_other_bot
+    rows, source = _hedge_book()
+    orders = _hedge_orders()
+    if live_pos:
+        orders = [live_pos] + list(orders)
+    opposite = hl_signed_size("BTC")
     return ignore_for_other_bot(
         False, "decibel", "BTC", (live_pos or {}).get("size"),
-        _hedge_rows(), _hedge_orders(), DEC_SUB,
+        rows, orders, DEC_SUB, book_source=source, opposite_size=opposite,
     )
 
 def manual_trade(st, equity):

@@ -125,9 +125,9 @@ python bot/strategy.py public-check
 
 The RSI divergence trader, the BTC.D pairs trader, and Turtle already use these accounts. They do not manage the hedge.
 
-- Decibel orders use the client id prefix `hedge-` (`hedge-open-…`, `hedge-close-…`).
-- Filled legs are listed in `state.json` on the `hedge-data` branch (`dec_sz` / `hl_sz` per coin). Until that file exists, `fallback_book` in `bot/config.json` records the open 0.005 BTC short on Decibel and long on Hyperliquid.
-- Those bots skip a live position that matches the book, or a resting order with that prefix, only when their own state has no position in that market. Their signal rules and their own trade alerts are unchanged.
+- Decibel orders and fills use the client id prefix `hedge-` (`hedge-open-…`, `hedge-close-…`).
+- Filled legs are listed in `state.json` on the `hedge-data` branch (`dec_sz` / `hl_sz` per coin).
+- Another bot ignores a position only when that bot has no position of its own there and one of these is true: the state file records the leg, the order or fill carries the `hedge-` prefix, or the other venue has the opposite leg at about the same size. `fallback_book` in `bot/config.json` does not hide a position by itself. A size that only matches that static list still gets the original alert and stand-down.
 - The divergence and Turtle workflows load `hedge-data` `state.json` before they run. Hedge alerts go to the **Hedge alerts** issue. Divergence and Turtle keep Telegram.
 
 A BTC position the RSI bot itself opened stays in its state file and is still managed. The hedge does not write that file.

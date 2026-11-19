@@ -393,9 +393,13 @@ def _hedge_position(pos, btc_addr, eth_addr):
     bot = os.path.join(os.path.dirname(os.path.abspath(__file__)), "bot")
     if bot not in sys.path:
         sys.path.insert(0, bot)
-    from hedge_book import ignore_for_other_bot, load_book
-    rows, _source = load_book()
-    return ignore_for_other_bot(False, "decibel", coin, pos.get("size"), rows, account=DEC_SUB)
+    from hedge_book import hl_signed_size, ignore_for_other_bot, load_book
+    rows, source = load_book()
+    opposite = hl_signed_size(coin) if coin == "BTC" else None
+    return ignore_for_other_bot(
+        False, "decibel", coin, pos.get("size"), rows, account=DEC_SUB,
+        book_source=source, opposite_size=opposite,
+    )
 
 def get_open_bot_positions():
     try:

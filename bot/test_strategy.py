@@ -254,6 +254,15 @@ class EntryExit(unittest.TestCase):
         self.assertEqual(start2, 440)
 
 
+class PublicCheck(unittest.TestCase):
+    def test_hedged_book_exits_zero_and_unhedged_exits_one(self):
+        self.assertEqual(strategy.net_hedge_status(-0.005 + 0.005), 0)
+        self.assertEqual(strategy.net_hedge_status(0.0001), 0)
+        self.assertEqual(strategy.net_hedge_status(-0.005), 1)
+        self.assertEqual(strategy.net_hedge_status(0.005), 1)
+        self.assertEqual(strategy.net_hedge_status(0.0002), 1)
+
+
 class Guards(unittest.TestCase):
     def test_config_defaults(self):
         c = cfg()

@@ -446,10 +446,14 @@ def apply_token(tok, candles, n_series, state, trades, *, now, risk_capital, mid
         bot = os.path.join(os.path.dirname(os.path.abspath(__file__)), "bot")
         if bot not in sys.path:
             sys.path.insert(0, bot)
-        from hedge_book import ignore_for_other_bot, load_book
-        rows, _source = load_book()
+        from hedge_book import dec_signed_size, ignore_for_other_bot, load_book
+        rows, source = load_book()
         account = os.environ.get("HYPERLIQUID_ACCOUNT_ADDRESS", "")
-        if ignore_for_other_bot(False, "hyperliquid", tok, live_pos.get("szi"), rows, account=account):
+        opposite = dec_signed_size(tok) if str(tok).upper() == "BTC" else None
+        if ignore_for_other_bot(
+            False, "hyperliquid", tok, live_pos.get("szi"), rows, account=account,
+            book_source=source, opposite_size=opposite,
+        ):
             out["logs"].append(f"  {tok}: hedge-bot position ignored")
             live_pos = None
 

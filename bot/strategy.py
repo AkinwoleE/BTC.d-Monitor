@@ -920,6 +920,11 @@ def execute_live(actions, snaps):
     return failures
 
 
+def net_hedge_status(net, tolerance=0.0002):
+    """0 when the two BTC legs offset. 1 when the book is unhedged."""
+    return 0 if abs(float(net)) < tolerance else 1
+
+
 def public_check(cfg):
     """Read-only BTC leg check using public Hyperliquid and Aptos views. No Geomi key, no orders."""
     hl = fetch_hl_account(cfg["hl_master"])
@@ -927,7 +932,7 @@ def public_check(cfg):
     dec_sz = chain_signed(cfg["decibel_subaccount"], BTC_MARKET, 8)
     net = dec_sz + hl_sz
     print(f"public-check coin=BTC dec={dec_sz:+.5f} hl={hl_sz:+.5f} net={net:+.5f}")
-    return 0 if abs(net) < 0.0002 else 0
+    return net_hedge_status(net)
 
 
 def run(data_dir):

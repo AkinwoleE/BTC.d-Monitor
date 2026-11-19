@@ -2,20 +2,30 @@
 
 The RSI divergence bot, the BTC.D pairs bot, and Turtle share the Decibel
 subaccount and the Hyperliquid master with this hedge. They must not alert
-on, adopt, or close a hedge position. A bot that already has its own open
-position is left alone: this module never hides a trade that bot recorded.
+on, adopt, or close a hedge position they can positively attribute. A bot
+that already has its own open position is left alone.
 
-Filled positions are matched to the hedge book (hedge-data state.json when
-that file is present, otherwise the fallback book in config.json). Resting
-Decibel orders use the client id prefix `hedge-`.
+Positive attribution is one of:
+- a row in hedge-data state.json (not the static fallback_book)
+- an order or fill whose client id starts with `hedge-`
+- the opposite leg on the other venue, same coin, opposite sign, matching size
+
+fallback_book in config.json is only a hint. A size match against it alone
+does not hide the position; the other bot keeps its original alert.
 """
 import json
 import os
+import urllib.request
 
 ORDER_PREFIX = "hedge-"
 HERE = os.path.dirname(os.path.abspath(__file__))
 STATE_PATH = os.path.join(HERE, "runtime", "state.json")
 CONFIG_PATH = os.path.join(HERE, "config.json")
+HL_INFO = "https://api.hyperliquid.xyz/info"
+APTOS_NODE = "https://fullnode.mainnet.aptoslabs.com/v1"
+DEC_PKG = "0x50ead22afd6ffd9769e3b3d6e0e64a2a350d68e8b102c4e72e33d0b8cfdfdb06"
+BTC_MARKET = "0x5e0e16f34adfb4b316f8d532d68acbfa206826feaaa418d3938046bdc2044861"
+_SIZE_CACHE = {}
 
 
 def order_client_id(order):
@@ -90,20 +100,12 @@ def _size_match(size, tracked):
     return abs(float(size) - float(tracked)) <= tol
 
 
-def position_is_hedge(venue, coin, size, book, orders=None, account=None):
-    """True when this live leg is the hedge's, from an order tag or the book."""
+def _book_size_match(venue, coin, size, book, account):
+    if size is None:
+        return False
     coin_u = str(coin or "").upper()
     venue_l = str(venue or "").lower()
     account_l = str(account or "").lower()
-    for order in orders or []:
-        if not order_is_hedge(order):
-            continue
-        named = order_coin(order)
-        if named is not None and named != coin_u:
-            continue
-        return True
-    if size is None:
-        return False
     for row in book or []:
         if row.get("venue") != venue_l or row.get("coin") != coin_u:
             continue
@@ -118,12 +120,115 @@ def position_is_hedge(venue, coin, size, book, orders=None, account=None):
     return False
 
 
-def ignore_for_other_bot(own_open, venue, coin, size, book, orders=None, account=None):
-    """Other bots call this before alerting or managing a live position.
+def _tagged(records, coin):
+    coin_u = str(coin or "").upper()
+    for record in records or []:
+        if not order_is_hedge(record):
+            continue
+        named = order_coin(record)
+        if named is not None and named != coin_u:
+            continue
+        return True
+    return False
 
-    own_open means that bot's state already records a position. Those trades
-    stay on the existing path.
+
+def opposite_matches(size, opposite_size):
+    """True when the other venue holds the offsetting leg of about the same size."""
+    if size is None or opposite_size is None:
+        return False
+    try:
+        leg = float(size)
+        other = float(opposite_size)
+    except (TypeError, ValueError):
+        return False
+    if leg == 0 or other == 0 or leg * other >= 0:
+        return False
+    return _size_match(abs(leg), abs(other))
+
+
+def ignore_for_other_bot(own_open, venue, coin, size, book, orders=None, account=None,
+                         book_source="config", opposite_size=None, fills=None):
+    """True only when this position is positively the hedge and the caller did not open it.
+
+    book_source "config" is the static fallback. Those rows never hide a position
+    by themselves. Pass book_source "state" for hedge-data state.json.
     """
     if own_open:
         return False
-    return position_is_hedge(venue, coin, size, book, orders, account)
+    if _tagged(list(orders or []) + list(fills or []), coin):
+        return True
+    if opposite_matches(size, opposite_size):
+        return True
+    if book_source == "state" and _book_size_match(venue, coin, size, book, account):
+        return True
+    return False
+
+
+def _config():
+    if not os.path.exists(CONFIG_PATH):
+        return {}
+    with open(CONFIG_PATH) as handle:
+        return json.load(handle)
+
+
+def hl_signed_size(coin, master=None, timeout=10):
+    """Signed Hyperliquid position, or None if the read fails. 0 when flat."""
+    coin_u = str(coin or "").upper()
+    if not master:
+        master = _config().get("hl_master") or ""
+    key = ("hl", master.lower(), coin_u)
+    if key in _SIZE_CACHE:
+        return _SIZE_CACHE[key]
+    size = None
+    try:
+        payload = json.dumps({"type": "clearinghouseState", "user": master}).encode()
+        req = urllib.request.Request(HL_INFO, data=payload, headers={"Content-Type": "application/json"})
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            state = json.loads(resp.read().decode())
+        size = 0.0
+        for ap in state.get("assetPositions") or []:
+            pos = (ap or {}).get("position") or {}
+            if str(pos.get("coin") or "").upper() == coin_u:
+                size = float(pos.get("szi") or 0)
+                break
+    except Exception:
+        size = None
+    _SIZE_CACHE[key] = size
+    return size
+
+
+def dec_signed_size(coin, subaccount=None, timeout=10):
+    """Signed Decibel BTC position from a public chain view, or None on failure.
+
+    Only BTC has a known market address here. Other coins return None.
+    """
+    if str(coin or "").upper() != "BTC":
+        return None
+    if not subaccount:
+        subaccount = _config().get("decibel_subaccount") or ""
+    if not subaccount:
+        return None
+    key = ("dec", subaccount.lower(), "BTC")
+    if key in _SIZE_CACHE:
+        return _SIZE_CACHE[key]
+    size = None
+    try:
+        def view(fn):
+            payload = json.dumps({
+                "function": f"{DEC_PKG}::perp_engine::{fn}",
+                "type_arguments": [],
+                "arguments": [subaccount, BTC_MARKET],
+            }).encode()
+            req = urllib.request.Request(
+                f"{APTOS_NODE}/view", data=payload, headers={"Content-Type": "application/json"})
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
+                return json.loads(resp.read().decode())
+        if not view("has_position")[0]:
+            size = 0.0
+        else:
+            raw = int(view("get_position_size")[0]) / 1e8
+            size = raw if view("get_position_is_long")[0] else -raw
+    except Exception:
+        size = None
+    _SIZE_CACHE[key] = size
+    return size

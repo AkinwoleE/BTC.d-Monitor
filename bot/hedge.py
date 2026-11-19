@@ -13,6 +13,9 @@ GEOMI_GAS_STATION_KEY) and never printed/logged.
 
 BTC size/price increments below are the certified defaults. set_market() swaps in another
 overlapping perp. Addresses are overridden by bot/config.json when that file is present.
+
+hold_hl, skip_funding_check, and ignore_pause are not CLI flags. strategy.py sets
+them on the argparse.Namespace it passes into open/close/sync.
 """
 import argparse, json, math, os, subprocess, sys, time, datetime
 import requests
