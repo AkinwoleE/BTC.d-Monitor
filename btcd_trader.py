@@ -381,6 +381,26 @@ def is_meaningful_size(size, min_size):
         return True  # couldn't resolve the market's floor — fail safe as "open", not silently ignored
     return size >= min_size
 
+def _hedge_position(pos, btc_addr, eth_addr):
+    """True when this Decibel position is the funding hedge, not a BTC.D trade."""
+    market = pos.get("market")
+    if market == btc_addr:
+        coin = "BTC"
+    elif market == eth_addr:
+        coin = "ETH"
+    else:
+        return False
+    bot = os.path.join(os.path.dirname(os.path.abspath(__file__)), "bot")
+    if bot not in sys.path:
+        sys.path.insert(0, bot)
+    from hedge_book import hl_signed_size, ignore_for_other_bot, load_book
+    rows, source = load_book()
+    opposite = hl_signed_size(coin) if coin == "BTC" else None
+    return ignore_for_other_bot(
+        False, "decibel", coin, pos.get("size"), rows, account=DEC_SUB,
+        book_source=source, opposite_size=opposite,
+    )
+
 def get_open_bot_positions():
     try:
         rpc_call = json.dumps({
@@ -407,6 +427,7 @@ def get_open_bot_positions():
                             positions = data.get("positions", data if isinstance(data, list) else [])
                             btc_addr = market_address("BTC/USD")
                             eth_addr = market_address("ETH/USD")
+                            positions = [p for p in positions if not _hedge_position(p, btc_addr, eth_addr)]
                             btc_min  = market_min_size("BTC/USD")
                             eth_min  = market_min_size("ETH/USD")
                             btc_open = any(

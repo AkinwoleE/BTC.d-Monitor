@@ -1,0 +1,52 @@
+{
+  "hl_master": "0x8bDaF4d7e8A35364A14fA93461bBACb4454ff018",
+  "decibel_subaccount": "0xe91f3109b1558db1c77c09fa19e1f6765c2872235446b6302b11ca363231911f",
+  "maker_fee": 0.00015,
+  "taker_fee": 0.00045,
+  "max_size_btc": 0.01,
+  "hl_min_notional_usd": 10,
+  "notes": "Caps are sized for about $141 on Decibel and $331 on Hyperliquid. Live equity from the venues is what the leverage checks use. The open 0.005 BTC hedge (short Decibel, long Hyperliquid) is adopted from live positions and is not force-shrunk to the per-pair cap.",
+  "risk": {
+    "max_pair_notional_usd": 300,
+    "max_total_notional_usd": 600,
+    "max_leverage": 3,
+    "max_concurrent_pairs": 3,
+    "liq_distance_floor": 0.25,
+    "daily_loss_stop_usd": 25
+  },
+  "entry": {
+    "min_7d_net_usd": 1.0,
+    "min_decibel_oi_usd": 10000,
+    "min_hl_oi_usd": 10000,
+    "max_position_oi_fraction": 0.1,
+    "min_snapshots": 6,
+    "snapshot_window": 24,
+    "basis_buffer_bps": 5,
+    "require_current_hour_positive": true,
+    "max_new_entries_per_run": 1
+  },
+  "exit": {
+    "min_7d_net_usd": 0.0,
+    "flip_hours": 4,
+    "min_snapshots": 6
+  },
+  "delta_tolerance_fraction": 0.02,
+  "delta_tolerance_min_notional_usd": 10,
+  "risk_realert_hours": 6,
+  "maker_timeout_s": 120,
+  "hedge_timeout_s": 20,
+  "max_slip_bps": 30,
+  "poll_s": 2,
+  "fallback_book": [
+    {
+      "venue": "decibel",
+      "coin": "BTC",
+      "size": -0.005
+    },
+    {
+      "venue": "hyperliquid",
+      "coin": "BTC",
+      "size": 0.005
+    }
+  ]
+}

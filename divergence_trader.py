@@ -1047,6 +1047,52 @@ def move_sl_to_breakeven(st, live_pos, equity):
        f"TP kept {tp_sent:,.1f}")
     return 0
 
+def _hedge_book():
+    bot = os.path.join(os.path.dirname(os.path.abspath(__file__)), "bot")
+    if bot not in sys.path:
+        sys.path.insert(0, bot)
+    from hedge_book import load_book
+    return load_book()
+
+def _hedge_orders():
+    """Resting Decibel orders. Failures stay quiet: the book match still works."""
+    if not DEC_NODE_KEY or not DEC_SUB:
+        return []
+    try:
+        r = requests.get(
+            "https://api.mainnet.aptoslabs.com/decibel/api/v1/open_orders",
+            params={"account": DEC_SUB},
+            headers={"Authorization": f"Bearer {DEC_NODE_KEY}"},
+            timeout=15,
+        )
+        r.raise_for_status()
+        data = r.json()
+        items = data.get("items") if isinstance(data, dict) else data
+        return items or []
+    except Exception as e:
+        print(f"  hedge order read skipped: {e}")
+        return []
+
+def _ignore_hedge_btc(live_pos):
+    """True only when this BTC position is positively the funding hedge.
+
+    A size match against config.json fallback_book is not enough. That path
+    keeps the original stand-down alert.
+    """
+    bot = os.path.join(os.path.dirname(os.path.abspath(__file__)), "bot")
+    if bot not in sys.path:
+        sys.path.insert(0, bot)
+    from hedge_book import hl_signed_size, ignore_for_other_bot
+    rows, source = _hedge_book()
+    orders = _hedge_orders()
+    if live_pos:
+        orders = [live_pos] + list(orders)
+    opposite = hl_signed_size("BTC")
+    return ignore_for_other_bot(
+        False, "decibel", "BTC", (live_pos or {}).get("size"),
+        rows, orders, DEC_SUB, book_source=source, opposite_size=opposite,
+    )
+
 def manual_trade(st, equity):
     """One-off test trade requested via workflow_dispatch inputs, independent
     of DIV_TRADING_ENABLED — an explicit ad-hoc action, not the strategy."""
@@ -1138,6 +1184,7 @@ def main():
 
     pos = st.get("position")
     had_position = bool(pos)
+    hedge_ignored = False
 
     # ── reconcile state vs exchange ──
     if pos and live_pos is None:
@@ -1164,10 +1211,17 @@ def main():
                f"Exit fill {fill_txt} · fees {fee_txt}")
             st["position"] = pos = None
     elif pos is None and live_pos is not None:
-        tg(f"⚠️ Divergence bot: found a {SYMBOL} position it didn't open "
-           f"(size {live_pos.get('size')}). Standing down — close it or move manual trades "
-           f"off this subaccount.")
-        save_state(st); return
+        if _ignore_hedge_btc(live_pos):
+            # Funding-hedge leg (client id hedge-, or the hedge book). Not ours:
+            # do not alert, do not stand down, do not attach TP/SL or close it.
+            print(f"  ignoring hedge-bot {SYMBOL} position size={live_pos.get('size')}")
+            hedge_ignored = True
+            live_pos = None
+        else:
+            tg(f"⚠️ Divergence bot: found a {SYMBOL} position it didn't open "
+               f"(size {live_pos.get('size')}). Standing down — close it or move manual trades "
+               f"off this subaccount.")
+            save_state(st); return
 
     # ── manage open position ──
     if pos:
@@ -1226,7 +1280,10 @@ def main():
 
     # A position, or a cycle that just closed one, explains an equity change.
     # The next flat cycle establishes a new baseline instead of alerting on the trade.
-    flat_msg = observe_flat_equity(st, equity, suppress=bool(had_position or st.get("position")))
+    # Hedge PnL is not an unexplained flat-account move. Other flat-account
+    # alerts are unchanged when no hedge leg was ignored this cycle.
+    flat_msg = observe_flat_equity(
+        st, equity, suppress=bool(had_position or st.get("position") or hedge_ignored))
     if flat_msg:
         tg(flat_msg)
 

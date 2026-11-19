@@ -28,6 +28,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Load hedge book
+        run: |
+          set -euo pipefail
+          mkdir -p bot/runtime
+          if git fetch --depth=1 origin +hedge-data:refs/remotes/origin/hedge-data; then
+            if git cat-file -e origin/hedge-data:state.json 2>/dev/null; then
+              git show origin/hedge-data:state.json > bot/runtime/state.json
+            fi
+          else
+            echo "no hedge-data branch; RSI bot uses the fallback book in bot/config.json"
+          fi
+
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
