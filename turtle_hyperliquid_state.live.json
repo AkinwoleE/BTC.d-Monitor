@@ -2,83 +2,83 @@
  "positions": {
   "AAVE": {
    "units": [],
-   "last_candle_ts": 1794873600
+   "last_candle_ts": 1794960000
   },
   "ADA": {
    "units": [],
-   "last_candle_ts": 1794873600
+   "last_candle_ts": 1794960000
   },
   "APT": {
    "units": [],
-   "last_candle_ts": 1794873600
+   "last_candle_ts": 1794960000
   },
   "AVAX": {
    "units": [],
-   "last_candle_ts": 1794873600
+   "last_candle_ts": 1794960000
   },
   "BNB": {
    "units": [],
-   "last_candle_ts": 1794873600
+   "last_candle_ts": 1794960000
   },
   "BTC": {
    "units": [],
-   "last_candle_ts": 1794873600
+   "last_candle_ts": 1794960000
   },
   "DOGE": {
    "units": [],
-   "last_candle_ts": 1794873600
+   "last_candle_ts": 1794960000
   },
   "ETH": {
    "units": [],
-   "last_candle_ts": 1794873600
+   "last_candle_ts": 1794960000
   },
   "LINK": {
    "units": [],
-   "last_candle_ts": 1794873600
+   "last_candle_ts": 1794960000
   },
   "NEAR": {
    "units": [],
-   "last_candle_ts": 1794873600
+   "last_candle_ts": 1794960000
   },
   "SOL": {
    "units": [],
-   "last_candle_ts": 1794873600
+   "last_candle_ts": 1794960000
   },
   "SUI": {
    "units": [],
-   "last_candle_ts": 1794873600
+   "last_candle_ts": 1794960000
   },
   "TAO": {
    "units": [],
-   "last_candle_ts": 1794873600
+   "last_candle_ts": 1794960000
   },
   "TRUMP": {
    "units": [],
-   "last_candle_ts": 1794873600
+   "last_candle_ts": 1794960000
   },
   "TRX": {
    "units": [],
-   "last_candle_ts": 1794873600
+   "last_candle_ts": 1794960000
   },
   "WLFI": {
    "units": [],
-   "last_candle_ts": 1794873600
+   "last_candle_ts": 1794960000
   },
   "XRP": {
    "units": [],
-   "last_candle_ts": 1794873600
+   "last_candle_ts": 1794960000
   },
   "ZEC": {
    "units": [],
-   "last_candle_ts": 1794873600
+   "last_candle_ts": 1794960000
   },
   "XYZ100": {
    "units": [],
-   "last_candle_ts": 1794873600
+   "last_candle_ts": 1794960000
   },
   "SP500": {
    "units": [],
-   "last_candle_ts": 1794873600
+   "last_candle_ts": 1794960000
   },
   "GOLD": {
    "units": [],
@@ -90,27 +90,27 @@
   },
   "NVDA": {
    "units": [],
-   "last_candle_ts": 1794873600
+   "last_candle_ts": 1794960000
   },
   "TSLA": {
    "units": [],
-   "last_candle_ts": 1794873600
+   "last_candle_ts": 1794960000
   },
   "AAPL": {
    "units": [],
-   "last_candle_ts": 1794873600
+   "last_candle_ts": 1794960000
   },
   "GOOGL": {
    "units": [],
-   "last_candle_ts": 1794873600
+   "last_candle_ts": 1794960000
   },
   "MSFT": {
    "units": [],
-   "last_candle_ts": 1794873600
+   "last_candle_ts": 1794960000
   },
   "AMZN": {
    "units": [],
-   "last_candle_ts": 1794873600
+   "last_candle_ts": 1794960000
   }
  },
  "mode": "live"
