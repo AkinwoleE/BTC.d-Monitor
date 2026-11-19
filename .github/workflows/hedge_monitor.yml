@@ -1,0 +1,96 @@
+name: Hedge monitor
+
+# Hourly funding scan and, only when the LIVE_TRADING repository variable is
+# the string true, the delta-neutral strategy. Unset or any other value is
+# paper mode: decisions are logged and alerted, and no order is sent.
+# New entries also stop when BOT_ENABLED is false or bot/TRADING_PAUSED exists.
+# This file is the only hedge workflow with a schedule. It never runs the
+# manual open/close workflows.
+on:
+  schedule:
+    - cron: "0 * * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: hedge-bot
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  issues: write
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 1
+          persist-credentials: true
+
+      - name: Set up Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: "3.11"
+
+      - name: Set up Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: "22"
+
+      - name: Install Python dependencies
+        run: pip install -r bot/requirements.txt
+
+      - name: Install Decibel bridge
+        working-directory: bot
+        run: npm ci
+
+      - name: Load funding history
+        run: |
+          set -euo pipefail
+          mkdir -p bot/runtime
+          if git fetch --depth=50 origin +hedge-data:refs/remotes/origin/hedge-data; then
+            for f in funding_snapshots.csv state.json decisions.jsonl; do
+              if git cat-file -e "origin/hedge-data:$f" 2>/dev/null; then
+                git show "origin/hedge-data:$f" > "bot/runtime/$f"
+              fi
+            done
+          else
+            echo "hedge-data branch does not exist yet"
+          fi
+
+      - name: Run strategy
+        env:
+          # Script name -> repository secret. The names differ; see the README.
+          # There is no secret named GEOMI_CLIENT_KEY, GEOMI_NODE_KEY,
+          # GEOMI_GAS_STATION_KEY, DECIBEL_API_WALLET_PRIVATE_KEY, or HL_AGENT_PRIVATE_KEY.
+          GEOMI_CLIENT_KEY: ${{ secrets.DECIBEL_NODE_API_KEY }}
+          GEOMI_NODE_KEY: ${{ secrets.DECIBEL_NODE_API_KEY }}
+          GEOMI_GAS_STATION_KEY: ${{ secrets.DECIBEL_GAS_STATION_API_KEY }}
+          DECIBEL_API_WALLET_PRIVATE_KEY: ${{ secrets.DECIBEL_PRIVATE_KEY }}
+          HL_AGENT_PRIVATE_KEY: ${{ secrets.HYPERLIQUID_API_PRIVATE_KEY }}
+          # Compared with bot/config.json. Not used as the trading address.
+          DECIBEL_SUBACCOUNT: ${{ secrets.DECIBEL_SUBACCOUNT }}
+          HYPERLIQUID_ACCOUNT_ADDRESS: ${{ secrets.HYPERLIQUID_ACCOUNT_ADDRESS }}
+          LIVE_TRADING: ${{ vars.LIVE_TRADING }}
+          BOT_ENABLED: ${{ vars.BOT_ENABLED }}
+          HEDGE_REDACT: "1"
+        run: python bot/strategy.py run --data-dir bot/runtime
+
+      - name: Upload funding snapshot
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: hedge-snapshot
+          path: |
+            bot/runtime/funding_snapshots.csv
+            bot/runtime/state.json
+            bot/runtime/decisions.jsonl
+          if-no-files-found: warn
+          retention-days: 90
+
+      - name: Publish hedge-data branch
+        if: always()
+        run: bash bot/publish_data.sh bot/runtime

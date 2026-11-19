@@ -203,3 +203,20 @@ fallback line is in the log.
 
 Yar stays off until `YAR_TRADING_ENABLED` is set true. The primary account
 stays on.
+
+## Funding hedge on the same account
+
+The delta-neutral funding hedge (see the README) can hold BTC on this same
+Decibel subaccount. That position is not a divergence trade. The trader
+ignores it: no "position it didn't open" alert, no stand-down, no TP/SL, and
+no close. RSI detection and entries are unchanged. A BTC position this bot
+already has in its own state file is still managed as before.
+
+A resting Decibel order whose client id starts with `hedge-` is the hedge's.
+A filled hedge is recognized from `bot/runtime/state.json` (the `hedge-data`
+branch, loaded at the start of this workflow) or, before that file exists,
+from `fallback_book` in `bot/config.json`. The open hedge is short 0.005 BTC
+here and long 0.005 BTC on Hyperliquid. Equity moves caused by that leg are
+not reported as an unexplained flat-account change. Alerts for this bot's
+own trades still go to the same Telegram chat as before. The hedge alerts
+go to the GitHub issue **Hedge alerts**, not to Telegram.

@@ -1,0 +1,106 @@
+name: Hedge open
+
+# Manual only. There is no schedule. dry_run defaults to true.
+# Setting dry_run to false sends real orders (--live --yes) even when the
+# LIVE_TRADING variable is not true. The kill switch (BOT_ENABLED=false or
+# bot/TRADING_PAUSED) still blocks a live open. hedge.py keeps its size cap.
+on:
+  workflow_dispatch:
+    inputs:
+      pair:
+        description: "Perp base symbol, for example BTC or ETH"
+        required: true
+        default: BTC
+        type: string
+      size:
+        description: "Base size. BTC is capped at 0.01 unless the script's --force is used, and this workflow does not pass --force."
+        required: true
+        default: "0.005"
+        type: string
+      direction:
+        description: "Which venue is short"
+        required: true
+        default: short-dec-long-hl
+        type: choice
+        options:
+          - short-dec-long-hl
+          - long-dec-short-hl
+      dry_run:
+        description: "Dry run. Set to false to send REAL orders."
+        required: true
+        default: true
+        type: boolean
+
+concurrency:
+  group: hedge-bot
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  open:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 1
+
+      - name: Set up Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: "3.11"
+
+      - name: Set up Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: "22"
+
+      - name: Install Python dependencies
+        run: pip install -r bot/requirements.txt
+
+      - name: Install Decibel bridge
+        working-directory: bot
+        run: npm ci
+
+      - name: Open hedge
+        id: open
+        env:
+          GEOMI_CLIENT_KEY: ${{ secrets.DECIBEL_NODE_API_KEY }}
+          GEOMI_NODE_KEY: ${{ secrets.DECIBEL_NODE_API_KEY }}
+          GEOMI_GAS_STATION_KEY: ${{ secrets.DECIBEL_GAS_STATION_API_KEY }}
+          DECIBEL_API_WALLET_PRIVATE_KEY: ${{ secrets.DECIBEL_PRIVATE_KEY }}
+          HL_AGENT_PRIVATE_KEY: ${{ secrets.HYPERLIQUID_API_PRIVATE_KEY }}
+          BOT_ENABLED: ${{ vars.BOT_ENABLED }}
+          HEDGE_REDACT: "1"
+          PAIR: ${{ inputs.pair }}
+          SIZE: ${{ inputs.size }}
+          DIRECTION: ${{ inputs.direction }}
+          DRY: ${{ inputs.dry_run }}
+        run: |
+          set -euo pipefail
+          args=(open --coin "$PAIR" --size "$SIZE" --direction "$DIRECTION")
+          if [ "$DRY" != "true" ]; then
+            args+=(--live --yes)
+          fi
+          set +e
+          python bot/hedge.py "${args[@]}"
+          code=$?
+          set -e
+          echo "exit_code=$code" >> "$GITHUB_OUTPUT"
+          echo "dry=$DRY" >> "$GITHUB_OUTPUT"
+          exit "$code"
+
+      - name: Post to Hedge alerts
+        if: always()
+        env:
+          CMD: open
+          COIN: ${{ inputs.pair }}
+          SIZE: ${{ inputs.size }}
+          DIRECTION: ${{ inputs.direction }}
+          DRY: ${{ steps.open.outputs.dry }}
+          OK: ${{ steps.open.outputs.exit_code == '0' && '1' || '0' }}
+        run: python bot/alerts.py --cmd "$CMD" --coin "$COIN" --size "$SIZE" --direction "$DIRECTION" --dry "$DRY" --ok "$OK"

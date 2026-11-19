@@ -1,0 +1,18 @@
+{
+  "name": "hedge",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "@aptos-labs/ts-sdk": "^7.5.0",
+    "@decibeltrade/sdk": "^0.8.2",
+    "zod": "^3.25.76"
+  }
+}

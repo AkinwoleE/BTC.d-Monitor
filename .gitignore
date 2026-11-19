@@ -1,0 +1,6 @@
+bot/node_modules/
+bot/hedge.log
+bot/runtime/
+__pycache__/
+*.pyc
+.pytest_cache/
