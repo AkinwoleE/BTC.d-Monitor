@@ -44846,10 +44846,37 @@
    ],
    "confirmed_ts": 1795154400,
    "confirm_price": 61863.2,
-   "forward": [],
+   "forward": [
+    {
+     "ts": 1795154400,
+     "high": 62000.1,
+     "low": 61651.9,
+     "close": 61999.7
+    }
+   ],
    "source": "kraken",
-   "alerted": true
+   "alerted": true,
+   "stats": {
+    "complete": false,
+    "ret_6h": 0.221,
+    "ret_12h": 0.221,
+    "ret_24h": 0.221,
+    "ret_48h": 0.221,
+    "best_entry": {
+     "ts": 1795154400,
+     "price": 61651.9,
+     "hours_after": 0.0
+    },
+    "best_exit": {
+     "ts": 1795154400,
+     "price": 62000.1,
+     "hours_after": 0.0
+    },
+    "best_pnl_pct": 0.565,
+    "mfe_pct": 0.221,
+    "mae_pct": 0.342
+   }
   }
  ],
- "updated": "2026-11-20T06:45:25.588319+00:00"
+ "updated": "2026-11-20T07:00:27.591964+00:00"
 }
