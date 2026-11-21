@@ -12391,8 +12391,57 @@
      "mfe_pct": 6.514,
      "mae_pct": 1.833
     }
+   },
+   {
+    "id": "2h-bullish2-1795190400",
+    "tf": "2h",
+    "direction": "bullish",
+    "legs": 2,
+    "pivots": [
+     {
+      "ts": 1795154400,
+      "price": 0.4955,
+      "rsi": 31.09
+     },
+     {
+      "ts": 1795190400,
+      "price": 0.4849,
+      "rsi": 39.26
+     }
+    ],
+    "confirmed_ts": 1795219200,
+    "confirm_price": 0.5019,
+    "forward": [
+     {
+      "ts": 1795219200,
+      "high": 0.5058,
+      "low": 0.4993,
+      "close": 0.5
+     }
+    ],
+    "alerted": true,
+    "stats": {
+     "complete": false,
+     "ret_6h": -0.379,
+     "ret_12h": -0.379,
+     "ret_24h": -0.379,
+     "ret_48h": -0.379,
+     "best_entry": {
+      "ts": 1795219200,
+      "price": 0.4993,
+      "hours_after": 0.0
+     },
+     "best_exit": {
+      "ts": 1795219200,
+      "price": 0.5058,
+      "hours_after": 0.0
+     },
+     "best_pnl_pct": 1.302,
+     "mfe_pct": 0.777,
+     "mae_pct": 0.518
+    }
    }
   ]
  },
- "updated": "2026-11-20T21:16:59.265725+00:00"
+ "updated": "2026-11-21T02:29:43.543724+00:00"
 }
