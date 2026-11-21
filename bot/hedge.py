@@ -21,7 +21,7 @@ import argparse, json, math, os, subprocess, sys, time, datetime
 import requests
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from redact import sanitize
-from hedge_book import ORDER_PREFIX
+from hedge_book import ORDER_PREFIX, hedge_cloid_hex
 
 # ------------------------------------------------------------------ config
 DEC_SUB      = "0xe91f3109b1558db1c77c09fa19e1f6765c2872235446b6302b11ca363231911f"
@@ -213,8 +213,18 @@ def hl_order_wire(is_buy, sz, px, tif, reduce_only):
     asset = hl_info().name_to_asset(HL_COIN)
     return order_request_to_order_wire({"coin": HL_COIN, "is_buy": is_buy, "sz": sz, "limit_px": px, "order_type": {"limit": {"tif": tif}}, "reduce_only": reduce_only}, asset)
 
-def hl_order(is_buy, sz, px, tif, reduce_only):
-    r = hl_exchange().order(HL_COIN, is_buy, sz, px, {"limit": {"tif": tif}}, reduce_only)
+def hl_order(is_buy, sz, px, tif, reduce_only, client_id=None):
+    cloid = None
+    if client_id:
+        try:
+            from hyperliquid.utils.types import Cloid
+            cloid = Cloid.from_str(hedge_cloid_hex(client_id))
+        except Exception as exc:
+            log(f"HL cloid skipped: {exc}")
+    if cloid is None:
+        r = hl_exchange().order(HL_COIN, is_buy, sz, px, {"limit": {"tif": tif}}, reduce_only)
+    else:
+        r = hl_exchange().order(HL_COIN, is_buy, sz, px, {"limit": {"tif": tif}}, reduce_only, cloid=cloid)
     st = r["response"]["data"]["statuses"][0] if r.get("status") == "ok" else {"error": str(r)[:200]}
     return st
 
@@ -429,13 +439,13 @@ def run_hedge(mode, a, direction):
             hb, ha = hl_book(); is_buy = unhedged > 0
             px = hl_px(hb if is_buy else ha, up=not is_buy); sz = hl_sz(abs(unhedged))
             reduce_only = hl_reduce or (is_buy and bp < -1e-12) or ((not is_buy) and bp > 1e-12)
-            st = hl_order(is_buy, sz, px, "Alo", reduce_only); hl_ts = time.time(); log(f"HL ALO {'BUY' if is_buy else 'SELL'} {sz} @ {px}: {st}")
+            st = hl_order(is_buy, sz, px, "Alo", reduce_only, cid); hl_ts = time.time(); log(f"HL ALO {'BUY' if is_buy else 'SELL'} {sz} @ {px}: {st}")
         elif resting and hl_ts and time.time() - hl_ts > a.hedge_timeout:
             for o in resting: hl_cancel(o["oid"])
             hb, ha = hl_book(); gap = target - bp; is_buy = gap > 0; slip = a.max_slip_bps / 1e4
             rem = hl_sz(abs(gap)); px = hl_px((ha * (1 + slip)) if is_buy else (hb * (1 - slip)), up=is_buy)
             reduce_only = hl_reduce or (is_buy and bp < -1e-12) or ((not is_buy) and bp > 1e-12)
-            st = hl_order(is_buy, rem, px, "Ioc", reduce_only); hl_ts = None
+            st = hl_order(is_buy, rem, px, "Ioc", reduce_only, cid); hl_ts = None
             log(f"HL TAKER fallback {'BUY' if is_buy else 'SELL'} {rem} @ cap {px}: {st}")
         if size > 0 and not dec_cancelled and (time.time() - t0 > a.maker_timeout):
             log("maker timeout: cancelling Decibel order"); log(str(bridge("cancel_client", {"dry": False, "market": DEC_MARKET, "clientOrderId": cid, "subaccount": DEC_SUB})))

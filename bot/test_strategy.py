@@ -220,19 +220,36 @@ class EntryExit(unittest.TestCase):
         self.assertNotIn("BTC", flat["state"]["positions"])
 
     def test_naked_leg_is_a_repair_not_an_entry(self):
+        prior = {
+            "positions": {"BTC": {"dec_sz": -0.005, "hl_sz": 0.005, "direction": "short-dec-long-hl"}},
+            "alert_keys": {},
+        }
         naked = snap(coin="BTC", dec_sz=-0.005, hl_sz=0.0, dec_mid=63000, hl_mid=63000,
                      dec_mark=63000, hl_mark=63000, lot=0.00001, min_size=0.00002)
-        result = strategy.decide([naked], account(), cfg(), [], {"positions": {}, "alert_keys": {}}, NOW)
+        result = strategy.decide([naked], account(), cfg(), [], prior, NOW)
         repairs = [a for a in result["actions"] if a["kind"] == "repair"]
         self.assertEqual(len(repairs), 1)
         self.assertEqual(repairs[0]["how"], "hedge-hl")
-        dust = snap(coin="DOGE", dec_sz=1, hl_sz=0, dec_mid=0.1, hl_mid=0.1, dec_mark=0.1, hl_mark=0.1, lot=1, min_size=1)
-        # $0.10 gap cannot be an HL order. Flatten.
+        dust = snap(coin="DOGE", dec_sz=1, hl_sz=0, dec_mid=0.1, hl_mid=0.1, dec_mark=0.1, hl_mark=0.1,
+                    lot=1, min_size=1, hedge_tagged=True)
         result = strategy.decide([dust], account(), cfg(), [], {"positions": {}, "alert_keys": {}}, NOW)
         self.assertEqual(result["actions"][0]["how"], "close")
-        same = snap(coin="BTC", dec_sz=0.005, hl_sz=0.005, dec_mid=63000, hl_mid=63000, dec_mark=63000, hl_mark=63000)
+        same = snap(coin="BTC", dec_sz=0.005, hl_sz=0.005, dec_mid=63000, hl_mid=63000,
+                    dec_mark=63000, hl_mark=63000, hedge_tagged=True)
         result = strategy.decide([same], account(), cfg(), [], {"positions": {}, "alert_keys": {}}, NOW)
         self.assertEqual(result["actions"][0]["how"], "close")
+
+    def test_foreign_trx_short_is_not_repaired(self):
+        trx = snap(coin="TRX", dec_sz=0.0, hl_sz=-35.0, dec_mid=0.3, hl_mid=0.3,
+                   dec_mark=0.3, hl_mark=0.3, lot=1, min_size=1, in_overlap=True)
+        # Even a previous mistaken state row that is only the Hyperliquid short
+        # must not authorize a close.
+        state = {"positions": {"TRX": {"dec_sz": 0, "hl_sz": -35}}, "alert_keys": {}}
+        result = strategy.decide([trx], account(), cfg(), [], state, NOW)
+        self.assertFalse(any(a["kind"] in ("repair", "exit", "enter") for a in result["actions"]))
+        self.assertEqual(result["foreign"], ["TRX"])
+        self.assertNotIn("TRX", result["state"]["positions"])
+        self.assertNotIn("TRX", result["comment"] or "")
 
     def test_signal_is_quiet_the_second_hour(self):
         history = hours("ETH", 6, 0.0002, 0.0)

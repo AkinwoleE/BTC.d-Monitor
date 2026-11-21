@@ -21,6 +21,7 @@ import urllib.request
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from alerts import comment_if_needed
 from redact import sanitize
+import hedge_book
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DEC_API = "https://api.mainnet.aptoslabs.com/decibel/api/v1"
@@ -175,6 +176,32 @@ def flat_enough(dec, hl, price, cfg):
     return False
 
 
+def position_belongs_to_hedge(snap, state_row=None):
+    """True when this live book is the hedge's, not another bot's position.
+
+    A matched pair (opposite signs, about the same size) is the hedge.
+    So is a hedge- tagged order. A one-sided leg is ours only when state.json
+    already recorded it as part of a matched hedge and the live size still
+    agrees. A foreign one-sided position, including one an earlier run wrote
+    into state by mistake, is not ours.
+    """
+    if snap.get("hedge_tagged"):
+        return True
+    dec = float(snap.get("dec_sz") or 0)
+    hl = float(snap.get("hl_sz") or 0)
+    if hedge_book.opposite_matches(dec, hl):
+        return True
+    if not state_row:
+        return False
+    recorded_dec = float(state_row.get("dec_sz") or 0)
+    recorded_hl = float(state_row.get("hl_sz") or 0)
+    if not hedge_book.opposite_matches(recorded_dec, recorded_hl):
+        return False
+    dec_ok = abs(dec) <= 1e-12 or hedge_book.sizes_close(dec, recorded_dec)
+    hl_ok = abs(hl) <= 1e-12 or hedge_book.sizes_close(hl, recorded_hl)
+    return (abs(dec) > 1e-12 or abs(hl) > 1e-12) and dec_ok and hl_ok
+
+
 def held_direction(dec, hl):
     if dec < 0 and hl > 0:
         return "short-dec-long-hl"
@@ -306,10 +333,18 @@ def decide(snaps, account, cfg, history, state, now):
     window = cfg["entry"]["snapshot_window"]
     exit_cfg = cfg["exit"]
     floor = cfg["risk"]["liq_distance_floor"]
-    positioned = [
+    positioned_all = [
         s for s in snaps
         if s.get("size_ok", True) and (abs(s.get("dec_sz") or 0) > 1e-12 or abs(s.get("hl_sz") or 0) > 1e-12)
     ]
+    state_positions = (state or {}).get("positions") or {}
+    foreign = []
+    positioned = []
+    for snap in positioned_all:
+        if position_belongs_to_hedge(snap, state_positions.get(snap["coin"])):
+            positioned.append(snap)
+        else:
+            foreign.append(snap["coin"])
 
     def notionals():
         dec = hl = total = 0.0
@@ -451,7 +486,7 @@ def decide(snaps, account, cfg, history, state, now):
             "since": prev.get("since") or now.strftime("%Y-%m-%dT%H:%M:%SZ"),
             "entry_net_hr": entry_net,
         }
-    return {"actions": actions, "errors": errors, "comment": comment, "state": new_state}
+    return {"actions": actions, "errors": errors, "comment": comment, "state": new_state, "foreign": foreign}
 
 
 def render_alerts(actions, errors, state, now, cfg, paper):
@@ -997,6 +1032,8 @@ def run(data_dir):
         "day_start_equity": day_start,
     }
     result = decide(snaps, account, cfg, hist_view, state, now)
+    for coin in result.get("foreign") or []:
+        print(f"foreign position, ignored: {coin}")
     if not is_paper:
         # Risk actions first. Skip entries in this run if any of those were requested;
         # decide() already withholds enter actions in that case.
