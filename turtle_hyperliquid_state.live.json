@@ -2,115 +2,127 @@
  "positions": {
   "AAVE": {
    "units": [],
-   "last_candle_ts": 1795046400
+   "last_candle_ts": 1795132800
   },
   "ADA": {
    "units": [],
-   "last_candle_ts": 1795046400
+   "last_candle_ts": 1795132800
   },
   "APT": {
    "units": [],
-   "last_candle_ts": 1795046400
+   "last_candle_ts": 1795132800
   },
   "AVAX": {
    "units": [],
-   "last_candle_ts": 1795046400
+   "last_candle_ts": 1795132800
   },
   "BNB": {
    "units": [],
-   "last_candle_ts": 1795046400
+   "last_candle_ts": 1795132800
   },
   "BTC": {
    "units": [],
-   "last_candle_ts": 1795046400
+   "last_candle_ts": 1795132800
   },
   "DOGE": {
    "units": [],
-   "last_candle_ts": 1795046400
+   "last_candle_ts": 1795132800
   },
   "ETH": {
    "units": [],
-   "last_candle_ts": 1795046400
+   "last_candle_ts": 1795132800
   },
   "LINK": {
    "units": [],
-   "last_candle_ts": 1795046400
+   "last_candle_ts": 1795132800
   },
   "NEAR": {
    "units": [],
-   "last_candle_ts": 1795046400
+   "last_candle_ts": 1795132800
   },
   "SOL": {
    "units": [],
-   "last_candle_ts": 1795046400
+   "last_candle_ts": 1795132800
   },
   "SUI": {
    "units": [],
-   "last_candle_ts": 1795046400
+   "last_candle_ts": 1795132800
   },
   "TAO": {
    "units": [],
-   "last_candle_ts": 1795046400
+   "last_candle_ts": 1795132800
   },
   "TRUMP": {
    "units": [],
-   "last_candle_ts": 1795046400
+   "last_candle_ts": 1795132800
   },
   "TRX": {
-   "units": [],
-   "last_candle_ts": 1795046400
+   "units": [
+    {
+     "side": "short",
+     "entry_px": 0.30173,
+     "sz": 35.0,
+     "n_at_entry": 0.005977464331295741,
+     "entry_ts": 1795219937,
+     "signal_px": 0.302,
+     "candle_ts": 1795132800,
+     "fee": 0.004562
+    }
+   ],
+   "last_candle_ts": 1795132800,
+   "stop_oid": 612051494417
   },
   "WLFI": {
    "units": [],
-   "last_candle_ts": 1795046400
+   "last_candle_ts": 1795132800
   },
   "XRP": {
    "units": [],
-   "last_candle_ts": 1795046400
+   "last_candle_ts": 1795132800
   },
   "ZEC": {
    "units": [],
-   "last_candle_ts": 1795046400
+   "last_candle_ts": 1795132800
   },
   "XYZ100": {
    "units": [],
-   "last_candle_ts": 1795046400
+   "last_candle_ts": 1795132800
   },
   "SP500": {
    "units": [],
-   "last_candle_ts": 1795046400
+   "last_candle_ts": 1795132800
   },
   "GOLD": {
    "units": [],
-   "last_candle_ts": 1795046400
+   "last_candle_ts": 1795132800
   },
   "CL": {
    "units": [],
-   "last_candle_ts": 1795046400
+   "last_candle_ts": 1795132800
   },
   "NVDA": {
    "units": [],
-   "last_candle_ts": 1795046400
+   "last_candle_ts": 1795132800
   },
   "TSLA": {
    "units": [],
-   "last_candle_ts": 1795046400
+   "last_candle_ts": 1795132800
   },
   "AAPL": {
    "units": [],
-   "last_candle_ts": 1795046400
+   "last_candle_ts": 1795132800
   },
   "GOOGL": {
    "units": [],
-   "last_candle_ts": 1795046400
+   "last_candle_ts": 1795132800
   },
   "MSFT": {
    "units": [],
-   "last_candle_ts": 1795046400
+   "last_candle_ts": 1795132800
   },
   "AMZN": {
    "units": [],
-   "last_candle_ts": 1795046400
+   "last_candle_ts": 1795132800
   }
  },
  "mode": "live"
