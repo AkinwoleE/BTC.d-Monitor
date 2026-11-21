@@ -45044,6 +45044,12 @@
      "high": 60883.4,
      "low": 60057.0,
      "close": 60237.0
+    },
+    {
+     "ts": 1795273200,
+     "high": 60399.7,
+     "low": 59587.5,
+     "close": 59832.2
     }
    ],
    "source": "kraken",
@@ -45053,7 +45059,7 @@
     "ret_6h": -0.192,
     "ret_12h": -4.482,
     "ret_24h": -9.962,
-    "ret_48h": -2.629,
+    "ret_48h": -3.283,
     "best_entry": {
      "ts": 1795190400,
      "price": 58702.0,
@@ -45118,16 +45124,22 @@
      "high": 60883.4,
      "low": 60057.0,
      "close": 60237.0
+    },
+    {
+     "ts": 1795273200,
+     "high": 60399.7,
+     "low": 59587.5,
+     "close": 59832.2
     }
    ],
    "source": "kraken",
    "alerted": true,
    "stats": {
     "complete": false,
-    "ret_6h": 3.996,
-    "ret_12h": 3.996,
-    "ret_24h": 3.996,
-    "ret_48h": 3.996,
+    "ret_6h": 3.297,
+    "ret_12h": 3.297,
+    "ret_24h": 3.297,
+    "ret_48h": 3.297,
     "best_entry": {
      "ts": 1795255200,
      "price": 57741.8,
@@ -45168,6 +45180,12 @@
      "high": 60883.4,
      "low": 60057.0,
      "close": 60237.0
+    },
+    {
+     "ts": 1795273200,
+     "high": 60399.7,
+     "low": 59587.5,
+     "close": 59832.2
     }
    ],
    "source": "binance",
@@ -45175,25 +45193,25 @@
    "alert_suppressed": "duplicate-structure",
    "stats": {
     "complete": false,
-    "ret_6h": -0.531,
-    "ret_12h": -0.531,
-    "ret_24h": -0.531,
-    "ret_48h": -0.531,
+    "ret_6h": -1.199,
+    "ret_12h": -1.199,
+    "ret_24h": -1.199,
+    "ret_48h": -1.199,
     "best_entry": {
-     "ts": 1795269600,
-     "price": 60057.0,
-     "hours_after": 0.0
+     "ts": 1795273200,
+     "price": 59587.5,
+     "hours_after": 1.0
     },
     "best_exit": {
-     "ts": 1795269600,
-     "price": 60883.4,
-     "hours_after": 0.0
+     "ts": 1795273200,
+     "price": 60399.7,
+     "hours_after": 1.0
     },
-    "best_pnl_pct": 1.376,
+    "best_pnl_pct": 1.363,
     "mfe_pct": 0.537,
-    "mae_pct": 0.828
+    "mae_pct": 1.603
    }
   }
  ],
- "updated": "2026-11-21T15:45:23.672746+00:00"
+ "updated": "2026-11-21T16:00:29.205037+00:00"
 }
