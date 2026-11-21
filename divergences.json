@@ -45032,6 +45032,12 @@
      "high": 59083.7,
      "low": 58047.2,
      "close": 58768.1
+    },
+    {
+     "ts": 1795266000,
+     "high": 60839.0,
+     "low": 58708.1,
+     "close": 60462.3
     }
    ],
    "source": "kraken",
@@ -45041,18 +45047,18 @@
     "ret_6h": -0.192,
     "ret_12h": -4.482,
     "ret_24h": -9.962,
-    "ret_48h": -5.003,
+    "ret_48h": -2.265,
     "best_entry": {
      "ts": 1795190400,
      "price": 58702.0,
      "hours_after": 10.0
     },
     "best_exit": {
-     "ts": 1795190400,
-     "price": 59757.6,
-     "hours_after": 10.0
+     "ts": 1795266000,
+     "price": 60839.0,
+     "hours_after": 31.0
     },
-    "best_pnl_pct": 1.798,
+    "best_pnl_pct": 3.64,
     "mfe_pct": 0.662,
     "mae_pct": 10.933
    }
@@ -45094,31 +45100,61 @@
      "high": 59083.7,
      "low": 58047.2,
      "close": 58768.1
+    },
+    {
+     "ts": 1795266000,
+     "high": 60839.0,
+     "low": 58708.1,
+     "close": 60462.3
     }
    ],
    "source": "kraken",
    "alerted": true,
    "stats": {
     "complete": false,
-    "ret_6h": 1.46,
-    "ret_12h": 1.46,
-    "ret_24h": 1.46,
-    "ret_48h": 1.46,
+    "ret_6h": 4.385,
+    "ret_12h": 4.385,
+    "ret_24h": 4.385,
+    "ret_48h": 4.385,
     "best_entry": {
      "ts": 1795255200,
      "price": 57741.8,
      "hours_after": 0.0
     },
     "best_exit": {
-     "ts": 1795262400,
-     "price": 59083.7,
-     "hours_after": 2.0
+     "ts": 1795266000,
+     "price": 60839.0,
+     "hours_after": 3.0
     },
-    "best_pnl_pct": 2.324,
-    "mfe_pct": 2.005,
+    "best_pnl_pct": 5.364,
+    "mfe_pct": 5.035,
     "mae_pct": 0.312
    }
+  },
+  {
+   "id": "2h-bullish2-1795240800",
+   "tf": "2h",
+   "direction": "bullish",
+   "legs": 2,
+   "pivots": [
+    {
+     "ts": 1795197600,
+     "price": 57778.35,
+     "rsi": 21.9
+    },
+    {
+     "ts": 1795240800,
+     "price": 55130.0,
+     "rsi": 36.06
+    }
+   ],
+   "confirmed_ts": 1795269600,
+   "confirm_price": 60558.41,
+   "forward": [],
+   "source": "binance",
+   "alerted": false,
+   "alert_suppressed": "duplicate-structure"
   }
  ],
- "updated": "2026-11-21T13:45:21.885047+00:00"
+ "updated": "2026-11-21T14:00:27.112592+00:00"
 }
