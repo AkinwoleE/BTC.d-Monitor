@@ -45316,6 +45316,12 @@
      "high": 60297.9,
      "low": 58964.3,
      "close": 59701.8
+    },
+    {
+     "ts": 1795338000,
+     "high": 61288.9,
+     "low": 59570.3,
+     "close": 61034.5
     }
    ],
    "source": "kraken",
@@ -45324,20 +45330,20 @@
     "complete": false,
     "ret_6h": 3.297,
     "ret_12h": 4.183,
-    "ret_24h": 3.072,
-    "ret_48h": 3.072,
+    "ret_24h": 5.373,
+    "ret_48h": 5.373,
     "best_entry": {
      "ts": 1795255200,
      "price": 57741.8,
      "hours_after": 0.0
     },
     "best_exit": {
-     "ts": 1795269600,
-     "price": 60883.4,
-     "hours_after": 4.0
+     "ts": 1795338000,
+     "price": 61288.9,
+     "hours_after": 23.0
     },
-    "best_pnl_pct": 5.441,
-    "mfe_pct": 5.112,
+    "best_pnl_pct": 6.143,
+    "mfe_pct": 5.812,
     "mae_pct": 0.312
    }
   },
@@ -45474,6 +45480,12 @@
      "high": 60297.9,
      "low": 58964.3,
      "close": 59701.8
+    },
+    {
+     "ts": 1795338000,
+     "high": 61288.9,
+     "low": 59570.3,
+     "close": 61034.5
     }
    ],
    "source": "binance",
@@ -45483,23 +45495,23 @@
     "complete": false,
     "ret_6h": -0.529,
     "ret_12h": -0.947,
-    "ret_24h": -1.415,
-    "ret_48h": -1.415,
+    "ret_24h": 0.786,
+    "ret_48h": 0.786,
     "best_entry": {
      "ts": 1795273200,
      "price": 59587.5,
      "hours_after": 1.0
     },
     "best_exit": {
-     "ts": 1795294800,
-     "price": 60453.1,
-     "hours_after": 7.0
+     "ts": 1795338000,
+     "price": 61288.9,
+     "hours_after": 19.0
     },
-    "best_pnl_pct": 1.453,
-    "mfe_pct": 0.537,
+    "best_pnl_pct": 2.855,
+    "mfe_pct": 1.206,
     "mae_pct": 3.152
    }
   }
  ],
- "updated": "2026-11-22T09:45:25.275126+00:00"
+ "updated": "2026-11-22T10:00:36.276840+00:00"
 }
