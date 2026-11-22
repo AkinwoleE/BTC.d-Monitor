@@ -1,7 +1,5 @@
 {
-  "alert_keys": {
-    "risk:TRX:close": "2026-11-22T02:54:25Z"
-  },
+  "alert_keys": {},
   "day": "2026-11-22",
   "day_start_equity": 454.7624587503833,
   "positions": {
@@ -11,14 +9,6 @@
       "direction": "short-dec-long-hl",
       "entry_net_hr": 2.9240000000000003e-06,
       "hl_sz": 0.005,
-      "since": "2026-11-21T01:11:54Z"
-    },
-    "TRX": {
-      "adopted": true,
-      "dec_sz": 0,
-      "direction": null,
-      "entry_net_hr": null,
-      "hl_sz": -35.0,
       "since": "2026-11-21T01:11:54Z"
     }
   }
