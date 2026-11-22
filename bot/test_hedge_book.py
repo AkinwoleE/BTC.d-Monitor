@@ -140,6 +140,28 @@ class Filter(unittest.TestCase):
         self.assertIn("ORDER_PREFIX", hedge)
         self.assertIn('f"{ORDER_PREFIX}{mode}-', hedge)
 
+    def test_turtle_keeps_its_trx_and_drops_the_hedge_btc_leg(self):
+        book = [
+            {"venue": "hyperliquid", "coin": "BTC", "size": 0.005, "account": MASTER.lower()},
+        ]
+        live = {
+            "BTC": {"szi": "0.005"},
+            "TRX": {"szi": "-35"},
+        }
+        kept, ignored = hedge_book.filter_hl_positions(
+            live, own_coins=["TRX"], book=book, book_source="state", account=MASTER,
+        )
+        self.assertEqual(list(kept), ["TRX"])
+        self.assertEqual(ignored, ["BTC"])
+        # Without Turtle's own TRX units, the short is still not a hedge.
+        kept, ignored = hedge_book.filter_hl_positions(
+            live, own_coins=[], book=book, book_source="state", account=MASTER,
+        )
+        self.assertIn("TRX", kept)
+        self.assertNotIn("BTC", kept)
+        cloid = hedge_book.hedge_cloid_hex("hedge-open-1")
+        self.assertTrue(hedge_book.order_is_hedge({"cloid": cloid, "coin": "BTC"}))
+
 
 if __name__ == "__main__":
     unittest.main()

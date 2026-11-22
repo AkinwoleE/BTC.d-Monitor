@@ -39,7 +39,19 @@ def order_client_id(order):
 
 
 def order_is_hedge(order):
-    return order_client_id(order).startswith(ORDER_PREFIX)
+    cid = order_client_id(order)
+    if cid.startswith(ORDER_PREFIX):
+        return True
+    # Hyperliquid cloids are 16 bytes. Ours start with the hex of "hedge-".
+    body = cid[2:] if cid.lower().startswith("0x") else ""
+    return body.lower().startswith("68656467652d")
+
+
+def hedge_cloid_hex(client_id):
+    """0x + 32 hex chars. The first 6 bytes are the ASCII of 'hedge-'."""
+    import hashlib
+    digest = hashlib.sha256(str(client_id).encode()).hexdigest()
+    return "0x" + "68656467652d" + digest[:20]
 
 
 def order_coin(order):
@@ -98,6 +110,10 @@ def load_book(state_path=None, config_path=None):
 def _size_match(size, tracked):
     tol = max(1e-5, abs(float(tracked)) * 0.02)
     return abs(float(size) - float(tracked)) <= tol
+
+
+def sizes_close(size, tracked):
+    return _size_match(size, tracked)
 
 
 def _book_size_match(venue, coin, size, book, account):
@@ -162,6 +178,31 @@ def ignore_for_other_bot(own_open, venue, coin, size, book, orders=None, account
     if book_source == "state" and _book_size_match(venue, coin, size, book, account):
         return True
     return False
+
+
+def filter_hl_positions(live_map, own_coins, book, book_source="config", account=None,
+                        opposite_by_coin=None, orders=None):
+    """Drop hedge-owned Hyperliquid positions another bot did not open itself.
+
+    Coins in own_coins stay, because that bot's state says the position is its trade.
+    """
+    own = {str(coin).upper() for coin in own_coins or []}
+    kept = {}
+    ignored = []
+    for coin, pos in (live_map or {}).items():
+        if str(coin).upper() in own:
+            kept[coin] = pos
+            continue
+        size = pos.get("szi") if isinstance(pos, dict) else pos
+        opposite = (opposite_by_coin or {}).get(coin)
+        if ignore_for_other_bot(
+            False, "hyperliquid", coin, size, book, orders, account,
+            book_source, opposite,
+        ):
+            ignored.append(coin)
+            continue
+        kept[coin] = pos
+    return kept, ignored
 
 
 def _config():

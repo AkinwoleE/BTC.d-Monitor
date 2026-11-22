@@ -128,6 +128,8 @@ The RSI divergence trader, the BTC.D pairs trader, and Turtle already use these 
 - Decibel orders and fills use the client id prefix `hedge-` (`hedge-open-…`, `hedge-close-…`).
 - Filled legs are listed in `state.json` on the `hedge-data` branch (`dec_sz` / `hl_sz` per coin).
 - Another bot ignores a position only when that bot has no position of its own there and one of these is true: the state file records the leg, the order or fill carries the `hedge-` prefix, or the other venue has the opposite leg at about the same size. `fallback_book` in `bot/config.json` does not hide a position by itself. A size that only matches that static list still gets the original alert and stand-down.
-- The divergence and Turtle workflows load `hedge-data` `state.json` before they run. Hedge alerts go to the **Hedge alerts** issue. Divergence and Turtle keep Telegram.
+- Hyperliquid orders use a cloid whose first bytes are the ASCII of `hedge-`.
+- The hedge repairs or closes a leg only when it is a matched pair, a `hedge-` order, or the remaining side of a matched pair already in `state.json`. A one-sided position another bot opened, such as Turtle's TRX short, is logged as `foreign position, ignored` and is not repaired, closed, or counted in the hedge's notional.
+- Turtle drops hedge-owned coins from its live position list before it trades or logs `open live positions`, and keeps coins it already has units in.
 
 A BTC position the RSI bot itself opened stays in its state file and is still managed. The hedge does not write that file.

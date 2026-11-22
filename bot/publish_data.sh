@@ -2,18 +2,29 @@
 # Publish funding snapshots and strategy state to the hedge-data branch.
 # The commit message contains [skip ci] so the push does not start another run.
 # Credentials come from the Actions checkout. This script does not print the remote URL.
+# Missing files are skipped. A quiet run with only a funding snapshot still publishes.
 set -euo pipefail
 
 src="${1:-bot/runtime}"
-if [ ! -f "$src/funding_snapshots.csv" ] && [ ! -f "$src/state.json" ]; then
+files=(funding_snapshots.csv state.json decisions.jsonl)
+
+have=0
+for name in "${files[@]}"; do
+  if [ -f "$src/$name" ]; then
+    have=1
+  fi
+done
+if [ "$have" -eq 0 ]; then
   echo "hedge-data: nothing to publish"
   exit 0
 fi
 
 out="$(mktemp -d)"
-cp "$src/funding_snapshots.csv" "$out/" 2>/dev/null || true
-cp "$src/state.json" "$out/" 2>/dev/null || true
-cp "$src/decisions.jsonl" "$out/" 2>/dev/null || true
+for name in "${files[@]}"; do
+  if [ -f "$src/$name" ]; then
+    cp "$src/$name" "$out/$name"
+  fi
+done
 cat > "$out/README.md" << 'EOF'
 # hedge-data
 
@@ -36,12 +47,19 @@ else
   git rm -rf --cached . >/dev/null 2>&1 || true
 fi
 
-cp "$out/funding_snapshots.csv" . 2>/dev/null || true
-cp "$out/state.json" . 2>/dev/null || true
-cp "$out/decisions.jsonl" . 2>/dev/null || true
-cp "$out/README.md" README.md
+to_add=()
+for name in "${files[@]}" README.md; do
+  if [ -f "$out/$name" ]; then
+    cp "$out/$name" "./$name"
+    to_add+=("$name")
+  fi
+done
+if [ "${#to_add[@]}" -eq 0 ]; then
+  echo "hedge-data: nothing to publish"
+  exit 0
+fi
 
-git add -- funding_snapshots.csv state.json decisions.jsonl README.md
+git add -- "${to_add[@]}"
 if git diff --cached --quiet; then
   echo "hedge-data: no changes"
   exit 0

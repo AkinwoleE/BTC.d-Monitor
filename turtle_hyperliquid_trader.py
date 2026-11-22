@@ -1005,6 +1005,25 @@ def main():
 
     print(f"crypto: account_value=${account_value:.2f}  risk_capital=${crypto_risk:.2f}")
     print(f"equity: account_value=${equity_account_value:.2f}  risk_capital=${equity_risk:.2f}  snapshot_ok={equity_snapshot_ok}")
+    bot = os.path.join(os.path.dirname(os.path.abspath(__file__)), "bot")
+    if bot not in sys.path:
+        sys.path.insert(0, bot)
+    from hedge_book import dec_signed_size, filter_hl_positions, load_book
+    rows, source = load_book()
+    own_coins = [
+        tok for tok, book in (state.get("positions") or {}).items()
+        if book.get("units")
+    ]
+    opposite = {}
+    if "BTC" in live_pos:
+        opposite["BTC"] = dec_signed_size("BTC")
+    live_pos, ignored_hedge = filter_hl_positions(
+        live_pos, own_coins, rows, source,
+        os.environ.get("HYPERLIQUID_ACCOUNT_ADDRESS", ""),
+        opposite,
+    )
+    if ignored_hedge:
+        print("hedge positions ignored: " + ",".join(sorted(ignored_hedge)))
     print(f"open live positions: {sorted(live_pos)}")
 
     candle_data, n_data = {}, {}
