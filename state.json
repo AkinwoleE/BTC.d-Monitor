@@ -2,14 +2,5 @@
   "alert_keys": {},
   "day": "2026-11-22",
   "day_start_equity": 454.7624587503833,
-  "positions": {
-    "BTC": {
-      "adopted": true,
-      "dec_sz": -0.005,
-      "direction": "short-dec-long-hl",
-      "entry_net_hr": 2.9240000000000003e-06,
-      "hl_sz": 0.005,
-      "since": "2026-11-21T01:11:54Z"
-    }
-  }
+  "positions": {}
 }
