@@ -2,59 +2,59 @@
  "positions": {
   "AAVE": {
    "units": [],
-   "last_candle_ts": 1795132800
+   "last_candle_ts": 1795219200
   },
   "ADA": {
    "units": [],
-   "last_candle_ts": 1795132800
+   "last_candle_ts": 1795219200
   },
   "APT": {
    "units": [],
-   "last_candle_ts": 1795132800
+   "last_candle_ts": 1795219200
   },
   "AVAX": {
    "units": [],
-   "last_candle_ts": 1795132800
+   "last_candle_ts": 1795219200
   },
   "BNB": {
    "units": [],
-   "last_candle_ts": 1795132800
+   "last_candle_ts": 1795219200
   },
   "BTC": {
    "units": [],
-   "last_candle_ts": 1795132800
+   "last_candle_ts": 1795219200
   },
   "DOGE": {
    "units": [],
-   "last_candle_ts": 1795132800
+   "last_candle_ts": 1795219200
   },
   "ETH": {
    "units": [],
-   "last_candle_ts": 1795132800
+   "last_candle_ts": 1795219200
   },
   "LINK": {
    "units": [],
-   "last_candle_ts": 1795132800
+   "last_candle_ts": 1795219200
   },
   "NEAR": {
    "units": [],
-   "last_candle_ts": 1795132800
+   "last_candle_ts": 1795219200
   },
   "SOL": {
    "units": [],
-   "last_candle_ts": 1795132800
+   "last_candle_ts": 1795219200
   },
   "SUI": {
    "units": [],
-   "last_candle_ts": 1795132800
+   "last_candle_ts": 1795219200
   },
   "TAO": {
    "units": [],
-   "last_candle_ts": 1795132800
+   "last_candle_ts": 1795219200
   },
   "TRUMP": {
    "units": [],
-   "last_candle_ts": 1795132800
+   "last_candle_ts": 1795219200
   },
   "TRX": {
    "units": [
@@ -69,20 +69,20 @@
      "fee": 0.004562
     }
    ],
-   "last_candle_ts": 1795132800,
+   "last_candle_ts": 1795219200,
    "stop_oid": 612051494417
   },
   "WLFI": {
    "units": [],
-   "last_candle_ts": 1795132800
+   "last_candle_ts": 1795219200
   },
   "XRP": {
    "units": [],
-   "last_candle_ts": 1795132800
+   "last_candle_ts": 1795219200
   },
   "ZEC": {
    "units": [],
-   "last_candle_ts": 1795132800
+   "last_candle_ts": 1795219200
   },
   "XYZ100": {
    "units": [],

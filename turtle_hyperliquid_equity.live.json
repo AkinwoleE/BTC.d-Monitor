@@ -58,5 +58,11 @@
   "equity": 95.273718,
   "equity_xyz": 0.0,
   "mode": "live"
+ },
+ {
+  "ts": 1795306340,
+  "equity": 108.124312,
+  "equity_xyz": 0.0,
+  "mode": "live"
  }
 ]
