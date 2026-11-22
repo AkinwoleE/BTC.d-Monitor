@@ -1,9 +1,9 @@
 {
   "alert_keys": {
-    "risk:TRX:close": "2026-11-21T17:12:22Z"
+    "risk:TRX:close": "2026-11-22T02:54:25Z"
   },
-  "day": "2026-11-21",
-  "day_start_equity": 453.0679877325999,
+  "day": "2026-11-22",
+  "day_start_equity": 454.7624587503833,
   "positions": {
     "BTC": {
       "adopted": true,
