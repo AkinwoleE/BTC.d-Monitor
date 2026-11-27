@@ -1,12 +1,19 @@
 {
- "position": null,
+ "position": {
+  "side": "short",
+  "entry_px": 0.002677,
+  "sz": 186776,
+  "opened_ts": 1795783528,
+  "signal_id": "2h-bearish2-1795744800"
+ },
  "acted": [
   "2h-bullish2-1789149600",
   "2h-bearish2-1789711200",
   "2h-bearish2-1790611200",
   "2h-bullish2-1792850400",
   "2h-bearish2-1793800800",
-  "2h-bullish2-1794376800"
+  "2h-bullish2-1794376800",
+  "2h-bearish2-1795744800"
  ],
- "last_price": 0.002664
+ "last_price": 0.002677
 }
